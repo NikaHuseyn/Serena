@@ -182,21 +182,50 @@ const PersonalInfoForm = ({ profile, onUpdate }: PersonalInfoFormProps) => {
             
             <div className="space-y-2">
               <Label>Profile Photo</Label>
-              <EnhancedImageUpload
-                onFinalImage={async (blob) => {
-                  const file = new File([blob], 'profile-photo.jpg', { type: 'image/jpeg' });
-                  setProfilePhotoFile(file);
-                  const url = URL.createObjectURL(blob);
-                  setPreviewUrl(url);
-                  toast({
-                    title: "Success",
-                    description: "Profile photo ready!",
-                  });
-                }}
-                maxSize={5 * 1024 * 1024} // 5MB
-                acceptedTypes={['image/jpeg', 'image/png', 'image/webp']}
-                showEditor={true}
-              />
+              <div className="flex items-center gap-4">
+                <Avatar className="h-16 w-16">
+                  {previewUrl ? (
+                    <AvatarImage src={previewUrl} alt="Profile" />
+                  ) : null}
+                  <AvatarFallback className="bg-muted text-muted-foreground">
+                    <Camera className="h-6 w-6" />
+                  </AvatarFallback>
+                </Avatar>
+                <div className="flex flex-col gap-2">
+                  <label
+                    htmlFor="profile-photo-input"
+                    className="inline-flex items-center gap-2 cursor-pointer text-sm font-medium text-primary hover:underline"
+                  >
+                    <Upload className="h-4 w-4" />
+                    {previewUrl ? 'Change photo' : 'Upload photo'}
+                  </label>
+                  <input
+                    id="profile-photo-input"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (!file) return;
+                      if (file.size > 5 * 1024 * 1024) {
+                        toast({ title: 'Error', description: 'Photo must be under 5 MB', variant: 'destructive' });
+                        return;
+                      }
+                      setProfilePhotoFile(file);
+                      setPreviewUrl(URL.createObjectURL(file));
+                    }}
+                  />
+                  {previewUrl && (
+                    <button
+                      type="button"
+                      onClick={() => { setPreviewUrl(null); setProfilePhotoFile(null); }}
+                      className="inline-flex items-center gap-1 text-xs text-destructive hover:underline"
+                    >
+                      <X className="h-3 w-3" /> Remove
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
             <div className="space-y-2">
