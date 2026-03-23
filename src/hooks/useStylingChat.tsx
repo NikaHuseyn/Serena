@@ -276,7 +276,9 @@ export const useStylingChat = () => {
     const { data: { session } } = await supabase.auth.getSession();
     const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
 
-    const conversationContext = messages.map(m => ({
+    // Truncate to last 10 messages to prevent token bloat and high costs
+    const recentMessages = messages.slice(-10);
+    const conversationContext = recentMessages.map(m => ({
       role: m.role,
       content: m.content,
       recommendationSummary: m.recommendation ? {

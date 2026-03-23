@@ -483,7 +483,7 @@ EVENT DETAILS:
 ` : ''}
 
 WEATHER CONTEXT:
-${weatherData ? `Temperature: ${weatherData.temperature}°F, Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}` : 'Weather not specified'}
+${weatherData ? `Temperature: ${weatherData.temperature}°C, Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}` : 'Weather not specified'}
 
 ${venueContext?.source === 'scraped' ? `
 🏢 VENUE INTELLIGENCE (scraped from venue website - USE THIS):

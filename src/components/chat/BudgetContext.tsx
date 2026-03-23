@@ -25,7 +25,7 @@ function getChipsForRegion(region: CurrencyRegion): BudgetChipDef[] {
     { label: `Under ${s}50`, value: 50, noLimit: false },
     { label: `${s}50–${s}150`, value: 150, noLimit: false },
     { label: `${s}150–${s}500`, value: 500, noLimit: false },
-    { label: `${s}500+`, value: 500, noLimit: false },
+    { label: `${s}500+`, value: null, noLimit: true },
     { label: 'No limit ✨', value: null, noLimit: true },
   ];
 }
