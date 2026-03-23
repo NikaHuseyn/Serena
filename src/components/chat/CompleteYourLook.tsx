@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { ShoppingBag, Tag, Recycle, ExternalLink, SlidersHorizontal, Search } from 'lucide-react';
+import { ShoppingBag, Tag, Recycle, ExternalLink, SlidersHorizontal, Search, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useBudget } from './BudgetContext';
 
