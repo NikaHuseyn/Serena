@@ -110,59 +110,27 @@ serve(async (req) => {
     }
 
     // Fetch user's style profile and wardrobe items if authenticated
-    let userInsights = null;
-    let recentFeedback = null;
+    let userInsights: any[] | null = null;
+    let recentFeedback: any[] | null = null;
     
     if (user) {
-      const { data: userStyleProfile } = await supabase
-        .from('user_style_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      styleProfile = userStyleProfile;
+      const [
+        userStyleProfileResult,
+        userWardrobeResult,
+        userInsightsResult,
+        userFeedbackResult
+      ] = await Promise.all([
+        supabase.from('user_style_profiles').select('*').eq('user_id', user.id).single(),
+        supabase.from('wardrobe_items').select('*').eq('user_id', user.id).limit(50),
+        supabase.from('user_preference_insights').select('*').eq('user_id', user.id).order('confidence_score', { ascending: false }).limit(10),
+        supabase.from('recommendation_feedback').select('rating, liked_aspects, disliked_aspects, improvement_suggestions').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5)
+      ]);
 
-      const { data: userWardrobeItems } = await supabase
-        .from('wardrobe_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .limit(50);
-      wardrobeItems = userWardrobeItems;
-
-      // Fetch user preference insights from feedback
-      const { data: insights } = await supabase
-        .from('user_preference_insights')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('confidence_score', { ascending: false })
-        .limit(10);
-      userInsights = insights;
-
-      // Fetch recent feedback to understand what worked/didn't work
-      const { data: feedback } = await supabase
-        .from('recommendation_feedback')
-        .select(`
-          rating,
-          liked_aspects,
-          disliked_aspects,
-          improvement_suggestions,
-          ai_recommendations (
-            recommended_items,
-            occasion
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      recentFeedback = feedback;
+      styleProfile = userStyleProfileResult.data;
+      wardrobeItems = userWardrobeResult.data;
+      userInsights = userInsightsResult.data;
+      recentFeedback = userFeedbackResult.data;
     }
-
-    // Fetch recent shopping items for inspiration
-    const { data: shoppingItems } = await supabase
-      .from('shopping_items')
-      .select('name, brand, category, price, colors, description')
-      .eq('in_stock', true)
-      .order('created_at', { ascending: false })
-      .limit(15);
 
     // Fetch cultural dress norms if a country is mentioned
     let culturalNorms: any[] = [];
@@ -414,7 +382,10 @@ AUTHENTICATED USER WITH WARDROBE:
 This user has ${wardrobeItems.length} wardrobe items. Prioritise their existing clothes in recommendations.
 `}
 
-USER STYLE PROFILE:
+${(() => {
+  const hasProfile = styleProfile && Object.keys(styleProfile).some(k => !['id', 'user_id', 'created_at', 'updated_at'].includes(k) && styleProfile[k] != null);
+  if (!hasProfile) return 'User has not set up a style profile yet.';
+  return `USER STYLE PROFILE:
 - Name: ${styleProfile?.display_name || 'Not specified'}
 - Based in: ${styleProfile?.home_city || 'Not specified'}
 - Body Type: ${styleProfile?.body_type || 'Not specified'}
@@ -442,18 +413,19 @@ COLOUR ANALYSIS (from AI photo analysis — use this to guide colour choices):
 - Styling Advice: ${styleProfile.color_analysis.styling_advice || 'None'}
 
 IMPORTANT: When recommending outfit colours, STRONGLY PREFER the user's "Best Colours" from their colour analysis. AVOID suggesting items in their "Colours to Avoid". Reference their seasonal type when explaining why a colour works for them.
-` : ''}
+` : ''}`;
+})()}
 
-LEARNED PREFERENCES FROM FEEDBACK:
-${userInsights?.length > 0 ? userInsights.map(insight => 
+${userInsights?.length ? `LEARNED PREFERENCES FROM FEEDBACK:
+${userInsights.map(insight => 
   `- ${insight.insight_type}: ${insight.insight_value || 'N/A'} (confidence: ${Math.round((insight.confidence_score || 0.5) * 100)}%)`
-).join('\n') : '- No learned preferences yet'}
+).join('\n')}` : ''}
 
-RECENT FEEDBACK ANALYSIS:
-${recentFeedback?.length > 0 ? recentFeedback.map(fb => {
+${recentFeedback?.length ? `RECENT FEEDBACK ANALYSIS:
+${recentFeedback.map(fb => {
   const ratingText = fb.rating >= 4 ? 'POSITIVE' : fb.rating === 3 ? 'NEUTRAL' : 'NEGATIVE';
   return `- ${ratingText} (${fb.rating}/5): Liked: ${fb.liked_aspects?.join(', ') || 'none'}, Disliked: ${fb.disliked_aspects?.join(', ') || 'none'}${fb.improvement_suggestions ? `, Suggestions: ${fb.improvement_suggestions}` : ''}`;
-}).join('\n') : '- No previous feedback available'}
+}).join('\n')}` : ''}
 
 USER'S WARDROBE ITEMS (PRIORITIZE USING THESE):
 ${wardrobeItems?.length > 0 ? wardrobeItems.map(item => `- ${item.name} (${item.category}, ${item.color || 'color not specified'}, ${item.brand || 'brand not specified'}${item.notes ? ', notes: ' + item.notes : ''})`).join('\n') : `The user has not uploaded their wardrobe yet.
@@ -568,8 +540,10 @@ ${culturalNorms.map(n => `**${n.context_type.replace(/_/g, ' ').toUpperCase()}:*
 CRITICAL: These are real cultural dress expectations for ${detectedCountry}. Your outfit recommendation MUST respect these norms.
 ` : ''}
 
-🚫 ABSOLUTE PROHIBITION FOR HISTORICAL/THEMED EVENTS 🚫
-${(occasion?.toLowerCase().includes('1930') || occasion?.toLowerCase().includes('1920') || occasion?.toLowerCase().includes('1940') || occasion?.toLowerCase().includes('victorian') || occasion?.toLowerCase().includes('vintage') || occasion?.toLowerCase().includes('period') || eventDetails?.description?.toLowerCase().includes('1930') || eventDetails?.description?.toLowerCase().includes('1920')) ? `
+${(() => {
+  const isHistCheck = (occasion?.toLowerCase().includes('1930') || occasion?.toLowerCase().includes('1920') || occasion?.toLowerCase().includes('1940') || occasion?.toLowerCase().includes('victorian') || occasion?.toLowerCase().includes('vintage') || occasion?.toLowerCase().includes('period') || eventDetails?.description?.toLowerCase().includes('1930') || eventDetails?.description?.toLowerCase().includes('1920'));
+  if (!isHistCheck) return '';
+  return `🚫 ABSOLUTE PROHIBITION FOR HISTORICAL/THEMED EVENTS 🚫
 ⛔ THIS IS A HISTORICAL PERIOD EVENT - MODERN ITEMS ARE STRICTLY FORBIDDEN ⛔
 
 NEVER SUGGEST ANY OF THE FOLLOWING MODERN ITEMS:
@@ -585,103 +559,31 @@ ONLY SUGGEST:
 - Period-appropriate shoes (T-strap heels, Mary Janes, Oxford pumps from that era)
 - Historically accurate accessories (period hats, gloves, beaded bags, fur stoles)
 - Vintage or reproduction pieces that are true to the era
-` : ''}
 
-STYLING BRIEF:
-${recommendationType === 'event_outfit' ? 
-  `Create an outfit specifically tailored for this event. ${(occasion?.toLowerCase().includes('1930') || occasion?.toLowerCase().includes('1920') || occasion?.toLowerCase().includes('1940') || eventDetails?.description?.toLowerCase().includes('1930') || eventDetails?.description?.toLowerCase().includes('1920')) ? '⚠️ CRITICAL HISTORICAL ACCURACY REQUIRED ⚠️' : ''} ${eventDetails?.description || occasion || ''}` :
-  'Create a versatile daily outfit that reflects the user\'s personal style while being practical for their lifestyle.'
-}
-
-HISTORICAL ACCURACY REQUIREMENTS (when applicable):
-If the occasion mentions "1930s", "1920s", "1940s" or any historical period:
+HISTORICAL ACCURACY REQUIREMENTS:
 - 1930s: bias-cut silk gowns, midi-to-floor length, Art Deco beading, T-strap heels
 - 1920s: drop-waist dresses, knee-length, fringe, beading, feather headbands, Mary Jane heels
-- 1940s: structured shoulders, A-line skirts, victory rolls, utility fashion, peep-toe pumps
+- 1940s: structured shoulders, A-line skirts, victory rolls, utility fashion, peep-toe pumps`;
+})()}
 
-CRITICAL: Use the learned preferences and recent feedback to improve this recommendation.
-
-Please provide a detailed outfit recommendation in the following JSON format:
-{
-  "character_suggestions": [
-    {
-      "name": "Character Name",
-      "source": "Book/Play/Movie",
-      "description": "Brief description of character and their style",
-      "difficulty": "Easy/Medium/Hard",
-      "why_perfect": "Why this character fits the theme and user"
-    }
-  ],
-  "wardrobe_analysis": {
-    "items_used": ["List wardrobe items that fit this outfit"],
-    "gaps_identified": ["What's missing from wardrobe for this occasion"],
-    "coverage_score": 0.6
-  },
-  "recommended_items": {
-    "top": { 
-      "name": "specific item name", 
-      "source": "from_wardrobe" OR "needs_purchase" OR "needs_rental",
-      "wardrobe_item_id": "actual wardrobe item name if from_wardrobe, null otherwise",
-      "confidence": 0.9, 
-      "reasoning": "detailed explanation",
-      "styling_tips": "how to wear this piece effectively",
-      "alternatives": ["alternative option 1", "alternative option 2"],
-      "purchase_options": {
-        "uk_retailers": [{ "store": "Store name", "price_range": "£50-100", "url": "https://..." }],
-        "rental_platforms": [{ "platform": "Platform name", "price_range": "£20-40 rental", "url": "https://..." }],
-        "vintage_options": [{ "source": "Vintage store", "price_range": "£30-80", "url": "https://..." }]
-      }
-    },
-    "bottom": { "name": "...", "source": "...", "confidence": 0.85, "reasoning": "...", "styling_tips": "...", "purchase_options": {} },
-    "shoes": { "name": "...", "source": "...", "confidence": 0.8, "reasoning": "...", "styling_tips": "...", "purchase_options": {} },
-    "accessories": [{ "name": "...", "confidence": 0.7, "reasoning": "...", "styling_tips": "..." }],
-    "outerwear": { "name": "...", "confidence": 0.75, "reasoning": "...", "styling_tips": "..." }
-  },
-  "missing_items_search": [
-    {
-      "item_type": "navy midi dress",
-      "style_descriptor": "elegant, fitted",
-      "occasion_suitability": "smart casual to formal",
-      "price_tier": "budget|mid_range|luxury",
-      "category": "dresses|tops|bottoms|shoes|outerwear|accessories|knitwear|bags",
-      "search_keywords": ["navy", "midi", "dress", "fitted"]
-    }
-  ],
-  "overall_confidence": 0.87,
-  "style_reasoning": "Open with ONE sentence referencing the specific setting and emotional goal. Then describe how the outfit will look. End with exactly ONE follow-up question or refinement invitation.",
-  "color_analysis": "...",
-  "fit_guidance": "...",
-  "styling_tips": ["tip 1", "tip 2", "tip 3"],
-  "alternative_options": {
-    "if_cooler": "...", "if_warmer": "...", "dressy_version": "...", "casual_version": "...",
-    "budget_friendly": "...", "investment_pieces": "..."
-  },
-  "shopping_suggestions": {
-    "priority_items": ["item 1", "item 2"],
-    "total_investment_needed": "£X-Y",
-    "wardrobe_utilization": "X%",
-    "recommended_approach": "..."
-  }
-}
+Please provide a detailed outfit recommendation as a structured tool call.
 
 Focus on creating a cohesive, stylish outfit. 
 
 CRITICAL FINAL INSTRUCTIONS:
 1. WARDROBE FIRST: Always check if the user has suitable items in their wardrobe before suggesting purchases
 2. SMART MIXING: Create outfits that combine existing wardrobe items with strategic new purchases or rentals
-3. REAL LINKS: Provide actual URLs to UK retailers, rental platforms, and vintage shops
-4. VALUE OPTIMIZATION: Help users maximize their existing wardrobe
-5. For period/themed events: Provide specific links to costume rental shops and vintage stores
-6. Price transparency: Always include price ranges in GBP (£)
-7. MISSING ITEMS: For every item with source "needs_purchase" or "needs_rental", include a corresponding entry in "missing_items_search"
+3. VALUE OPTIMIZATION: Help users maximize their existing wardrobe
+4. Price transparency: Always include price ranges in GBP (£)
+5. MISSING ITEMS: For every item with source "needs_purchase" or "needs_rental", include a corresponding entry in "missing_items_search"
 
-Remember: The goal is to create perfect, achievable outfits using what the user owns + targeted shopping/rental recommendations with real, clickable links.`;
+Remember: The goal is to create perfect, achievable outfits using what the user owns + targeted shopping/rental recommendations.`;
 
     // Dynamic model selection and stricter validation for historical/themed events
     const occ = (occasion || '').toLowerCase();
     const desc = (eventDetails?.description || '').toLowerCase();
     const isHistorical = /(1920|1930|1940|victorian|edwardian|regency|vintage|period)/.test(`${occ} ${desc}`);
-    const model = 'openai/gpt-5-mini';
+    const model = 'google/gemini-3-flash-preview';
 
     // Define tool for structured output
     const outfitTool = {
@@ -702,15 +604,7 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
                     source: { type: 'string', enum: ['from_wardrobe', 'needs_purchase', 'needs_rental'] },
                     confidence: { type: 'number' },
                     reasoning: { type: 'string' },
-                    styling_tips: { type: 'string' },
-                    purchase_options: {
-                      type: 'object',
-                      properties: {
-                        uk_retailers: { type: 'array', items: { type: 'object', properties: { store: { type: 'string' }, price_range: { type: 'string' }, url: { type: 'string' } } } },
-                        rental_platforms: { type: 'array', items: { type: 'object', properties: { platform: { type: 'string' }, price_range: { type: 'string' }, url: { type: 'string' } } } },
-                        vintage_options: { type: 'array', items: { type: 'object', properties: { source: { type: 'string' }, price_range: { type: 'string' }, url: { type: 'string' } } } }
-                      }
-                    }
+                    styling_tips: { type: 'string' }
                   },
                   required: ['name', 'confidence', 'reasoning', 'styling_tips']
                 },
@@ -721,8 +615,7 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
                     source: { type: 'string', enum: ['from_wardrobe', 'needs_purchase', 'needs_rental'] },
                     confidence: { type: 'number' },
                     reasoning: { type: 'string' },
-                    styling_tips: { type: 'string' },
-                    purchase_options: { type: 'object' }
+                    styling_tips: { type: 'string' }
                   },
                   required: ['name', 'confidence', 'reasoning', 'styling_tips']
                 },
@@ -733,8 +626,7 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
                     source: { type: 'string', enum: ['from_wardrobe', 'needs_purchase', 'needs_rental'] },
                     confidence: { type: 'number' },
                     reasoning: { type: 'string' },
-                    styling_tips: { type: 'string' },
-                    purchase_options: { type: 'object' }
+                    styling_tips: { type: 'string' }
                   },
                   required: ['name', 'confidence', 'reasoning', 'styling_tips']
                 },
@@ -796,6 +688,23 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
       }
     };
 
+    // Add character_suggestions to schema only for historical events
+    if (isHistorical) {
+      (outfitTool as any).function.parameters.properties.character_suggestions = {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            source: { type: 'string' },
+            description: { type: 'string' },
+            difficulty: { type: 'string', enum: ['Easy', 'Medium', 'Hard'] },
+            why_perfect: { type: 'string' }
+          }
+        }
+      };
+    }
+
     const systemPrompt = isHistorical
       ? `You are Oracle, an expert fashion historian and costume consultant. For this historical event, you MUST only recommend authentic period pieces. NEVER suggest modern items like jeans or sneakers. Always give a recommendation immediately — never refuse or ask for more info first. End with exactly ONE follow-up question.`
       : emotional_tone
@@ -839,12 +748,8 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
         body.tools = [outfitTool];
         body.tool_choice = { type: 'function', function: { name: 'provide_outfit_recommendation' } };
       }
-      if (model.startsWith('openai/')) {
-        body.max_completion_tokens = 16000;
-      } else {
-        body.max_tokens = 3000;
-        body.temperature = 0.7;
-      }
+      body.max_tokens = 3000;
+      body.temperature = 0.7;
       return body;
     };
 
