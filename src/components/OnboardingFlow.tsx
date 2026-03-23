@@ -283,7 +283,7 @@ const StyleStep: React.FC<{
         </div>
       </div>
 
-      <Button onClick={onNext} className="btn-fashion w-full" disabled={data.selectedStyles.length === 0 || data.selectedColors.length === 0}>
+      <Button onClick={onNext} className="btn-fashion w-full">
         Save My Style <ArrowRight className="h-4 w-4 ml-2" />
       </Button>
     </div>
