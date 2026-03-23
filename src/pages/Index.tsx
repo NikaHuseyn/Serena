@@ -9,8 +9,9 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 import { useStylingChat } from '@/hooks/useStylingChat';
 import { Sparkles, RotateCcw, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BudgetProvider } from '@/components/chat/BudgetContext';
 
-const Index = () => {
+const IndexContent = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
   const { messages, isLoading, sendMessage, clearChat, selectEmotionalTone, selectedEmotionalTone } = useStylingChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
