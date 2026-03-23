@@ -228,9 +228,16 @@ export async function searchProductsForItems(
           },
         });
 
-        if (error || !data?.results) {
-          console.warn(`Product search failed for "${item.name}":`, error);
-          return null;
+        if (error || !data?.results || (data.results as any[]).length === 0) {
+          console.warn(`Product search returned no results for "${item.name}", using fallback links`);
+          return {
+            item_type: item.name,
+            style_descriptor: item.reasoning || '',
+            occasion_suitability: occasionContext || '',
+            price_tier: resolvedBudgetTier || 'all',
+            retailer_results: [],
+            fallback_links: generateFallbackSearchLinks(item.name, region),
+          };
         }
 
         const retailerResults = (data.results as ProductSearchResult[]).map(p => ({
@@ -249,8 +256,15 @@ export async function searchProductsForItems(
           retailer_results: retailerResults,
         };
       } catch (err) {
-        console.warn(`Product search error for "${item.name}":`, err);
-        return null;
+        console.warn(`Product search error for "${item.name}", using fallback links:`, err);
+        return {
+          item_type: item.name,
+          style_descriptor: item.reasoning || '',
+          occasion_suitability: occasionContext || '',
+          price_tier: resolvedBudgetTier || 'all',
+          retailer_results: [],
+          fallback_links: generateFallbackSearchLinks(item.name, region),
+        };
       }
     })
   );
