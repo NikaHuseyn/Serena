@@ -1551,6 +1551,8 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
         wardrobe_analysis: recommendationData.wardrobe_analysis
       },
       missing_items: shoppingMatches,
+      shopping_section_title: shoppingSectionTitle,
+      wardrobe_state: wardrobeState,
       wardrobe_status: {
         is_authenticated: !!user,
         wardrobe_count: wardrobeItems?.length || 0,
