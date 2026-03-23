@@ -37,6 +37,7 @@ interface MissingItem {
 
 interface CompleteYourLookProps {
   missingItems: MissingItem[];
+  title?: string;
 }
 
 type TabType = 'buy' | 'rent' | 'secondhand';
