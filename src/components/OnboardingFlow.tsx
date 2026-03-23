@@ -369,7 +369,6 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
 
   const [profileData, setProfileData] = useState<ProfileData>({
     displayName: '', homeCity: '', bodyType: '', fitPreference: '',
-    defaultBudget: null, budgetNoLimit: false, budgetCurrency: '£',
   });
 
   const [styleData, setStyleData] = useState<StyleData>({
