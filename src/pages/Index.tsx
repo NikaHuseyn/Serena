@@ -133,4 +133,10 @@ const IndexContent = () => {
   );
 };
 
+const Index = () => (
+  <BudgetProvider>
+    <IndexContent />
+  </BudgetProvider>
+);
+
 export default Index;
