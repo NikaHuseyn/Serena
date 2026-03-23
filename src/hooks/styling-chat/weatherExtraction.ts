@@ -6,12 +6,12 @@
 // ── Location extraction ────────────────────────────────────────────
 
 const LOCATION_PATTERNS = [
+  // "at [Venue] in [City]" — grab the city only (must come first to avoid venue name capture)
+  /\bat\s+[A-Z][A-Za-z''&\-\s]{2,30}\s+in\s+((?:[A-Z\u00C0-\u024F][A-Za-z\u00C0-\u024F'.\-]+)(?:\s+[A-Za-z\u00C0-\u024F'.\-]+){0,3}?)\b/,
   // "in [City], [Country]" or "in [City]" — require uppercase start (no 'i' flag)
-  /\b(?:in|at|near|outside|around|visiting|heading to|flying to|travelling to|traveling to)\s+((?:[A-Z\u00C0-\u024F][A-Za-z\u00C0-\u024F'.\-]+)(?:\s+[A-Za-z\u00C0-\u024F'.\-]+){0,3}?)(?:\s*,\s*((?:[A-Z\u00C0-\u024F][A-Za-z\u00C0-\u024F'.\-]+)(?:\s+[A-Za-z\u00C0-\u024F'.\-]+){0,3}?))?\s*(?:[.!?,;]|$|\b(?:next|this|on|for|and|with|tomorrow|tonight))/,
+  /\b(?:in|near|outside|around|visiting|heading to|flying to|travelling to|traveling to)\s+((?:[A-Z\u00C0-\u024F][A-Za-z\u00C0-\u024F'.\-]+)(?:\s+[A-Za-z\u00C0-\u024F'.\-]+){0,3}?)(?:\s*,\s*((?:[A-Z\u00C0-\u024F][A-Za-z\u00C0-\u024F'.\-]+)(?:\s+[A-Za-z\u00C0-\u024F'.\-]+){0,3}?))?\s*(?:[.!?,;]|$|\b(?:next|this|on|for|and|with|tomorrow|tonight))/,
   // "[City] wedding / dinner / event / party / gala" — require uppercase city
   /\b((?:[A-Z\u00C0-\u024F][A-Za-z\u00C0-\u024F'.\-]+)(?:\s+[A-Za-z\u00C0-\u024F'.\-]+){0,3}?)\s+(?:wedding|dinner|lunch|brunch|event|party|gala|ball|conference|festival|ceremony|reception|meetup|concert)\b/,
-  // "at [Venue] in [City]" — grab the city (uppercase required)
-  /\bat\s+[A-Z][A-Za-z''&\-\s]{2,30}\s+in\s+((?:[A-Z\u00C0-\u024F][A-Za-z\u00C0-\u024F'.\-]+)(?:\s+[A-Za-z\u00C0-\u024F'.\-]+){0,3}?)\b/,
 ];
 
 const LOCATION_FALSE_POSITIVES = new Set([
