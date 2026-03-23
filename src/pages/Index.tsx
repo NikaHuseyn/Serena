@@ -64,7 +64,7 @@ const IndexContent = () => {
             <div className="grid grid-cols-3 gap-6 mb-10 max-w-lg w-full">
               {[
                 { icon: Sparkles, label: 'Event-ready outfits', desc: 'Describe any occasion and get a complete look' },
-                { icon: Heart, label: 'Your wardrobe, your style', desc: 'Sign in to get suggestions from clothes you own' },
+                { icon: Heart, label: 'Style together', desc: 'Share looks, get feedback from friends, and discover what works for you' },
                 { icon: MessageCircle, label: 'Refine until it\'s perfect', desc: 'Chat to adjust colors, formality, budget' },
               ].map(({ icon: Icon, label, desc }) => (
                 <div key={label} className="flex flex-col items-center text-center gap-1.5">
