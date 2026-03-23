@@ -206,7 +206,7 @@ const StyleStep: React.FC<{
           <Palette className="h-12 w-12 text-primary" />
         </div>
         <h2 className="text-2xl font-bold mb-2">Your Style DNA</h2>
-        <p className="text-muted-foreground">Select styles and colours that resonate with you</p>
+        <p className="text-muted-foreground">Select styles and colours that resonate with you — all optional</p>
       </div>
 
       {/* Style personalities */}
