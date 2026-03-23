@@ -39,13 +39,13 @@ interface ChatMessageProps {
     has_wardrobe: boolean;
   };
   emotionalToneCards?: EmotionalTone[];
-  toneRecommendations?: Record<string, { recommendation: any; content: string; missing_items?: any[] }>;
+  selectedToneId?: string | null;
   onSelectTone?: (toneId: string) => void;
   isLoading?: boolean;
   shoppingTitle?: string;
 }
 
-const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, onSelectTone, isLoading, shoppingTitle }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, selectedToneId, onSelectTone, isLoading, shoppingTitle }: ChatMessageProps) => {
   const isUser = role === 'user';
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
@@ -260,12 +260,11 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
           </div>
         )}
         {/* Emotional tone cards for vague occasions */}
-        {emotionalToneCards && toneRecommendations && onSelectTone && (
+        {emotionalToneCards && onSelectTone && (
           <EmotionalToneCards
             tones={emotionalToneCards}
-            toneRecommendations={toneRecommendations}
             onSelectTone={onSelectTone}
-            wardrobeStatus={wardrobeStatus}
+            selectedToneId={selectedToneId}
           />
         )}
         {renderRecommendation()}

@@ -29,12 +29,6 @@ export interface ChatMessage {
   };
   /** Emotional tone cards for vague occasions */
   emotionalToneCards?: EmotionalTone[];
-  /** Multi-tone recommendations keyed by tone id */
-  toneRecommendations?: Record<string, {
-    recommendation: any;
-    content: string;
-    missing_items?: any[];
-  }>;
   /** Section title: "Shop This Look" or "Complete Your Look" */
   shoppingTitle?: string;
   timestamp: Date;
@@ -408,9 +402,10 @@ export const useStylingChat = () => {
   }, [messages, fetchWeather, callRecommendation, buildWeatherNote]);
 
   /**
-   * Execute multi-tone recommendations for vague occasions.
+   * For vague occasions, generate a single immediate recommendation
+   * and show emotional tone cards as refinement options (lazy-loaded on select).
    */
-  const executeMultiToneRecommendation = useCallback(async (
+  const executeVagueRecommendation = useCallback(async (
     userMessage: string,
     vagueVenue: { inferredFormality: string; mealType: string | null; occasionType: string | null },
     tones: EmotionalTone[],
@@ -419,72 +414,39 @@ export const useStylingChat = () => {
       const { weatherData, mentionedLocation, mentionedDate } = await fetchWeather(userMessage);
       const weatherNote = buildWeatherNote(weatherData, mentionedLocation, mentionedDate);
 
-      const toneResults = await Promise.all(tones.map(async (tone) => {
-        try {
-          const { data } = await callRecommendation(
-            userMessage, null, null, weatherData, {
-              inferred_venue_formality: vagueVenue.inferredFormality,
-              inferred_meal_type: vagueVenue.mealType,
-              inferred_occasion_type: vagueVenue.occasionType,
-              emotional_tone: tone.id,
-              emotional_tone_label: tone.label,
-              is_multi_tone: true,
-            },
-          );
-          return {
-            toneId: tone.id,
-            recommendation: data?.recommendation ? {
-              ...data.recommendation,
-              ai_insights: data.ai_insights,
-              missing_items: data.missing_items,
-            } : undefined,
-            content: data?.recommendation?.reasoning || `Here's a ${tone.label.toLowerCase()} look for this occasion.`,
-            missing_items: data?.missing_items,
-            wardrobeStatus: data?.wardrobe_status,
-          };
-        } catch (err) {
-          console.warn(`Failed to generate ${tone.label} recommendation:`, err);
-          return null;
-        }
-      }));
+      // Single call — Oracle picks a sensible default tone
+      const { data, venueContext, eventContext } = await callRecommendation(
+        userMessage, null, null, weatherData, {
+          inferred_venue_formality: vagueVenue.inferredFormality,
+          inferred_meal_type: vagueVenue.mealType,
+          inferred_occasion_type: vagueVenue.occasionType,
+        },
+      );
 
-      const validResults = toneResults.filter(Boolean) as NonNullable<typeof toneResults[0]>[];
+      let responseContent = data?.recommendation?.reasoning
+        || "Here's what I'd suggest for this occasion:";
 
-      const mealLabel = vagueVenue.mealType || 'occasion';
-      let intro = '';
-      if (vagueVenue.mealType === 'dinner') {
-        intro = `A ${vagueVenue.inferredFormality === 'formal smart' ? 'fancy' : 'nice'} restaurant for dinner — I love that. Here are a few directions depending on the vibe you're going for tonight:`;
-      } else if (vagueVenue.mealType === 'drinks') {
-        intro = `Drinks out — exciting. Here are a few different vibes to choose from:`;
-      } else if (vagueVenue.mealType === 'brunch') {
-        intro = `Brunch plans — here are some styling directions to match the mood:`;
-      } else {
-        intro = `Great choice. Here are a few outfit directions depending on how you want to feel:`;
-      }
-
-      const toneRecommendations: Record<string, { recommendation: any; content: string; missing_items?: any[] }> = {};
-      for (const result of validResults) {
-        toneRecommendations[result.toneId] = {
-          recommendation: result.recommendation,
-          content: result.content,
-          missing_items: result.missing_items,
-        };
-      }
+      const shoppingTitle = data?.shopping_section_title || undefined;
 
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
-        content: intro,
+        content: responseContent,
+        recommendation: data?.recommendation ? {
+          ...data.recommendation,
+          ai_insights: data.ai_insights,
+          missing_items: data.missing_items,
+        } : undefined,
         emotionalToneCards: tones,
-        toneRecommendations,
-        wardrobeStatus: validResults[0]?.wardrobeStatus || undefined,
+        wardrobeStatus: data?.wardrobe_status || undefined,
+        shoppingTitle,
         weatherNote,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
 
     } catch (error) {
-      console.error('Error in multi-tone styling chat:', error);
+      console.error('Error in vague styling chat:', error);
       toast.error('Something went wrong. Please try again.');
       const errorMsg: ChatMessage = {
         id: `error-${Date.now()}`,
@@ -496,10 +458,33 @@ export const useStylingChat = () => {
     }
   }, [fetchWeather, callRecommendation, buildWeatherNote]);
 
-  const selectEmotionalTone = useCallback((toneId: string) => {
+  const selectEmotionalTone = useCallback(async (toneId: string) => {
     setSelectedEmotionalTone(toneId);
     setConversationCtx(prev => ({ ...prev, emotional_goal: toneId }));
-  }, []);
+
+    // Find the original user message that triggered the tone cards
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    if (!lastUserMsg) return;
+
+    // Find the tone label for display
+    const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.emotionalToneCards);
+    const toneInfo = lastAssistantMsg?.emotionalToneCards?.find((t: EmotionalTone) => t.id === toneId);
+    const toneLabel = toneInfo?.label || toneId;
+
+    setIsLoading(true);
+    try {
+      const vagueVenue = detectVagueVenue(lastUserMsg.content);
+      const extraContext: Record<string, any> = { emotional_tone: toneId };
+      if (vagueVenue) {
+        extraContext.inferred_venue_formality = vagueVenue.inferredFormality;
+        extraContext.inferred_meal_type = vagueVenue.mealType;
+        extraContext.inferred_occasion_type = vagueVenue.occasionType;
+      }
+      await executeRecommendation(lastUserMsg.content, null, null, extraContext);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [messages, executeRecommendation]);
 
   const sendMessage = useCallback(async (userMessage: string) => {
     // Update accumulated context from this message
@@ -589,9 +574,9 @@ export const useStylingChat = () => {
         const explicitTone = detectExplicitEmotionalGoal(userMessage);
 
         if (vagueVenue && !explicitTone && !selectedEmotionalTone) {
-          // Vague occasion, no explicit tone → generate multi-tone options
+          // Vague occasion, no explicit tone → single immediate recommendation + tone cards as refinement
           const tones = getRelevantEmotionalTones(vagueVenue.mealType, vagueVenue.occasionType);
-          await executeMultiToneRecommendation(userMessage, vagueVenue, tones);
+          await executeVagueRecommendation(userMessage, vagueVenue, tones);
         } else {
           // Either explicit tone, previously selected tone, or non-venue request
           const extraContext: Record<string, any> = {};
@@ -622,7 +607,7 @@ export const useStylingChat = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, pendingVenue, selectedEmotionalTone, conversationCtx, updateContextFromMessage, executeRecommendation, executeMultiToneRecommendation]);
+  }, [messages, pendingVenue, selectedEmotionalTone, conversationCtx, updateContextFromMessage, executeRecommendation, executeVagueRecommendation]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
