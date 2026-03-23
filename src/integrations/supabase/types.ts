@@ -987,11 +987,13 @@ export type Database = {
         Row: {
           analysis_image_url: string | null
           body_type: string | null
+          budget_currency: string | null
           budget_max: number | null
           budget_min: number | null
           color_analysis: Json | null
           created_at: string | null
           data_export_requested: boolean | null
+          default_budget: number | null
           disliked_colors: string[] | null
           disliked_styles: string[] | null
           display_name: string | null
@@ -999,15 +1001,21 @@ export type Database = {
           fit_preference: string | null
           gdpr_consent_date: string | null
           height_cm: number | null
+          home_city: string | null
           id: string
+          items_to_avoid: string[] | null
           notification_preferences: Json | null
+          onboarding_completed: boolean | null
+          onboarding_completed_at: string | null
           preferred_brands: string[] | null
           preferred_colors: string[] | null
           preferred_fabrics: string[] | null
           preferred_patterns: string[] | null
           preferred_retailers: string[] | null
+          primary_occasions: string[] | null
           profile_photo_url: string | null
           public_profile_enabled: boolean | null
+          shopping_preference: string | null
           skin_tone: string | null
           standard_size_bottom: string | null
           standard_size_shoes: string | null
@@ -1021,11 +1029,13 @@ export type Database = {
         Insert: {
           analysis_image_url?: string | null
           body_type?: string | null
+          budget_currency?: string | null
           budget_max?: number | null
           budget_min?: number | null
           color_analysis?: Json | null
           created_at?: string | null
           data_export_requested?: boolean | null
+          default_budget?: number | null
           disliked_colors?: string[] | null
           disliked_styles?: string[] | null
           display_name?: string | null
@@ -1033,15 +1043,21 @@ export type Database = {
           fit_preference?: string | null
           gdpr_consent_date?: string | null
           height_cm?: number | null
+          home_city?: string | null
           id?: string
+          items_to_avoid?: string[] | null
           notification_preferences?: Json | null
+          onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
           preferred_brands?: string[] | null
           preferred_colors?: string[] | null
           preferred_fabrics?: string[] | null
           preferred_patterns?: string[] | null
           preferred_retailers?: string[] | null
+          primary_occasions?: string[] | null
           profile_photo_url?: string | null
           public_profile_enabled?: boolean | null
+          shopping_preference?: string | null
           skin_tone?: string | null
           standard_size_bottom?: string | null
           standard_size_shoes?: string | null
@@ -1055,11 +1071,13 @@ export type Database = {
         Update: {
           analysis_image_url?: string | null
           body_type?: string | null
+          budget_currency?: string | null
           budget_max?: number | null
           budget_min?: number | null
           color_analysis?: Json | null
           created_at?: string | null
           data_export_requested?: boolean | null
+          default_budget?: number | null
           disliked_colors?: string[] | null
           disliked_styles?: string[] | null
           display_name?: string | null
@@ -1067,15 +1085,21 @@ export type Database = {
           fit_preference?: string | null
           gdpr_consent_date?: string | null
           height_cm?: number | null
+          home_city?: string | null
           id?: string
+          items_to_avoid?: string[] | null
           notification_preferences?: Json | null
+          onboarding_completed?: boolean | null
+          onboarding_completed_at?: string | null
           preferred_brands?: string[] | null
           preferred_colors?: string[] | null
           preferred_fabrics?: string[] | null
           preferred_patterns?: string[] | null
           preferred_retailers?: string[] | null
+          primary_occasions?: string[] | null
           profile_photo_url?: string | null
           public_profile_enabled?: boolean | null
+          shopping_preference?: string | null
           skin_tone?: string | null
           standard_size_bottom?: string | null
           standard_size_shoes?: string | null

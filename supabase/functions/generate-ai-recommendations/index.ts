@@ -274,13 +274,19 @@ Then add any dress code or practical notes as a brief footnote — NOT the headl
 
 
 USER STYLE PROFILE:
+- Name: ${styleProfile?.display_name || 'Not specified'}
+- Based in: ${styleProfile?.home_city || 'Not specified'}
 - Body Type: ${styleProfile?.body_type || 'Not specified'}
+- Fit Preference: ${styleProfile?.fit_preference || 'Not specified'}
 - Preferred Colors: ${styleProfile?.preferred_colors?.join(', ') || 'None specified'}
 - Disliked Colors: ${styleProfile?.disliked_colors?.join(', ') || 'None specified'}
 - Style Personality: ${styleProfile?.style_personality?.join(', ') || 'None specified'}
 - Preferred Patterns: ${styleProfile?.preferred_patterns?.join(', ') || 'None specified'}
 - Preferred Fabrics: ${styleProfile?.preferred_fabrics?.join(', ') || 'None specified'}
 - Preferred Brands: ${styleProfile?.preferred_brands?.join(', ') || 'None specified'}
+- Items to Avoid: ${styleProfile?.items_to_avoid?.join(', ') || 'None specified'}
+- Shopping Preference: ${styleProfile?.shopping_preference || 'Not specified'}
+- Budget: ${styleProfile?.default_budget ? (styleProfile?.budget_currency || '£') + styleProfile.default_budget : 'Not specified'}
 - Budget Range: $${styleProfile?.budget_min || 0} - $${styleProfile?.budget_max || 1000}
 - Style Confidence: ${styleProfile?.style_confidence_score ? Math.round(styleProfile.style_confidence_score * 100) + '%' : 'Not specified'}
 - Height: ${styleProfile?.height_cm ? styleProfile.height_cm + 'cm' : 'Not specified'}
