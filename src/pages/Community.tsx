@@ -12,7 +12,7 @@ const Community = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Community</h1>
           <p className="text-muted-foreground">
-            Connect with fellow style enthusiasts, share your outfits, and get inspired
+            Share your outfit options, get honest feedback from other women, and discover what works for every occasion
           </p>
         </div>
 
