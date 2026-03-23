@@ -20,7 +20,7 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
     try {
       setSubmitting(true);
       await onCreatePost({
-        caption: newPostText,
+        caption: newPostText || '',
         tags: ['New', 'Style'],
         image_urls: ['/placeholder-outfit-new.jpg'] // Placeholder for now
       });
