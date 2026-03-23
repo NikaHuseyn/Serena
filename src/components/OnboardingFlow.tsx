@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
-import { useBudget } from '@/components/chat/BudgetContext';
+
 
 // ── Types ──────────────────────────────────────────────
 interface OnboardingFlowProps {
@@ -21,9 +21,6 @@ interface ProfileData {
   homeCity: string;
   bodyType: string;
   fitPreference: string;
-  defaultBudget: number | null;
-  budgetNoLimit: boolean;
-  budgetCurrency: string;
 }
 
 interface StyleData {
@@ -107,12 +104,11 @@ const ProfileStep: React.FC<{
   onChange: (d: ProfileData) => void;
   onNext: () => void;
 }> = ({ data, onChange, onNext }) => {
-  const { currency, chips } = useBudget();
 
   const bodyTypes = ['Petite', 'Tall', 'Curvy', 'Athletic', 'Straight', 'Hourglass', 'Pear', 'Apple'];
   const fitOptions = ['Fitted & tailored', 'Relaxed & loose', 'Depends on the piece', 'Mix of both'];
 
-  const budgetChips = chips.filter(c => !c.noLimit);
+  
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
@@ -175,48 +171,6 @@ const ProfileStep: React.FC<{
               onToggle={() => onChange({ ...data, fitPreference: data.fitPreference === fp ? '' : fp })}
             />
           ))}
-        </div>
-      </div>
-
-      {/* Default budget (optional) */}
-      <div>
-        <label className="block text-sm font-medium mb-3">Default budget</label>
-        <div className="relative mb-3">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">{currency.symbol}</span>
-          <Input
-            type="text"
-            inputMode="numeric"
-            className="pl-8"
-            placeholder={data.budgetNoLimit ? 'No limit' : 'Enter your budget'}
-            disabled={data.budgetNoLimit}
-            value={data.budgetNoLimit ? '' : (data.defaultBudget !== null ? String(data.defaultBudget) : '')}
-            onChange={e => {
-              const v = e.target.value.replace(/\D/g, '');
-              onChange({ ...data, defaultBudget: v ? parseInt(v, 10) : null, budgetNoLimit: false, budgetCurrency: currency.symbol });
-            }}
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {budgetChips.map(c => (
-            <ChipButton
-              key={c.label}
-              label={c.label}
-              selected={!data.budgetNoLimit && data.defaultBudget === c.value}
-              onToggle={() => onChange({ ...data, defaultBudget: c.value, budgetNoLimit: false, budgetCurrency: currency.symbol })}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={() => onChange({ ...data, budgetNoLimit: !data.budgetNoLimit, defaultBudget: data.budgetNoLimit ? data.defaultBudget : null })}
-            className={cn(
-              "px-4 py-2.5 rounded-xl border-2 transition-all duration-200 text-sm font-medium",
-              data.budgetNoLimit
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border hover:border-primary/50 hover:bg-primary/5"
-            )}
-          >
-            No limit ✨
-          </button>
         </div>
       </div>
 
@@ -379,11 +333,6 @@ const CompletionStep: React.FC<{
   styleData: StyleData;
   onComplete: () => void;
 }> = ({ profileData, styleData, onComplete }) => {
-  const budgetLabel = profileData.budgetNoLimit
-    ? 'No limit'
-    : profileData.defaultBudget
-      ? `${profileData.budgetCurrency || '£'}${profileData.defaultBudget}`
-      : 'Not set';
 
   return (
     <div className="text-center space-y-6 py-8">
@@ -399,7 +348,7 @@ const CompletionStep: React.FC<{
         <p>🎨 Style: <strong>{styleData.selectedStyles.join(' · ') || 'Not set'}</strong></p>
         <p>❤️ Loves: <strong>{styleData.selectedColors.join(', ') || 'Not set'}</strong></p>
         {profileData.bodyType && <p>👤 Body type: <strong>{profileData.bodyType}</strong></p>}
-        <p>💰 Budget: <strong>{budgetLabel}</strong></p>
+        
         {styleData.shoppingPreference && <p>🛍️ Shopping: <strong>{styleData.shoppingPreference}</strong></p>}
       </div>
 
@@ -420,7 +369,6 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
 
   const [profileData, setProfileData] = useState<ProfileData>({
     displayName: '', homeCity: '', bodyType: '', fitPreference: '',
-    defaultBudget: null, budgetNoLimit: false, budgetCurrency: '£',
   });
 
   const [styleData, setStyleData] = useState<StyleData>({
@@ -457,8 +405,6 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
         home_city: profileData.homeCity,
         body_type: profileData.bodyType || null,
         fit_preference: profileData.fitPreference || null,
-        default_budget: profileData.budgetNoLimit ? null : profileData.defaultBudget,
-        budget_currency: profileData.budgetCurrency,
         style_personality: styleData.selectedStyles,
         preferred_colors: styleData.selectedColors,
         items_to_avoid: allAvoid,
