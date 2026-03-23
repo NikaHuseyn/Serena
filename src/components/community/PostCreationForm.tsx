@@ -66,7 +66,7 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
             </Button>
             <Button 
               onClick={handleCreatePost}
-              disabled={submitting || !newPostText.trim()}
+              disabled={submitting}
               className="bg-gradient-to-r from-pink-500 to-rose-600"
             >
               <Send className="h-4 w-4 mr-2" />
