@@ -94,6 +94,47 @@ export function getSectionTitle(state: WardrobeState): string {
 }
 
 // ============================================
+// FALLBACK SEARCH URLs
+// ============================================
+
+interface FallbackLink {
+  retailer: string;
+  url: string;
+}
+
+const FALLBACK_RETAILERS: Record<string, Array<{ name: string; urlTemplate: string }>> = {
+  uk: [
+    { name: 'ASOS', urlTemplate: 'https://www.asos.com/search/?q={query}' },
+    { name: 'Zara', urlTemplate: 'https://www.zara.com/uk/en/search?searchTerm={query}' },
+    { name: 'H&M', urlTemplate: 'https://www2.hm.com/en_gb/search-results.html?q={query}' },
+    { name: 'Net-a-Porter', urlTemplate: 'https://www.net-a-porter.com/en-gb/search?q={query}' },
+    { name: 'Reiss', urlTemplate: 'https://www.reiss.com/search/?q={query}' },
+  ],
+  us: [
+    { name: 'ASOS', urlTemplate: 'https://www.asos.com/us/search/?q={query}' },
+    { name: 'Zara', urlTemplate: 'https://www.zara.com/us/en/search?searchTerm={query}' },
+    { name: 'H&M', urlTemplate: 'https://www2.hm.com/en_us/search-results.html?q={query}' },
+    { name: 'Nordstrom', urlTemplate: 'https://www.nordstrom.com/sr?origin=keywordsearch&keyword={query}' },
+    { name: 'Net-a-Porter', urlTemplate: 'https://www.net-a-porter.com/en-us/search?q={query}' },
+  ],
+  eu: [
+    { name: 'Zara', urlTemplate: 'https://www.zara.com/de/en/search?searchTerm={query}' },
+    { name: 'H&M', urlTemplate: 'https://www2.hm.com/de_de/search-results.html?q={query}' },
+    { name: 'Mango', urlTemplate: 'https://shop.mango.com/search?q={query}' },
+    { name: '& Other Stories', urlTemplate: 'https://www.stories.com/search?q={query}' },
+  ],
+};
+
+export function generateFallbackSearchLinks(itemName: string, region: string = 'uk'): FallbackLink[] {
+  const retailers = FALLBACK_RETAILERS[region] || FALLBACK_RETAILERS.uk;
+  const encoded = encodeURIComponent(itemName);
+  return retailers.map(r => ({
+    retailer: r.name,
+    url: r.urlTemplate.replace('{query}', encoded),
+  }));
+}
+
+// ============================================
 // SEARCH QUERY ENRICHMENT
 // ============================================
 
