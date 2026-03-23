@@ -540,8 +540,10 @@ ${culturalNorms.map(n => `**${n.context_type.replace(/_/g, ' ').toUpperCase()}:*
 CRITICAL: These are real cultural dress expectations for ${detectedCountry}. Your outfit recommendation MUST respect these norms.
 ` : ''}
 
-🚫 ABSOLUTE PROHIBITION FOR HISTORICAL/THEMED EVENTS 🚫
-${(occasion?.toLowerCase().includes('1930') || occasion?.toLowerCase().includes('1920') || occasion?.toLowerCase().includes('1940') || occasion?.toLowerCase().includes('victorian') || occasion?.toLowerCase().includes('vintage') || occasion?.toLowerCase().includes('period') || eventDetails?.description?.toLowerCase().includes('1930') || eventDetails?.description?.toLowerCase().includes('1920')) ? `
+${(() => {
+  const isHistCheck = (occasion?.toLowerCase().includes('1930') || occasion?.toLowerCase().includes('1920') || occasion?.toLowerCase().includes('1940') || occasion?.toLowerCase().includes('victorian') || occasion?.toLowerCase().includes('vintage') || occasion?.toLowerCase().includes('period') || eventDetails?.description?.toLowerCase().includes('1930') || eventDetails?.description?.toLowerCase().includes('1920'));
+  if (!isHistCheck) return '';
+  return `🚫 ABSOLUTE PROHIBITION FOR HISTORICAL/THEMED EVENTS 🚫
 ⛔ THIS IS A HISTORICAL PERIOD EVENT - MODERN ITEMS ARE STRICTLY FORBIDDEN ⛔
 
 NEVER SUGGEST ANY OF THE FOLLOWING MODERN ITEMS:
@@ -557,21 +559,12 @@ ONLY SUGGEST:
 - Period-appropriate shoes (T-strap heels, Mary Janes, Oxford pumps from that era)
 - Historically accurate accessories (period hats, gloves, beaded bags, fur stoles)
 - Vintage or reproduction pieces that are true to the era
-` : ''}
 
-STYLING BRIEF:
-${recommendationType === 'event_outfit' ? 
-  `Create an outfit specifically tailored for this event. ${(occasion?.toLowerCase().includes('1930') || occasion?.toLowerCase().includes('1920') || occasion?.toLowerCase().includes('1940') || eventDetails?.description?.toLowerCase().includes('1930') || eventDetails?.description?.toLowerCase().includes('1920')) ? '⚠️ CRITICAL HISTORICAL ACCURACY REQUIRED ⚠️' : ''} ${eventDetails?.description || occasion || ''}` :
-  'Create a versatile daily outfit that reflects the user\'s personal style while being practical for their lifestyle.'
-}
-
-HISTORICAL ACCURACY REQUIREMENTS (when applicable):
-If the occasion mentions "1930s", "1920s", "1940s" or any historical period:
+HISTORICAL ACCURACY REQUIREMENTS:
 - 1930s: bias-cut silk gowns, midi-to-floor length, Art Deco beading, T-strap heels
 - 1920s: drop-waist dresses, knee-length, fringe, beading, feather headbands, Mary Jane heels
-- 1940s: structured shoulders, A-line skirts, victory rolls, utility fashion, peep-toe pumps
-
-CRITICAL: Use the learned preferences and recent feedback to improve this recommendation.
+- 1940s: structured shoulders, A-line skirts, victory rolls, utility fashion, peep-toe pumps`;
+})()}
 
 Please provide a detailed outfit recommendation in the following JSON format:
 {
