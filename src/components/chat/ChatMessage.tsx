@@ -260,12 +260,11 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
           </div>
         )}
         {/* Emotional tone cards for vague occasions */}
-        {emotionalToneCards && toneRecommendations && onSelectTone && (
+        {emotionalToneCards && onSelectTone && (
           <EmotionalToneCards
             tones={emotionalToneCards}
-            toneRecommendations={toneRecommendations}
             onSelectTone={onSelectTone}
-            wardrobeStatus={wardrobeStatus}
+            selectedToneId={selectedToneId}
           />
         )}
         {renderRecommendation()}
