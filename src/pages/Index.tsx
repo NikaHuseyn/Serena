@@ -1,4 +1,5 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import BottomNav from '@/components/BottomNav';
 import ChatMessage from '@/components/chat/ChatMessage';
@@ -10,6 +11,7 @@ import { useStylingChat } from '@/hooks/useStylingChat';
 import { Sparkles, RotateCcw, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BudgetProvider } from '@/components/chat/BudgetContext';
+import { Card, CardContent } from '@/components/ui/card';
 
 const IndexContent = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
