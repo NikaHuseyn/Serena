@@ -39,6 +39,7 @@ export interface ItemSearchResult {
   }>;
   rental_results?: any[];
   secondhand_results?: any[];
+  fallback_links?: Array<{ retailer: string; url: string }>;
 }
 
 // ============================================
