@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Upload, X } from 'lucide-react';
-import { EnhancedImageUpload } from '@/components/EnhancedImageUpload';
+import { Upload, X, Camera } from 'lucide-react';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface PersonalInfoFormProps {
   profile: any;
