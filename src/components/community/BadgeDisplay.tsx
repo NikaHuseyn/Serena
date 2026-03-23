@@ -18,55 +18,32 @@ const BadgeDisplay = ({ badges, showDescription = false, limit }: BadgeDisplayPr
 
   const getBadgeIcon = (iconName: string | null) => {
     switch (iconName) {
-      case 'camera':
-        return <Camera className="h-3 w-3" />;
-      case 'heart':
-        return <Heart className="h-3 w-3" />;
-      case 'users':
-        return <Users className="h-3 w-3" />;
-      case 'trending-up':
-        return <TrendingUp className="h-3 w-3" />;
-      case 'star':
-        return <Star className="h-3 w-3" />;
-      default:
-        return <Award className="h-3 w-3" />;
+      case 'camera': return <Camera className="h-3 w-3" />;
+      case 'heart': return <Heart className="h-3 w-3" />;
+      case 'users': return <Users className="h-3 w-3" />;
+      case 'trending-up': return <TrendingUp className="h-3 w-3" />;
+      case 'star': return <Star className="h-3 w-3" />;
+      default: return <Award className="h-3 w-3" />;
     }
   };
 
   const getBadgeVariant = (iconName: string | null) => {
     switch (iconName) {
-      case 'camera':
-        return 'secondary' as const;
-      case 'heart':
-        return 'destructive' as const;
-      case 'users':
-        return 'default' as const;
-      case 'trending-up':
-        return 'default' as const;
-      case 'star':
-        return 'default' as const;
-      default:
-        return 'outline' as const;
+      case 'camera': return 'secondary' as const;
+      case 'heart': return 'destructive' as const;
+      default: return 'outline' as const;
     }
   };
 
   if (badges.length === 0) {
-    return (
-      <div className="text-sm text-gray-500">
-        No badges earned yet
-      </div>
-    );
+    return <div className="text-sm text-muted-foreground">No badges earned yet</div>;
   }
 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap gap-2">
         {displayBadges.map((badge, index) => (
-          <Badge
-            key={index}
-            variant={getBadgeVariant(badge.icon)}
-            className="flex items-center gap-1"
-          >
+          <Badge key={index} variant={getBadgeVariant(badge.icon)} className="flex items-center gap-1">
             {getBadgeIcon(badge.icon)}
             {badge.name}
           </Badge>
@@ -78,7 +55,7 @@ const BadgeDisplay = ({ badges, showDescription = false, limit }: BadgeDisplayPr
         )}
       </div>
       {showDescription && displayBadges.length > 0 && (
-        <div className="space-y-1 text-xs text-gray-600">
+        <div className="space-y-1 text-xs text-muted-foreground">
           {displayBadges.map((badge, index) => (
             <div key={index}>
               <strong>{badge.name}:</strong> {badge.description}

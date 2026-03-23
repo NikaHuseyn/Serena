@@ -14,11 +14,11 @@ const Leaderboard = () => {
       case 0:
         return <Trophy className="h-5 w-5 text-yellow-500" />;
       case 1:
-        return <Medal className="h-5 w-5 text-gray-400" />;
+        return <Medal className="h-5 w-5 text-muted-foreground" />;
       case 2:
         return <Award className="h-5 w-5 text-amber-600" />;
       default:
-        return <span className="text-sm font-bold text-gray-500">#{index + 1}</span>;
+        return <span className="text-sm font-bold text-muted-foreground">#{index + 1}</span>;
     }
   };
 
@@ -32,7 +32,7 @@ const Leaderboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center text-gray-500">Loading leaderboard...</div>
+          <div className="text-center text-muted-foreground">Loading leaderboard...</div>
         </CardContent>
       </Card>
     );
@@ -48,7 +48,7 @@ const Leaderboard = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center text-red-500">Failed to load leaderboard</div>
+          <div className="text-center text-destructive">Failed to load leaderboard</div>
         </CardContent>
       </Card>
     );
@@ -68,7 +68,7 @@ const Leaderboard = () => {
             <div
               key={entry.user_id}
               className={`flex items-center justify-between p-3 rounded-lg ${
-                index < 3 ? 'bg-gradient-to-r from-pink-50 to-rose-50 border border-pink-200' : 'bg-gray-50'
+                index < 3 ? 'bg-accent/50 border border-border' : 'bg-muted'
               }`}
             >
               <div className="flex items-center gap-3">
@@ -82,10 +82,10 @@ const Leaderboard = () => {
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="font-medium">
+                  <div className="font-medium text-foreground">
                     {entry.display_name || 'Anonymous User'}
                   </div>
-                  <div className="text-sm text-gray-500">
+                  <div className="text-sm text-muted-foreground">
                     {entry.posts_count} posts • {entry.total_likes} likes
                   </div>
                 </div>
@@ -95,7 +95,7 @@ const Leaderboard = () => {
                   {entry.score} points
                 </Badge>
                 {entry.badge_count > 0 && (
-                  <div className="text-xs text-gray-500">
+                  <div className="text-xs text-muted-foreground">
                     {entry.badge_count} badges
                   </div>
                 )}
@@ -103,7 +103,7 @@ const Leaderboard = () => {
             </div>
           ))}
           {leaderboard.length === 0 && (
-            <div className="text-center text-gray-500 py-8">
+            <div className="text-center text-muted-foreground py-8">
               No users on the leaderboard yet. Be the first to post!
             </div>
           )}

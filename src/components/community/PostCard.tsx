@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,6 @@ import FollowButton from './FollowButton';
 import BadgeDisplay from './BadgeDisplay';
 import ReportPostDialog from './ReportPostDialog';
 import { useBadges } from '@/hooks/useBadges';
-import { supabase } from '@/integrations/supabase/client';
 
 interface PostCardProps {
   post: {
@@ -34,23 +33,23 @@ interface PostCardProps {
     } | null;
     user_liked?: boolean;
   };
+  currentUserId?: string;
   onToggleLike: (postId: string) => void;
   onShare: (postId: string) => void;
 }
 
-const PostCard = ({ post, onToggleLike, onShare }: PostCardProps) => {
+const PostCard = ({ post, currentUserId, onToggleLike, onShare }: PostCardProps) => {
   const { badges } = useBadges(post.user_id);
-  const [currentUser, setCurrentUser] = React.useState<any>(null);
+  const isOwnPost = currentUserId === post.user_id;
 
-  React.useEffect(() => {
-    const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUser(user);
-    };
-    getCurrentUser();
-  }, []);
-
-  const isOwnPost = currentUser?.id === post.user_id;
+  const formattedDate = useMemo(() => 
+    new Date(post.created_at).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }), [post.created_at]);
 
   return (
     <Card className="overflow-hidden">
@@ -101,20 +100,15 @@ const PostCard = ({ post, onToggleLike, onShare }: PostCardProps) => {
             post.image_urls.length === 1 ? '' : 'grid grid-cols-2 gap-2'
           }`}>
             {post.image_urls.slice(0, 4).map((url, index) => (
-              <div
-                key={index}
-                className={`relative ${
-                  post.image_urls.length === 1 ? 'aspect-square' : 'aspect-square'
-                }`}
-              >
+              <div key={index} className="relative aspect-square">
                 <img
                   src={url}
                   alt={`Post image ${index + 1}`}
                   className="w-full h-full object-cover"
                 />
                 {index === 3 && post.image_urls.length > 4 && (
-                  <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                    <span className="text-white font-semibold">
+                  <div className="absolute inset-0 bg-foreground/50 flex items-center justify-center">
+                    <span className="text-background font-semibold">
                       +{post.image_urls.length - 4} more
                     </span>
                   </div>
@@ -127,7 +121,7 @@ const PostCard = ({ post, onToggleLike, onShare }: PostCardProps) => {
         {/* Post Content */}
         {post.caption && (
           <div className="mb-4">
-            <p className="text-gray-800 whitespace-pre-wrap">{post.caption}</p>
+            <p className="text-foreground whitespace-pre-wrap">{post.caption}</p>
           </div>
         )}
 
@@ -138,7 +132,7 @@ const PostCard = ({ post, onToggleLike, onShare }: PostCardProps) => {
               {post.tags.map((tag, index) => (
                 <span
                   key={index}
-                  className="inline-block bg-pink-100 text-pink-800 text-xs px-2 py-1 rounded-full"
+                  className="inline-block bg-accent text-accent-foreground text-xs px-2 py-1 rounded-full"
                 >
                   #{tag}
                 </span>
@@ -158,14 +152,8 @@ const PostCard = ({ post, onToggleLike, onShare }: PostCardProps) => {
         <CommentSection postId={post.id} commentsCount={post.comments_count} />
 
         {/* Post Date */}
-        <div className="mt-4 text-xs text-gray-500">
-          {new Date(post.created_at).toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-          })}
+        <div className="mt-4 text-xs text-muted-foreground">
+          {formattedDate}
         </div>
       </CardContent>
     </Card>

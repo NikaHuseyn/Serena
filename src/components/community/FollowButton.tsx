@@ -12,23 +12,14 @@ interface FollowButtonProps {
 const FollowButton = ({ userId, size = 'sm' }: FollowButtonProps) => {
   const { isFollowing, toggleFollow, loading } = useFollows();
 
-  const handleClick = () => {
-    toggleFollow(userId);
-  };
-
   const following = isFollowing(userId);
 
   return (
     <Button
-      onClick={handleClick}
+      onClick={() => toggleFollow(userId)}
       disabled={loading}
       size={size}
       variant={following ? 'outline' : 'default'}
-      className={`flex items-center gap-1 ${
-        following 
-          ? 'text-gray-600 hover:text-red-600 hover:border-red-300' 
-          : 'bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700'
-      }`}
     >
       {following ? (
         <>
