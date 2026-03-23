@@ -16,7 +16,7 @@ const Index = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const suggestions = [
-    "Black tie gala in London",
+    "Black tie gala this Saturday",
     "Job interview at a creative agency",
     "Beach wedding",
     "1930s themed party",

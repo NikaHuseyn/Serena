@@ -431,7 +431,7 @@ USER STYLE PROFILE:
 
 LEARNED PREFERENCES FROM FEEDBACK:
 ${userInsights?.length > 0 ? userInsights.map(insight => 
-  `- ${insight.insight_type}: ${JSON.stringify(insight.insight_data)} (confidence: ${Math.round(insight.confidence_score * 100)}%)`
+  `- ${insight.insight_type}: ${insight.insight_value || 'N/A'} (confidence: ${Math.round((insight.confidence_score || 0.5) * 100)}%)`
 ).join('\n') : '- No learned preferences yet'}
 
 RECENT FEEDBACK ANALYSIS:
@@ -483,7 +483,7 @@ EVENT DETAILS:
 ` : ''}
 
 WEATHER CONTEXT:
-${weatherData ? `Temperature: ${weatherData.temperature}°F, Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}` : 'Weather not specified'}
+${weatherData ? `Temperature: ${weatherData.temperature}°C, Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}` : 'Weather not specified'}
 
 ${venueContext?.source === 'scraped' ? `
 🏢 VENUE INTELLIGENCE (scraped from venue website - USE THIS):
