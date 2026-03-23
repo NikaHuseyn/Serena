@@ -81,6 +81,15 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: Post
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {isOwnPost && onDelete && (
+                <DropdownMenuItem
+                  onClick={() => onDelete(post.id)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Post
+                </DropdownMenuItem>
+              )}
               {!isOwnPost && (
                 <ReportPostDialog postId={post.id}>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
