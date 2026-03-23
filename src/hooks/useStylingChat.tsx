@@ -37,6 +37,8 @@ export interface ChatMessage {
   }>;
   /** Section title: "Shop This Look" or "Complete Your Look" */
   shoppingTitle?: string;
+  /** Whether to show budget selection chips */
+  budgetChips?: boolean;
   timestamp: Date;
 }
 
