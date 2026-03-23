@@ -39,7 +39,7 @@ interface PostCardProps {
   onDelete?: (postId: string) => void;
 }
 
-const PostCard = ({ post, currentUserId, onToggleLike, onShare }: PostCardProps) => {
+const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: PostCardProps) => {
   const { badges } = useBadges(post.user_id);
   const isOwnPost = currentUserId === post.user_id;
 
