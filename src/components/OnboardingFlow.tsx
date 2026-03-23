@@ -405,8 +405,6 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
         home_city: profileData.homeCity,
         body_type: profileData.bodyType || null,
         fit_preference: profileData.fitPreference || null,
-        default_budget: profileData.budgetNoLimit ? null : profileData.defaultBudget,
-        budget_currency: profileData.budgetCurrency,
         style_personality: styleData.selectedStyles,
         preferred_colors: styleData.selectedColors,
         items_to_avoid: allAvoid,
