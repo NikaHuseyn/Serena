@@ -374,7 +374,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
 
   const [styleData, setStyleData] = useState<StyleData>({
     selectedStyles: [], selectedColors: [], itemsToAvoid: [],
-    avoidFreeText: '', shoppingPreference: '',
+    avoidFreeText: '', shoppingPreference: '', primaryOccasions: [],
   });
 
   const steps: OnboardingStep[] = [
