@@ -112,9 +112,10 @@ const MissingItemCard = ({ item, savedTab, maxBudget, noLimit }: { item: Missing
   const hasBuy = filteredRetailer.length > 0;
   const hasRent = filteredRental.length > 0;
   const hasSecondhand = filteredSecondhand.length > 0;
+  const hasFallback = (item.fallback_links?.length || 0) > 0 && !hasBuy;
 
   const tabs: { key: TabType; label: string; icon: React.ReactNode; available: boolean; badge?: string }[] = [
-    { key: 'buy', label: 'Buy New', icon: <ShoppingBag className="h-3 w-3" />, available: hasBuy },
+    { key: 'buy', label: 'Buy New', icon: <ShoppingBag className="h-3 w-3" />, available: hasBuy || hasFallback },
     { key: 'rent', label: 'Rent', icon: <Tag className="h-3 w-3" />, available: hasRent, badge: '♻️' },
     { key: 'secondhand', label: 'Secondhand', icon: <Recycle className="h-3 w-3" />, available: hasSecondhand, badge: '♻️' },
   ];
