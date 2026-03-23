@@ -17,6 +17,9 @@ const IndexContent = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
   const { messages, isLoading, sendMessage, clearChat, selectEmotionalTone, selectedEmotionalTone } = useStylingChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const [nudgeDismissed, setNudgeDismissed] = useState(() => sessionStorage.getItem('guest_nudge_dismissed') === 'true');
+  const hasShownNudge = useRef(false);
 
   const suggestions = [
     "Black tie gala this Saturday",
