@@ -26,7 +26,6 @@ interface ProfileData {
 interface StyleData {
   selectedStyles: string[];
   selectedColors: string[];
-  primaryOccasions: string[];
   itemsToAvoid: string[];
   avoidFreeText: string;
   shoppingPreference: string;
@@ -245,17 +244,6 @@ const StyleStep: React.FC<{
         </div>
       </div>
 
-      {/* Primary occasions */}
-      <div>
-        <h3 className="font-semibold mb-2">What do you usually dress for?</h3>
-        <p className="text-sm text-muted-foreground mb-4">Select your most common occasions</p>
-        <div className="flex flex-wrap gap-2">
-          {['Work / Office', 'Casual everyday', 'Date nights', 'Weddings & events', 'Travel', 'Gym & active', 'Nights out', 'Business meetings', 'Brunch & lunch', 'Holidays & festivals'].map(occ => (
-            <ChipButton key={occ} label={occ} selected={data.primaryOccasions.includes(occ)} onToggle={() => onChange({ ...data, primaryOccasions: toggleList(occ, data.primaryOccasions) })} />
-          ))}
-        </div>
-      </div>
-
       {/* Items to avoid */}
       <div>
         <h3 className="font-semibold mb-2">Anything you never wear?</h3>
@@ -360,7 +348,7 @@ const CompletionStep: React.FC<{
         <p>🎨 Style: <strong>{styleData.selectedStyles.join(' · ') || 'Not set'}</strong></p>
         <p>❤️ Loves: <strong>{styleData.selectedColors.join(', ') || 'Not set'}</strong></p>
         {profileData.bodyType && <p>👤 Body type: <strong>{profileData.bodyType}</strong></p>}
-        {styleData.primaryOccasions.length > 0 && <p>📅 Occasions: <strong>{styleData.primaryOccasions.join(', ')}</strong></p>}
+        
         {styleData.shoppingPreference && <p>🛍️ Shopping: <strong>{styleData.shoppingPreference}</strong></p>}
       </div>
 
@@ -384,7 +372,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
   });
 
   const [styleData, setStyleData] = useState<StyleData>({
-    selectedStyles: [], selectedColors: [], primaryOccasions: [], itemsToAvoid: [],
+    selectedStyles: [], selectedColors: [], itemsToAvoid: [],
     avoidFreeText: '', shoppingPreference: '',
   });
 
@@ -419,7 +407,6 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
         fit_preference: profileData.fitPreference || null,
         style_personality: styleData.selectedStyles,
         preferred_colors: styleData.selectedColors,
-        primary_occasions: styleData.primaryOccasions,
         items_to_avoid: allAvoid,
         shopping_preference: styleData.shoppingPreference || null,
         onboarding_completed: true,
