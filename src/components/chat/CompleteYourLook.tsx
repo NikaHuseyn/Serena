@@ -202,7 +202,7 @@ const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: Comple
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <ShoppingBag className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Complete Your Look</h3>
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         </div>
         <Button
           variant={showFilter ? 'secondary' : 'ghost'}
