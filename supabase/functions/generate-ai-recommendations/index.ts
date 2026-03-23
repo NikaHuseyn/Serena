@@ -573,13 +573,11 @@ Focus on creating a cohesive, stylish outfit.
 CRITICAL FINAL INSTRUCTIONS:
 1. WARDROBE FIRST: Always check if the user has suitable items in their wardrobe before suggesting purchases
 2. SMART MIXING: Create outfits that combine existing wardrobe items with strategic new purchases or rentals
-3. REAL LINKS: Provide actual URLs to UK retailers, rental platforms, and vintage shops
-4. VALUE OPTIMIZATION: Help users maximize their existing wardrobe
-5. For period/themed events: Provide specific links to costume rental shops and vintage stores
-6. Price transparency: Always include price ranges in GBP (£)
-7. MISSING ITEMS: For every item with source "needs_purchase" or "needs_rental", include a corresponding entry in "missing_items_search"
+3. VALUE OPTIMIZATION: Help users maximize their existing wardrobe
+4. Price transparency: Always include price ranges in GBP (£)
+5. MISSING ITEMS: For every item with source "needs_purchase" or "needs_rental", include a corresponding entry in "missing_items_search"
 
-Remember: The goal is to create perfect, achievable outfits using what the user owns + targeted shopping/rental recommendations with real, clickable links.`;
+Remember: The goal is to create perfect, achievable outfits using what the user owns + targeted shopping/rental recommendations.`;
 
     // Dynamic model selection and stricter validation for historical/themed events
     const occ = (occasion || '').toLowerCase();
