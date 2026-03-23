@@ -21,9 +21,6 @@ interface ProfileData {
   homeCity: string;
   bodyType: string;
   fitPreference: string;
-  defaultBudget: number | null;
-  budgetNoLimit: boolean;
-  budgetCurrency: string;
 }
 
 interface StyleData {
