@@ -211,7 +211,7 @@ const StyleStep: React.FC<{
 
       {/* Style personalities */}
       <div>
-        <h3 className="font-semibold mb-4">Style Personalities (Choose 2-4)</h3>
+        <h3 className="font-semibold mb-4">Style Personalities</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {styleTypes.map(s => (
             <ChipButton key={s} label={s} selected={data.selectedStyles.includes(s)} onToggle={() => onChange({ ...data, selectedStyles: toggleList(s, data.selectedStyles) })} />
