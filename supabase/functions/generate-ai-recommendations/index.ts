@@ -78,16 +78,9 @@ serve(async (req) => {
       throw new Error('No valid response from AI');
     };
 
-    // Determine email for rate limiting
-    const rateLimitEmail = userEmail || guestEmail;
-    if (!rateLimitEmail) {
-      return new Response(JSON.stringify({ 
-        error: 'Email required for AI recommendations. Please log in or provide a guest email.' 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Determine identity for rate limiting — guests are allowed without email
+    const isGuest = !user;
+    const rateLimitEmail = userEmail || guestEmail || `guest-anon`;
 
     // Check rate limiting - only for authenticated users (RPC expects UUID)
     let rateLimitResult = null;
