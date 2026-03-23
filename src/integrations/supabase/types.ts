@@ -391,6 +391,41 @@ export type Database = {
         }
         Relationships: []
       }
+      outfit_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          option_index: number | null
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          option_index?: number | null
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          option_index?: number | null
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outfit_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       outfit_history: {
         Row: {
           created_at: string | null
@@ -445,6 +480,38 @@ export type Database = {
           },
         ]
       }
+      outfit_votes: {
+        Row: {
+          created_at: string
+          id: string
+          option_index: number
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          option_index: number
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          option_index?: number
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "outfit_votes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts: {
         Row: {
           caption: string | null
@@ -455,6 +522,11 @@ export type Database = {
           image_urls: string[] | null
           is_flagged: boolean | null
           likes_count: number | null
+          occasion_context: string | null
+          oracle_summary: string | null
+          oracle_summary_public: boolean
+          poll_question: string | null
+          post_type: string
           tags: string[] | null
           updated_at: string | null
           user_id: string
@@ -468,6 +540,11 @@ export type Database = {
           image_urls?: string[] | null
           is_flagged?: boolean | null
           likes_count?: number | null
+          occasion_context?: string | null
+          oracle_summary?: string | null
+          oracle_summary_public?: boolean
+          poll_question?: string | null
+          post_type?: string
           tags?: string[] | null
           updated_at?: string | null
           user_id: string
@@ -481,6 +558,11 @@ export type Database = {
           image_urls?: string[] | null
           is_flagged?: boolean | null
           likes_count?: number | null
+          occasion_context?: string | null
+          oracle_summary?: string | null
+          oracle_summary_public?: boolean
+          poll_question?: string | null
+          post_type?: string
           tags?: string[] | null
           updated_at?: string | null
           user_id?: string

@@ -5,6 +5,7 @@ import { Camera, Users } from 'lucide-react';
 import { useSocialPosts } from '@/hooks/useSocialPosts';
 import PostCreationForm from './community/PostCreationForm';
 import PostCard from './community/PostCard';
+import PollPostCard from './community/PollPostCard';
 import EmptyState from './community/EmptyState';
 import LoadingState from './community/LoadingState';
 import ErrorState from './community/ErrorState';
@@ -12,10 +13,12 @@ import CommunityStats from './community/CommunityStats';
 import Leaderboard from './community/Leaderboard';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
 
 const CommunityFeed = () => {
   const { posts, loading, error, createPost, toggleLike, deletePost } = useSocialPosts();
   const { toast } = useToast();
+  const { markAsRead } = useCommunityNotifications();
   const [showPostForm, setShowPostForm] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [stats, setStats] = useState({
@@ -26,12 +29,13 @@ const CommunityFeed = () => {
   });
   const prevPostsLength = useRef(posts.length);
 
-  // Fetch current user once
+  // Fetch current user once & mark notifications as read
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       setCurrentUserId(user?.id);
     });
-  }, []);
+    markAsRead();
+  }, [markAsRead]);
 
   const fetchCommunityStats = useCallback(async () => {
     try {
@@ -53,7 +57,6 @@ const CommunityFeed = () => {
     }
   }, []);
 
-  // Only re-fetch stats when posts count actually changes
   useEffect(() => {
     if (posts.length !== prevPostsLength.current || prevPostsLength.current === 0) {
       prevPostsLength.current = posts.length;
@@ -86,7 +89,14 @@ const CommunityFeed = () => {
     }
   };
 
-  const handleCreatePost = async (postData: { caption: string; tags?: string[]; image_urls: string[] }): Promise<void> => {
+  const handleCreatePost = async (postData: {
+    caption: string;
+    tags?: string[];
+    image_urls: string[];
+    post_type?: string;
+    occasion_context?: string;
+    poll_question?: string;
+  }): Promise<void> => {
     if (!currentUserId) {
       window.location.href = '/auth';
       return;
@@ -135,25 +145,46 @@ const CommunityFeed = () => {
 
         <div className="space-y-6">
           {posts.length === 0 ? (
-            <EmptyState />
+            <EmptyState onShareClick={handleShowPostForm} />
           ) : (
-            posts.map((post) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                currentUserId={currentUserId}
-                onToggleLike={toggleLike}
-                onShare={handleShare}
-                onDelete={async (postId) => {
-                  try {
-                    await deletePost(postId);
-                    toast({ title: "Post deleted", description: "Your post has been removed." });
-                  } catch {
-                    toast({ title: "Error", description: "Failed to delete post.", variant: "destructive" });
-                  }
-                }}
-              />
-            ))
+            posts.map((post) => {
+              if (post.post_type === 'poll') {
+                return (
+                  <PollPostCard
+                    key={post.id}
+                    post={post}
+                    currentUserId={currentUserId}
+                    onShare={handleShare}
+                    onDelete={async (postId) => {
+                      try {
+                        await deletePost(postId);
+                        toast({ title: "Post deleted", description: "Your post has been removed." });
+                      } catch {
+                        toast({ title: "Error", description: "Failed to delete post.", variant: "destructive" });
+                      }
+                    }}
+                  />
+                );
+              }
+
+              return (
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  currentUserId={currentUserId}
+                  onToggleLike={toggleLike}
+                  onShare={handleShare}
+                  onDelete={async (postId) => {
+                    try {
+                      await deletePost(postId);
+                      toast({ title: "Post deleted", description: "Your post has been removed." });
+                    } catch {
+                      toast({ title: "Error", description: "Failed to delete post.", variant: "destructive" });
+                    }
+                  }}
+                />
+              );
+            })
           )}
         </div>
 
