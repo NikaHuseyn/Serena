@@ -26,21 +26,19 @@ export const useOnboarding = () => {
           return;
         }
 
-        // Check if user has a style profile (indicates completed onboarding)
+        // Check if onboarding was completed in Supabase
         const { data: profile, error } = await supabase
           .from('user_style_profiles')
-          .select('user_id, display_name, style_personality, preferred_colors')
+          .select('user_id, onboarding_completed')
           .eq('user_id', session.user.id)
           .maybeSingle();
 
         if (error) {
           console.error('Error checking profile:', error);
           setShouldShowOnboarding(true);
-        } else if (!profile || !profile.display_name || !profile.style_personality?.length) {
-          // No profile or incomplete profile = needs onboarding
+        } else if (!profile || !(profile as any).onboarding_completed) {
           setShouldShowOnboarding(true);
         } else {
-          // Profile exists and is complete
           setShouldShowOnboarding(false);
           localStorage.setItem('onboarding_completed', 'true');
         }
