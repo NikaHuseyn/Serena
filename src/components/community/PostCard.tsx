@@ -154,6 +154,9 @@ const PostCard = ({ post, onToggleLike, onShare }: PostCardProps) => {
           onShare={onShare}
         />
 
+        {/* Comments */}
+        <CommentSection postId={post.id} commentsCount={post.comments_count} />
+
         {/* Post Date */}
         <div className="mt-4 text-xs text-gray-500">
           {new Date(post.created_at).toLocaleDateString('en-US', {
