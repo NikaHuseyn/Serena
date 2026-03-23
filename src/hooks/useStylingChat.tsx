@@ -40,20 +40,6 @@ export interface ChatMessage {
   timestamp: Date;
 }
 
-/** Flatten recommended_items object into array of RecommendedItem */
-function flattenRecommendedItems(items: Record<string, any>): RecommendedItem[] {
-  const result: RecommendedItem[] = [];
-  const excludeKeys = ['character_suggestions', 'wardrobe_analysis'];
-  Object.entries(items).forEach(([key, value]) => {
-    if (excludeKeys.includes(key)) return;
-    if (Array.isArray(value)) {
-      result.push(...value.filter((v: any) => v && typeof v === 'object' && 'name' in v));
-    } else if (value && typeof value === 'object' && 'name' in value) {
-      result.push(value as RecommendedItem);
-    }
-  });
-  return result;
-}
 
 export const useStylingChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
