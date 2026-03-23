@@ -29,6 +29,7 @@ interface StyleData {
   itemsToAvoid: string[];
   avoidFreeText: string;
   shoppingPreference: string;
+  primaryOccasions: string[];
 }
 
 interface OnboardingStep {
@@ -260,6 +261,17 @@ const StyleStep: React.FC<{
         />
       </div>
 
+      {/* Primary occasions */}
+      <div>
+        <h3 className="font-semibold mb-2">What do you dress for most?</h3>
+        <p className="text-sm text-muted-foreground mb-4">Select your typical occasions</p>
+        <div className="flex flex-wrap gap-2">
+          {['Work / Office', 'Casual day out', 'Date night', 'Weddings & events', 'Travel', 'Gym & activewear', 'Business meetings', 'Nights out'].map(occ => (
+            <ChipButton key={occ} label={occ} selected={data.primaryOccasions.includes(occ)} onToggle={() => onChange({ ...data, primaryOccasions: toggleList(occ, data.primaryOccasions) })} />
+          ))}
+        </div>
+      </div>
+
       {/* Shopping preference */}
       <div>
         <h3 className="font-semibold mb-2">How do you prefer to shop?</h3>
@@ -291,8 +303,7 @@ const CalendarStep: React.FC<{ onNext: () => void }> = ({ onNext }) => {
       if (success) { setConnected(true); setTimeout(onNext, 1000); }
       else { setIsConnecting(false); }
     } catch {
-      setConnected(true);
-      setTimeout(onNext, 1000);
+      setIsConnecting(false);
     }
   };
 
@@ -373,7 +384,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
 
   const [styleData, setStyleData] = useState<StyleData>({
     selectedStyles: [], selectedColors: [], itemsToAvoid: [],
-    avoidFreeText: '', shoppingPreference: '',
+    avoidFreeText: '', shoppingPreference: '', primaryOccasions: [],
   });
 
   const steps: OnboardingStep[] = [
@@ -409,6 +420,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
         preferred_colors: styleData.selectedColors,
         items_to_avoid: allAvoid,
         shopping_preference: styleData.shoppingPreference || null,
+        primary_occasions: styleData.primaryOccasions.length > 0 ? styleData.primaryOccasions : null,
         onboarding_completed: true,
         onboarding_completed_at: new Date().toISOString(),
       } as any);
