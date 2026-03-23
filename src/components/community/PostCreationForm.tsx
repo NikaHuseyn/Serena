@@ -15,7 +15,7 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
   const [submitting, setSubmitting] = useState(false);
 
   const handleCreatePost = async () => {
-    if (!newPostText.trim()) return;
+    // Allow posting without text
     
     try {
       setSubmitting(true);
