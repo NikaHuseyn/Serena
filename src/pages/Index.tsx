@@ -60,11 +60,6 @@ const IndexContent = () => {
             <p className="text-muted-foreground text-center max-w-md mb-8">
               Get AI styling advice for any occasion, share looks with friends, and build a wardrobe that works
             </p>
-            {!user && (
-              <p className="text-sm text-foreground mb-8">
-                ✨ Sign in to consult your AI stylist, share looks with friends, and build a wardrobe that works for your life.
-              </p>
-            )}
 
             <div className="grid grid-cols-3 gap-6 mb-10 max-w-lg w-full">
               {[
