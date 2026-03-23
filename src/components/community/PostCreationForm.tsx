@@ -15,12 +15,12 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
   const [submitting, setSubmitting] = useState(false);
 
   const handleCreatePost = async () => {
-    if (!newPostText.trim()) return;
+    // Allow posting without text
     
     try {
       setSubmitting(true);
       await onCreatePost({
-        caption: newPostText,
+        caption: newPostText || '',
         tags: ['New', 'Style'],
         image_urls: ['/placeholder-outfit-new.jpg'] // Placeholder for now
       });
@@ -66,7 +66,7 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
             </Button>
             <Button 
               onClick={handleCreatePost}
-              disabled={submitting || !newPostText.trim()}
+              disabled={submitting}
               className="bg-gradient-to-r from-pink-500 to-rose-600"
             >
               <Send className="h-4 w-4 mr-2" />
