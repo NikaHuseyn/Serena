@@ -304,6 +304,41 @@ export const useStylingChat = () => {
         responseContent += "I've put together some styling suggestions based on your request.";
       }
 
+      // --- Product search based on wardrobe state ---
+      let shoppingTitle: string | undefined;
+      let searchedMissingItems: any[] | undefined;
+
+      if (data?.recommendation?.recommended_items) {
+        const flatItems = flattenRecommendedItems(data.recommendation.recommended_items);
+        const wardrobeState = determineWardrobeState(
+          data?.wardrobe_status,
+          flatItems,
+          userMessage,
+        );
+
+        if (wardrobeState !== 'full_match') {
+          shoppingTitle = getSectionTitle(wardrobeState);
+          const occasion = data.recommendation.occasion || userMessage;
+          const budgetTier = data.recommendation.budget_tier;
+
+          try {
+            const productResults = await searchProductsForItems(
+              flatItems,
+              wardrobeState,
+              occasion,
+              budgetTier,
+            );
+            if (productResults.length > 0) {
+              searchedMissingItems = productResults;
+            }
+          } catch (err) {
+            console.warn('Product search failed, falling back to existing missing_items:', err);
+          }
+        }
+      }
+
+      const finalMissingItems = searchedMissingItems || data?.missing_items;
+
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -311,12 +346,13 @@ export const useStylingChat = () => {
         recommendation: data?.recommendation ? {
           ...data.recommendation,
           ai_insights: data.ai_insights,
-          missing_items: data.missing_items
+          missing_items: finalMissingItems,
         } : undefined,
         venueContext: venueContext || undefined,
         eventContext: eventContext || undefined,
         culturalContext: data?.cultural_context || undefined,
         wardrobeStatus: data?.wardrobe_status || undefined,
+        shoppingTitle,
         weatherNote,
         timestamp: new Date(),
       };
