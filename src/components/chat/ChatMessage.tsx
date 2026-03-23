@@ -3,6 +3,7 @@ import { User, Sparkles, ShoppingBag, Tag, MapPin, Ticket, Globe, X, Shirt } fro
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import CompleteYourLook from './CompleteYourLook';
+import { BudgetProvider } from './BudgetContext';
 import EmotionalToneCards from './EmotionalToneCards';
 
 interface OutfitItem {
