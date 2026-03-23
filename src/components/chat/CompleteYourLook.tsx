@@ -162,6 +162,23 @@ const MissingItemCard = ({ item, savedTab, maxBudget, noLimit }: { item: Missing
           <ProductCard key={idx} product={product} subtitle={product.retailer} />
         ))}
 
+        {activeTab === 'buy' && hasFallback && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground px-1">Search retailers directly:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {item.fallback_links!.map((link, idx) => (
+                <Button key={idx} variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>
+                  <a href={link.url} target="_blank" rel="noopener noreferrer">
+                    <Search className="h-3 w-3" />
+                    Search on {link.retailer}
+                    <ExternalLink className="h-2.5 w-2.5 ml-0.5" />
+                  </a>
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'rent' && hasRent && filteredRental.map((rental, idx) => (
           <ProductCard key={idx} product={rental} subtitle={rental.platform} />
         ))}
