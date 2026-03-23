@@ -419,6 +419,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
         fit_preference: profileData.fitPreference || null,
         style_personality: styleData.selectedStyles,
         preferred_colors: styleData.selectedColors,
+        primary_occasions: styleData.primaryOccasions,
         items_to_avoid: allAvoid,
         shopping_preference: styleData.shoppingPreference || null,
         onboarding_completed: true,
