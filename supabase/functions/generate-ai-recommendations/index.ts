@@ -428,6 +428,17 @@ USER STYLE PROFILE:
 - Style Confidence: ${styleProfile?.style_confidence_score ? Math.round(styleProfile.style_confidence_score * 100) + '%' : 'Not specified'}
 - Height: ${styleProfile?.height_cm ? styleProfile.height_cm + 'cm' : 'Not specified'}
 - Size Preferences: Top ${styleProfile?.standard_size_top || 'N/A'}, Bottom ${styleProfile?.standard_size_bottom || 'N/A'}, Shoes ${styleProfile?.standard_size_shoes || 'N/A'}
+${styleProfile?.color_analysis ? `
+COLOUR ANALYSIS (from AI photo analysis — use this to guide colour choices):
+- Skin Tone: ${styleProfile.color_analysis.skin_tone || 'Unknown'}
+- Undertone: ${styleProfile.color_analysis.undertone || 'Unknown'}
+- Seasonal Type: ${styleProfile.color_analysis.seasonal_type || 'Unknown'}
+- Best Colours: ${styleProfile.color_analysis.best_colours?.join(', ') || 'Not analysed'}
+- Colours to Avoid: ${styleProfile.color_analysis.colours_to_avoid?.join(', ') || 'Not analysed'}
+- Styling Advice: ${styleProfile.color_analysis.styling_advice || 'None'}
+
+IMPORTANT: When recommending outfit colours, STRONGLY PREFER the user's "Best Colours" from their colour analysis. AVOID suggesting items in their "Colours to Avoid". Reference their seasonal type when explaining why a colour works for them.
+` : ''}
 
 LEARNED PREFERENCES FROM FEEDBACK:
 ${userInsights?.length > 0 ? userInsights.map(insight => 
