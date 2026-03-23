@@ -108,6 +108,45 @@ const IndexContent = () => {
                 />
               ))}
               {isLoading && <ChatMessage role="assistant" content="" isLoading />}
+              {/* Guest sign-up nudge: show once after first assistant response */}
+              {!user && !nudgeDismissed && !hasShownNudge.current && messages.filter(m => m.role === 'assistant').length >= 1 && (() => { hasShownNudge.current = true; return true; })() && (
+                <div className="py-4 px-2">
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="p-4 flex items-center justify-between gap-4">
+                      <p className="text-sm text-foreground">
+                        ✨ Sign up to get recommendations from your own wardrobe and save your style preferences.
+                      </p>
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="sm" variant="ghost" onClick={() => { setNudgeDismissed(true); sessionStorage.setItem('guest_nudge_dismissed', 'true'); }}>
+                          Maybe later
+                        </Button>
+                        <Button size="sm" onClick={() => navigate('/auth')}>
+                          Sign up
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+              {!user && !nudgeDismissed && hasShownNudge.current && messages.filter(m => m.role === 'assistant').length >= 1 && (
+                <div className="py-4 px-2">
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="p-4 flex items-center justify-between gap-4">
+                      <p className="text-sm text-foreground">
+                        ✨ Sign up to get recommendations from your own wardrobe and save your style preferences.
+                      </p>
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="sm" variant="ghost" onClick={() => { setNudgeDismissed(true); sessionStorage.setItem('guest_nudge_dismissed', 'true'); }}>
+                          Maybe later
+                        </Button>
+                        <Button size="sm" onClick={() => navigate('/auth')}>
+                          Sign up
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
             <div ref={messagesEndRef} />
           </div>
