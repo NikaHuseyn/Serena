@@ -688,6 +688,23 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
       }
     };
 
+    // Add character_suggestions to schema only for historical events
+    if (isHistorical) {
+      (outfitTool as any).function.parameters.properties.character_suggestions = {
+        type: 'array',
+        items: {
+          type: 'object',
+          properties: {
+            name: { type: 'string' },
+            source: { type: 'string' },
+            description: { type: 'string' },
+            difficulty: { type: 'string', enum: ['Easy', 'Medium', 'Hard'] },
+            why_perfect: { type: 'string' }
+          }
+        }
+      };
+    }
+
     const systemPrompt = isHistorical
       ? `You are Oracle, an expert fashion historian and costume consultant. For this historical event, you MUST only recommend authentic period pieces. NEVER suggest modern items like jeans or sneakers. Always give a recommendation immediately — never refuse or ask for more info first. End with exactly ONE follow-up question.`
       : emotional_tone
