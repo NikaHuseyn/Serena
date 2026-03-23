@@ -110,59 +110,27 @@ serve(async (req) => {
     }
 
     // Fetch user's style profile and wardrobe items if authenticated
-    let userInsights = null;
-    let recentFeedback = null;
+    let userInsights: any[] | null = null;
+    let recentFeedback: any[] | null = null;
     
     if (user) {
-      const { data: userStyleProfile } = await supabase
-        .from('user_style_profiles')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-      styleProfile = userStyleProfile;
+      const [
+        userStyleProfileResult,
+        userWardrobeResult,
+        userInsightsResult,
+        userFeedbackResult
+      ] = await Promise.all([
+        supabase.from('user_style_profiles').select('*').eq('user_id', user.id).single(),
+        supabase.from('wardrobe_items').select('*').eq('user_id', user.id).limit(50),
+        supabase.from('user_preference_insights').select('*').eq('user_id', user.id).order('confidence_score', { ascending: false }).limit(10),
+        supabase.from('recommendation_feedback').select('rating, liked_aspects, disliked_aspects, improvement_suggestions').eq('user_id', user.id).order('created_at', { ascending: false }).limit(5)
+      ]);
 
-      const { data: userWardrobeItems } = await supabase
-        .from('wardrobe_items')
-        .select('*')
-        .eq('user_id', user.id)
-        .limit(50);
-      wardrobeItems = userWardrobeItems;
-
-      // Fetch user preference insights from feedback
-      const { data: insights } = await supabase
-        .from('user_preference_insights')
-        .select('*')
-        .eq('user_id', user.id)
-        .order('confidence_score', { ascending: false })
-        .limit(10);
-      userInsights = insights;
-
-      // Fetch recent feedback to understand what worked/didn't work
-      const { data: feedback } = await supabase
-        .from('recommendation_feedback')
-        .select(`
-          rating,
-          liked_aspects,
-          disliked_aspects,
-          improvement_suggestions,
-          ai_recommendations (
-            recommended_items,
-            occasion
-          )
-        `)
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      recentFeedback = feedback;
+      styleProfile = userStyleProfileResult.data;
+      wardrobeItems = userWardrobeResult.data;
+      userInsights = userInsightsResult.data;
+      recentFeedback = userFeedbackResult.data;
     }
-
-    // Fetch recent shopping items for inspiration
-    const { data: shoppingItems } = await supabase
-      .from('shopping_items')
-      .select('name, brand, category, price, colors, description')
-      .eq('in_stock', true)
-      .order('created_at', { ascending: false })
-      .limit(15);
 
     // Fetch cultural dress norms if a country is mentioned
     let culturalNorms: any[] = [];
