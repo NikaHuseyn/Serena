@@ -78,16 +78,9 @@ serve(async (req) => {
       throw new Error('No valid response from AI');
     };
 
-    // Determine email for rate limiting
-    const rateLimitEmail = userEmail || guestEmail;
-    if (!rateLimitEmail) {
-      return new Response(JSON.stringify({ 
-        error: 'Email required for AI recommendations. Please log in or provide a guest email.' 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    // Determine identity for rate limiting — guests are allowed without email
+    const isGuest = !user;
+    const rateLimitEmail = userEmail || guestEmail || `guest-anon`;
 
     // Check rate limiting - only for authenticated users (RPC expects UUID)
     let rateLimitResult = null;
@@ -409,6 +402,17 @@ Then give the outfit recommendation.
 Then add any dress code or practical notes as a brief footnote — NOT the headline.
 End with exactly ONE follow-up question (or the refinement invitation if all context is known).
 
+
+${isGuest ? `
+GUEST USER CONTEXT:
+This user is browsing as a guest. They have no saved wardrobe or style preferences. Give excellent general styling advice for the occasion. Do not reference any personal wardrobe items. Show shopping options across all price tiers since no budget is set.
+` : !wardrobeItems?.length ? `
+AUTHENTICATED USER WITH EMPTY WARDROBE:
+This user is logged in but has not uploaded their wardrobe yet. Give excellent general styling advice and show shopping options.
+` : `
+AUTHENTICATED USER WITH WARDROBE:
+This user has ${wardrobeItems.length} wardrobe items. Prioritise their existing clothes in recommendations.
+`}
 
 USER STYLE PROFILE:
 - Name: ${styleProfile?.display_name || 'Not specified'}

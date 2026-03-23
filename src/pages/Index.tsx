@@ -1,4 +1,5 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import BottomNav from '@/components/BottomNav';
 import ChatMessage from '@/components/chat/ChatMessage';
@@ -10,11 +11,14 @@ import { useStylingChat } from '@/hooks/useStylingChat';
 import { Sparkles, RotateCcw, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { BudgetProvider } from '@/components/chat/BudgetContext';
+import { Card, CardContent } from '@/components/ui/card';
 
 const IndexContent = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
   const { messages, isLoading, sendMessage, clearChat, selectEmotionalTone, selectedEmotionalTone } = useStylingChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
+  const [nudgeDismissed, setNudgeDismissed] = useState(() => sessionStorage.getItem('guest_nudge_dismissed') === 'true');
 
   const suggestions = [
     "Black tie gala this Saturday",
@@ -55,11 +59,6 @@ const IndexContent = () => {
             <p className="text-muted-foreground text-center max-w-md mb-8">
               Get AI styling advice for any occasion, share looks with friends, and build a wardrobe that works
             </p>
-            {!user && (
-              <p className="text-sm text-foreground mb-8">
-                ✨ Sign in to consult your AI stylist, share looks with friends, and build a wardrobe that works for your life.
-              </p>
-            )}
 
             <div className="grid grid-cols-3 gap-6 mb-10 max-w-lg w-full">
               {[
@@ -77,6 +76,12 @@ const IndexContent = () => {
 
             <p className="text-xs text-muted-foreground/60 mb-2">Try an example:</p>
             <SuggestionChips suggestions={suggestions} onSelect={sendMessage} />
+
+            {!user && (
+              <p className="text-sm text-muted-foreground mt-6 text-center">
+                ✨ Sign in to consult your AI stylist, share looks with friends, and build a wardrobe that works for your life.
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex-1 py-4 overflow-y-auto">
@@ -102,6 +107,26 @@ const IndexContent = () => {
                 />
               ))}
               {isLoading && <ChatMessage role="assistant" content="" isLoading />}
+              {/* Guest sign-up nudge: show once after first assistant response */}
+              {!user && !nudgeDismissed && messages.filter(m => m.role === 'assistant').length >= 1 && (
+                <div className="py-4 px-2">
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="p-4 flex items-center justify-between gap-4">
+                      <p className="text-sm text-foreground">
+                        ✨ Sign up to get recommendations from your own wardrobe and save your style preferences.
+                      </p>
+                      <div className="flex gap-2 shrink-0">
+                        <Button size="sm" variant="ghost" onClick={() => { setNudgeDismissed(true); sessionStorage.setItem('guest_nudge_dismissed', 'true'); }}>
+                          Maybe later
+                        </Button>
+                        <Button size="sm" onClick={() => navigate('/auth')}>
+                          Sign up
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
             </div>
             <div ref={messagesEndRef} />
           </div>
