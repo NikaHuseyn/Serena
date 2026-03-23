@@ -3,7 +3,6 @@ import { User, Sparkles, ShoppingBag, Tag, MapPin, Ticket, Globe, X, Shirt } fro
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import CompleteYourLook from './CompleteYourLook';
-import { BudgetProvider } from './BudgetContext';
 import EmotionalToneCards from './EmotionalToneCards';
 
 interface OutfitItem {
@@ -44,9 +43,10 @@ interface ChatMessageProps {
   onSelectTone?: (toneId: string) => void;
   isLoading?: boolean;
   shoppingTitle?: string;
+  isFirstGuestResponse?: boolean;
 }
 
-const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, selectedToneId, onSelectTone, isLoading, shoppingTitle }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, selectedToneId, onSelectTone, isLoading, shoppingTitle, isFirstGuestResponse }: ChatMessageProps) => {
   const isUser = role === 'user';
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
@@ -93,24 +93,28 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
   };
 
   const renderWardrobeBanner = () => {
-    if (!wardrobeStatus?.is_authenticated || wardrobeStatus.has_wardrobe || bannerDismissed) return null;
+    if (bannerDismissed) return null;
 
-    return (
-      <div className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 border border-primary/20 px-4 py-2.5 mb-3">
-        <p className="text-sm text-foreground">
-          ✨ Add your wardrobe to get outfit suggestions from clothes you already own →{' '}
-          <Link to="/wardrobe" className="font-medium text-primary hover:underline">
-            Add items
-          </Link>
-        </p>
-        <button
-          onClick={() => setBannerDismissed(true)}
-          className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    );
+    // Logged in, no wardrobe
+    if (wardrobeStatus?.is_authenticated && !wardrobeStatus.has_wardrobe) {
+      return (
+        <div className="flex items-center justify-between gap-3 rounded-lg bg-primary/5 border border-primary/20 px-4 py-2.5 mb-3">
+          <p className="text-sm text-foreground">
+            ✨ Add your wardrobe to get outfit suggestions from clothes you already own →{' '}
+            <Link to="/wardrobe" className="font-medium text-primary hover:underline">
+              Add items
+            </Link>
+          </p>
+          <button
+            onClick={() => setBannerDismissed(true)}
+            className="text-muted-foreground hover:text-foreground transition-colors flex-shrink-0"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      );
+    }
+    return null;
   };
 
   const renderRecommendation = () => {
@@ -128,12 +132,10 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
         </div>
 
         {recommendation.missing_items?.length > 0 && (
-          <BudgetProvider>
-            <CompleteYourLook
-              missingItems={recommendation.missing_items}
-              title={shoppingTitle}
-            />
-          </BudgetProvider>
+          <CompleteYourLook
+            missingItems={recommendation.missing_items}
+            title={shoppingTitle}
+          />
         )}
 
         {recommendation.ai_insights?.styling_tips?.length > 0 && (
@@ -234,7 +236,11 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
                       if (!note) return 'Cultural dress guidance applied';
                       const text = note.guidance.replace(/[#*_\[\]]/g, '').trim();
                       const firstSentence = text.split(/[.!?\n]/).find(s => s.trim().length > 15);
-                      return firstSentence ? firstSentence.trim().slice(0, 120) : 'Cultural dress guidance applied';
+                      if (!firstSentence) return 'Cultural dress guidance applied';
+                      const trimmed = firstSentence.trim();
+                      if (trimmed.length <= 120) return trimmed;
+                      const truncated = trimmed.slice(0, 120);
+                      return truncated.slice(0, truncated.lastIndexOf(' ')) + '...';
                     })()
                   }</span>
                 </span>
@@ -268,7 +274,34 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
             selectedToneId={selectedToneId}
           />
         )}
+        {/* Tone-specific recommendation when a tone is selected */}
+        {emotionalToneCards && selectedToneId && toneRecommendations?.[selectedToneId] && (
+          <div className="mt-4 p-4 rounded-lg bg-accent/30 border border-border">
+            <p className="text-sm font-medium text-foreground mb-2">
+              {emotionalToneCards.find(t => t.id === selectedToneId)?.emoji} {emotionalToneCards.find(t => t.id === selectedToneId)?.label} look:
+            </p>
+            <p className="text-sm text-foreground">
+              {toneRecommendations[selectedToneId]?.description}
+            </p>
+          </div>
+        )}
         {renderRecommendation()}
+        {/* Guest sign-up nudge */}
+        {!isUser && isFirstGuestResponse && !wardrobeStatus?.is_authenticated && (
+          <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-start justify-between gap-3">
+            <p className="text-sm text-foreground">
+              ✨ Sign up to get recommendations from your own wardrobe and save your style preferences.
+            </p>
+            <div className="flex gap-2 flex-shrink-0">
+              <Link
+                to="/auth"
+                className="text-sm font-medium text-primary hover:underline"
+              >
+                Sign up
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
