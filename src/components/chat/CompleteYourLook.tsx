@@ -173,7 +173,7 @@ const MissingItemCard = ({ item, savedTab, maxBudget }: { item: MissingItem; sav
   );
 };
 
-const CompleteYourLook = ({ missingItems }: CompleteYourLookProps) => {
+const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: CompleteYourLookProps) => {
   const savedTab = (() => {
     try { return (localStorage.getItem('cyl-tab-pref') as TabType) || 'buy'; } catch { return 'buy' as TabType; }
   })();
