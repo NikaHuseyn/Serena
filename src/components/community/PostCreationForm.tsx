@@ -1,9 +1,9 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera, Send } from 'lucide-react';
+import { Camera, Send, X } from 'lucide-react';
 
 interface PostCreationFormProps {
   onCreatePost: (postData: { caption: string; tags?: string[]; image_urls: string[] }) => Promise<void>;
