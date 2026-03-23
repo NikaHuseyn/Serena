@@ -5,14 +5,6 @@ import { toast } from 'sonner';
 import { detectVenue, detectEvent, VenueDetectionResult } from './styling-chat/venueEventDetection';
 import { extractLocation, extractFutureDate, formatDateLabel } from './styling-chat/weatherExtraction';
 import { detectVagueVenue, getRelevantEmotionalTones, detectExplicitEmotionalGoal, EmotionalTone } from './styling-chat/vagueVenueDetection';
-import {
-  determineWardrobeState,
-  getSectionTitle,
-  searchProductsForItems,
-  detectExplicitShopIntent,
-  type RecommendedItem,
-  type WardrobeState,
-} from '@/services/productSearchService';
 
 export interface ChatMessage {
   id: string;
