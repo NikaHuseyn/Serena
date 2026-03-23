@@ -382,7 +382,10 @@ AUTHENTICATED USER WITH WARDROBE:
 This user has ${wardrobeItems.length} wardrobe items. Prioritise their existing clothes in recommendations.
 `}
 
-USER STYLE PROFILE:
+${(() => {
+  const hasProfile = styleProfile && Object.keys(styleProfile).some(k => !['id', 'user_id', 'created_at', 'updated_at'].includes(k) && styleProfile[k] != null);
+  if (!hasProfile) return 'User has not set up a style profile yet.';
+  return `USER STYLE PROFILE:
 - Name: ${styleProfile?.display_name || 'Not specified'}
 - Based in: ${styleProfile?.home_city || 'Not specified'}
 - Body Type: ${styleProfile?.body_type || 'Not specified'}
@@ -410,18 +413,19 @@ COLOUR ANALYSIS (from AI photo analysis — use this to guide colour choices):
 - Styling Advice: ${styleProfile.color_analysis.styling_advice || 'None'}
 
 IMPORTANT: When recommending outfit colours, STRONGLY PREFER the user's "Best Colours" from their colour analysis. AVOID suggesting items in their "Colours to Avoid". Reference their seasonal type when explaining why a colour works for them.
-` : ''}
+` : ''}`;
+})()}
 
-LEARNED PREFERENCES FROM FEEDBACK:
-${userInsights?.length > 0 ? userInsights.map(insight => 
+${userInsights?.length ? `LEARNED PREFERENCES FROM FEEDBACK:
+${userInsights.map(insight => 
   `- ${insight.insight_type}: ${insight.insight_value || 'N/A'} (confidence: ${Math.round((insight.confidence_score || 0.5) * 100)}%)`
-).join('\n') : '- No learned preferences yet'}
+).join('\n')}` : ''}
 
-RECENT FEEDBACK ANALYSIS:
-${recentFeedback?.length > 0 ? recentFeedback.map(fb => {
+${recentFeedback?.length ? `RECENT FEEDBACK ANALYSIS:
+${recentFeedback.map(fb => {
   const ratingText = fb.rating >= 4 ? 'POSITIVE' : fb.rating === 3 ? 'NEUTRAL' : 'NEGATIVE';
   return `- ${ratingText} (${fb.rating}/5): Liked: ${fb.liked_aspects?.join(', ') || 'none'}, Disliked: ${fb.disliked_aspects?.join(', ') || 'none'}${fb.improvement_suggestions ? `, Suggestions: ${fb.improvement_suggestions}` : ''}`;
-}).join('\n') : '- No previous feedback available'}
+}).join('\n')}` : ''}
 
 USER'S WARDROBE ITEMS (PRIORITIZE USING THESE):
 ${wardrobeItems?.length > 0 ? wardrobeItems.map(item => `- ${item.name} (${item.category}, ${item.color || 'color not specified'}, ${item.brand || 'brand not specified'}${item.notes ? ', notes: ' + item.notes : ''})`).join('\n') : `The user has not uploaded their wardrobe yet.
