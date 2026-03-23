@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ShoppingBag, Tag, Recycle, ExternalLink, SlidersHorizontal } from 'lucide-react';
+import { ShoppingBag, Tag, Recycle, ExternalLink, SlidersHorizontal, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
@@ -35,6 +35,10 @@ interface MissingItem {
     image_url: string | null;
     condition: string | null;
     type?: string;
+  }>;
+  fallback_links?: Array<{
+    retailer: string;
+    url: string;
   }>;
 }
 
@@ -108,9 +112,10 @@ const MissingItemCard = ({ item, savedTab, maxBudget, noLimit }: { item: Missing
   const hasBuy = filteredRetailer.length > 0;
   const hasRent = filteredRental.length > 0;
   const hasSecondhand = filteredSecondhand.length > 0;
+  const hasFallback = (item.fallback_links?.length || 0) > 0 && !hasBuy;
 
   const tabs: { key: TabType; label: string; icon: React.ReactNode; available: boolean; badge?: string }[] = [
-    { key: 'buy', label: 'Buy New', icon: <ShoppingBag className="h-3 w-3" />, available: hasBuy },
+    { key: 'buy', label: 'Buy New', icon: <ShoppingBag className="h-3 w-3" />, available: hasBuy || hasFallback },
     { key: 'rent', label: 'Rent', icon: <Tag className="h-3 w-3" />, available: hasRent, badge: '♻️' },
     { key: 'secondhand', label: 'Secondhand', icon: <Recycle className="h-3 w-3" />, available: hasSecondhand, badge: '♻️' },
   ];
@@ -157,6 +162,23 @@ const MissingItemCard = ({ item, savedTab, maxBudget, noLimit }: { item: Missing
           <ProductCard key={idx} product={product} subtitle={product.retailer} />
         ))}
 
+        {activeTab === 'buy' && hasFallback && (
+          <div className="space-y-1.5">
+            <p className="text-xs text-muted-foreground px-1">Search retailers directly:</p>
+            <div className="flex flex-wrap gap-1.5">
+              {item.fallback_links!.map((link, idx) => (
+                <Button key={idx} variant="outline" size="sm" className="h-7 text-xs gap-1" asChild>
+                  <a href={link.url} target="_blank" rel="noopener noreferrer">
+                    <Search className="h-3 w-3" />
+                    Search on {link.retailer}
+                    <ExternalLink className="h-2.5 w-2.5 ml-0.5" />
+                  </a>
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
+
         {activeTab === 'rent' && hasRent && filteredRental.map((rental, idx) => (
           <ProductCard key={idx} product={rental} subtitle={rental.platform} />
         ))}
@@ -190,7 +212,8 @@ const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: Comple
     (m) =>
       (m.retailer_results?.length || 0) > 0 ||
       (m.rental_results?.length || 0) > 0 ||
-      (m.secondhand_results?.length || 0) > 0
+      (m.secondhand_results?.length || 0) > 0 ||
+      (m.fallback_links?.length || 0) > 0
   );
 
   if (itemsWithResults.length === 0) return null;
