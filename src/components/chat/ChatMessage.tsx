@@ -164,7 +164,10 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
 
         {/* Complete your look - missing items with buy/rent tabs */}
         {recommendation.missing_items?.length > 0 && (
-          <CompleteYourLook missingItems={recommendation.missing_items} />
+          <CompleteYourLook
+            missingItems={recommendation.missing_items}
+            title={shoppingTitle}
+          />
         )}
         {/* Styling tips */}
         {recommendation.ai_insights?.styling_tips?.length > 0 && (
