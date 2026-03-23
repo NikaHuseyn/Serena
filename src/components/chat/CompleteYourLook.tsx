@@ -36,6 +36,10 @@ interface MissingItem {
     condition: string | null;
     type?: string;
   }>;
+  fallback_links?: Array<{
+    retailer: string;
+    url: string;
+  }>;
 }
 
 interface CompleteYourLookProps {
