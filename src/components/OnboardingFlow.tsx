@@ -26,6 +26,7 @@ interface ProfileData {
 interface StyleData {
   selectedStyles: string[];
   selectedColors: string[];
+  primaryOccasions: string[];
   itemsToAvoid: string[];
   avoidFreeText: string;
   shoppingPreference: string;
