@@ -146,7 +146,9 @@ const EmotionalToneCards = ({ tones, toneRecommendations, onSelectTone, wardrobe
 
           {/* Missing items with shopping tabs */}
           {selectedData.missing_items && selectedData.missing_items.length > 0 && (
-            <CompleteYourLook missingItems={selectedData.missing_items} />
+            <BudgetProvider>
+              <CompleteYourLook missingItems={selectedData.missing_items} />
+            </BudgetProvider>
           )}
         </div>
       )}
