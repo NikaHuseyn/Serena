@@ -706,6 +706,8 @@ export const useStylingChat = () => {
       rejected_items: [],
       exchange_count: 0,
     });
+    sessionStorage.removeItem('guest_chat_messages');
+    sessionStorage.removeItem('guest_chat_context');
   }, []);
 
   return {
