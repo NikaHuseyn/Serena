@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useBehaviorAnalytics } from './useBehaviorAnalytics';
 
-interface SocialPost {
+export interface SocialPost {
   id: string;
   user_id: string;
   image_urls: string[];
@@ -12,6 +12,11 @@ interface SocialPost {
   likes_count: number;
   comments_count: number;
   created_at: string;
+  post_type: string;
+  occasion_context: string | null;
+  poll_question: string | null;
+  oracle_summary: string | null;
+  oracle_summary_public: boolean;
   social_profiles: {
     display_name: string | null;
     avatar_url: string | null;
@@ -19,10 +24,13 @@ interface SocialPost {
   user_liked?: boolean;
 }
 
-interface CreatePostData {
+export interface CreatePostData {
   caption: string;
   tags?: string[];
   image_urls: string[];
+  post_type?: string;
+  occasion_context?: string;
+  poll_question?: string;
 }
 
 export const useSocialPosts = () => {
@@ -36,7 +44,6 @@ export const useSocialPosts = () => {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Get posts first
       const { data: postsData, error: fetchError } = await supabase
         .from('posts')
         .select('*')
@@ -44,14 +51,12 @@ export const useSocialPosts = () => {
 
       if (fetchError) throw fetchError;
 
-      // Get social profiles separately
       const userIds = postsData?.map(post => post.user_id) || [];
       const { data: profilesData } = await supabase
         .from('social_profiles')
         .select('user_id, display_name, avatar_url')
         .in('user_id', userIds);
 
-      // Create a map of profiles by user_id
       const profilesMap = new Map();
       profilesData?.forEach(profile => {
         profilesMap.set(profile.user_id, {
@@ -63,6 +68,7 @@ export const useSocialPosts = () => {
       let postsWithLikeStatus: SocialPost[] = [];
       
       if (postsData) {
+        let likedPostIds = new Set<string>();
         if (user) {
           const postIds = postsData.map(post => post.id);
           const { data: likesData } = await supabase
@@ -70,35 +76,26 @@ export const useSocialPosts = () => {
             .select('post_id')
             .in('post_id', postIds)
             .eq('user_id', user.id);
-
-          const likedPostIds = new Set(likesData?.map(like => like.post_id) || []);
-          
-          postsWithLikeStatus = postsData.map(post => ({
-            id: post.id,
-            user_id: post.user_id,
-            image_urls: post.image_urls,
-            caption: post.caption,
-            tags: post.tags,
-            likes_count: post.likes_count,
-            comments_count: post.comments_count,
-            created_at: post.created_at,
-            social_profiles: profilesMap.get(post.user_id) || null,
-            user_liked: likedPostIds.has(post.id)
-          }));
-        } else {
-          postsWithLikeStatus = postsData.map(post => ({
-            id: post.id,
-            user_id: post.user_id,
-            image_urls: post.image_urls,
-            caption: post.caption,
-            tags: post.tags,
-            likes_count: post.likes_count,
-            comments_count: post.comments_count,
-            created_at: post.created_at,
-            social_profiles: profilesMap.get(post.user_id) || null,
-            user_liked: false
-          }));
+          likedPostIds = new Set(likesData?.map(like => like.post_id) || []);
         }
+
+        postsWithLikeStatus = postsData.map(post => ({
+          id: post.id,
+          user_id: post.user_id,
+          image_urls: post.image_urls || [],
+          caption: post.caption,
+          tags: post.tags,
+          likes_count: post.likes_count || 0,
+          comments_count: post.comments_count || 0,
+          created_at: post.created_at || new Date().toISOString(),
+          post_type: (post as any).post_type || 'single',
+          occasion_context: (post as any).occasion_context || null,
+          poll_question: (post as any).poll_question || null,
+          oracle_summary: (post as any).oracle_summary || null,
+          oracle_summary_public: (post as any).oracle_summary_public || false,
+          social_profiles: profilesMap.get(post.user_id) || null,
+          user_liked: likedPostIds.has(post.id)
+        }));
       }
 
       setPosts(postsWithLikeStatus);
@@ -115,14 +112,20 @@ export const useSocialPosts = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      const insertData: any = {
+        user_id: user.id,
+        caption: postData.caption,
+        tags: postData.tags || [],
+        image_urls: postData.image_urls,
+      };
+
+      if (postData.post_type) insertData.post_type = postData.post_type;
+      if (postData.occasion_context) insertData.occasion_context = postData.occasion_context;
+      if (postData.poll_question) insertData.poll_question = postData.poll_question;
+
       const { data, error } = await supabase
         .from('posts')
-        .insert({
-          user_id: user.id,
-          caption: postData.caption,
-          tags: postData.tags || [],
-          image_urls: postData.image_urls,
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -132,12 +135,13 @@ export const useSocialPosts = () => {
         event_type: 'community_post_create',
         event_data: { 
           post_id: data.id,
+          post_type: postData.post_type || 'single',
           has_images: postData.image_urls.length > 0,
           caption_length: postData.caption.length 
         }
       });
 
-      fetchPosts(); // Refresh posts
+      fetchPosts();
     } catch (err) {
       console.error('Error creating post:', err);
       throw err;
@@ -148,7 +152,6 @@ export const useSocialPosts = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        // Redirect to auth if user tries to like without being signed in
         window.location.href = '/auth';
         return;
       }
@@ -157,19 +160,15 @@ export const useSocialPosts = () => {
       if (!post) return;
 
       if (post.user_liked) {
-        // Unlike
         const { error } = await supabase
           .from('likes')
           .delete()
           .match({ post_id: postId, user_id: user.id });
-
         if (error) throw error;
       } else {
-        // Like
         const { error } = await supabase
           .from('likes')
           .insert({ post_id: postId, user_id: user.id });
-
         if (error) throw error;
       }
 
@@ -181,7 +180,6 @@ export const useSocialPosts = () => {
         }
       });
 
-      // Update local state
       setPosts(prev => prev.map(p => 
         p.id === postId 
           ? { 

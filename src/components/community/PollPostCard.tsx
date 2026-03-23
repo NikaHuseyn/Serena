@@ -1,0 +1,241 @@
+
+import React, { useMemo, useState } from 'react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { MoreHorizontal, Trash2, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import FollowButton from './FollowButton';
+import BadgeDisplay from './BadgeDisplay';
+import ReportPostDialog from './ReportPostDialog';
+import PollCommentSection from './PollCommentSection';
+import OracleSummary from './OracleSummary';
+import { useBadges } from '@/hooks/useBadges';
+import { useOutfitVotes } from '@/hooks/useOutfitVotes';
+import type { SocialPost } from '@/hooks/useSocialPosts';
+
+interface PollPostCardProps {
+  post: SocialPost;
+  currentUserId?: string;
+  onShare: (postId: string) => void;
+  onDelete?: (postId: string) => void;
+}
+
+const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardProps) => {
+  const { badges } = useBadges(post.user_id);
+  const isOwnPost = currentUserId === post.user_id;
+  const optionCount = post.image_urls.length;
+  const { voteCounts, userVote, castVote, getWinnerText } = useOutfitVotes(post.id, optionCount);
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const formattedDate = useMemo(() =>
+    new Date(post.created_at).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    }), [post.created_at]);
+
+  const prevSlide = () => setCurrentSlide(i => Math.max(0, i - 1));
+  const nextSlide = () => setCurrentSlide(i => Math.min(optionCount - 1, i + 1));
+
+  return (
+    <Card className="overflow-hidden">
+      <CardContent className="p-6">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-3">
+            <Avatar className="h-10 w-10">
+              <AvatarImage src={post.social_profiles?.avatar_url || undefined} />
+              <AvatarFallback>
+                {post.social_profiles?.display_name?.charAt(0) || 'U'}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="font-semibold text-sm">
+                  {post.social_profiles?.display_name || 'Anonymous User'}
+                </h3>
+                {!isOwnPost && <FollowButton userId={post.user_id} />}
+              </div>
+              <BadgeDisplay badges={badges} limit={2} />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">
+              👗 Which one?
+            </Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {isOwnPost && onDelete && (
+                  <DropdownMenuItem
+                    onClick={() => onDelete(post.id)}
+                    className="text-destructive focus:text-destructive"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete Post
+                  </DropdownMenuItem>
+                )}
+                {!isOwnPost && (
+                  <ReportPostDialog postId={post.id}>
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      Report Post
+                    </DropdownMenuItem>
+                  </ReportPostDialog>
+                )}
+                <DropdownMenuItem onClick={() => onShare(post.id)}>
+                  Share Post
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Occasion badge */}
+        {post.occasion_context && (
+          <div className="mb-3">
+            <span className="text-sm text-muted-foreground">
+              👗 {post.occasion_context}
+            </span>
+          </div>
+        )}
+
+        {/* Poll question */}
+        <h4 className="text-lg font-semibold text-foreground mb-4">
+          {post.poll_question || 'Which one?'}
+        </h4>
+
+        {/* Carousel */}
+        <div className="relative mb-3">
+          <div className="overflow-hidden rounded-lg">
+            <div
+              className="flex transition-transform duration-300 ease-in-out"
+              style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+            >
+              {post.image_urls.map((url, index) => (
+                <div key={index} className="w-full flex-shrink-0 relative">
+                  <div className="relative aspect-[3/4]">
+                    <img
+                      src={url}
+                      alt={`Option ${index + 1}`}
+                      className="w-full h-full object-cover"
+                    />
+                    {/* Option label */}
+                    <div className="absolute top-3 left-3">
+                      <span className="bg-background/80 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded">
+                        Option {index + 1}
+                      </span>
+                    </div>
+                    {/* Vote count */}
+                    <div className="absolute bottom-3 right-3">
+                      <span className="bg-background/80 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded">
+                        {voteCounts[index] || 0} vote{(voteCounts[index] || 0) !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+                  </div>
+                  {/* Vote button */}
+                  <div className="p-3">
+                    <Button
+                      onClick={() => castVote(index)}
+                      variant={userVote === index ? 'default' : 'outline'}
+                      className="w-full"
+                      size="sm"
+                    >
+                      {userVote === index ? (
+                        <>
+                          <Check className="h-4 w-4 mr-2" />
+                          Your vote
+                        </>
+                      ) : (
+                        `Vote for Option ${index + 1} 👗`
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Navigation arrows */}
+          {currentSlide > 0 && (
+            <button
+              onClick={prevSlide}
+              className="absolute left-2 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm hover:bg-background rounded-full p-2 transition-colors shadow-sm z-10"
+            >
+              <ChevronLeft className="h-5 w-5 text-foreground" />
+            </button>
+          )}
+          {currentSlide < optionCount - 1 && (
+            <button
+              onClick={nextSlide}
+              className="absolute right-2 top-1/2 -translate-y-1/2 bg-background/80 backdrop-blur-sm hover:bg-background rounded-full p-2 transition-colors shadow-sm z-10"
+            >
+              <ChevronRight className="h-5 w-5 text-foreground" />
+            </button>
+          )}
+        </div>
+
+        {/* Dot indicators */}
+        <div className="flex justify-center gap-1.5 mb-3">
+          {post.image_urls.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => setCurrentSlide(i)}
+              className={`h-2 rounded-full transition-all ${
+                i === currentSlide
+                  ? 'w-6 bg-primary'
+                  : 'w-2 bg-muted-foreground/30'
+              }`}
+            />
+          ))}
+        </div>
+
+        {/* Winner text */}
+        <p className="text-sm text-muted-foreground text-center mb-4">
+          {getWinnerText()}
+        </p>
+
+        {/* Caption */}
+        {post.caption && (
+          <p className="text-foreground text-sm mb-4 whitespace-pre-wrap">{post.caption}</p>
+        )}
+
+        {/* Comments */}
+        <PollCommentSection postId={post.id} optionCount={optionCount} />
+
+        {/* Oracle Summary */}
+        <OracleSummary
+          postId={post.id}
+          postUserId={post.user_id}
+          currentUserId={currentUserId}
+          oracleSummary={post.oracle_summary}
+          oracleSummaryPublic={post.oracle_summary_public}
+          occasionContext={post.occasion_context}
+          pollQuestion={post.poll_question}
+          voteCounts={voteCounts}
+          optionCount={optionCount}
+        />
+
+        {/* Date */}
+        <div className="mt-4 text-xs text-muted-foreground">
+          {formattedDate}
+        </div>
+      </CardContent>
+    </Card>
+  );
+};
+
+export default PollPostCard;
