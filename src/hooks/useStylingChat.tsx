@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useLocation } from '@/hooks/useLocation';
 import { toast } from 'sonner';
@@ -52,7 +52,17 @@ interface ConversationContext {
 }
 
 export const useStylingChat = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Restore guest conversation from sessionStorage on mount
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const stored = sessionStorage.getItem('guest_chat_messages');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
   const [isLoading, setIsLoading] = useState(false);
   const { getLocation } = useLocation({ showToasts: false });
 
@@ -81,7 +91,66 @@ export const useStylingChat = () => {
     exchange_count: 0,
   });
 
-  /** Extract context clues from a user message and merge into accumulated context */
+  // Track whether we've already migrated in this hook instance
+  const hasMigratedRef = useRef(false);
+
+  // Persist guest messages to sessionStorage whenever they change
+  useEffect(() => {
+    const checkAndPersist = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session && messages.length > 0) {
+        sessionStorage.setItem('guest_chat_messages', JSON.stringify(messages));
+        sessionStorage.setItem('guest_chat_context', JSON.stringify(conversationCtx));
+      }
+    };
+    checkAndPersist();
+  }, [messages, conversationCtx]);
+
+  // Listen for auth state change to migrate guest conversation
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if ((event === 'SIGNED_IN') && session && !hasMigratedRef.current) {
+        const storedMessages = sessionStorage.getItem('guest_chat_messages');
+        if (!storedMessages) return;
+
+        hasMigratedRef.current = true;
+        try {
+          const guestMessages: ChatMessage[] = JSON.parse(storedMessages);
+          if (guestMessages.length === 0) return;
+
+          // Restore messages into state so user sees them immediately
+          setMessages(guestMessages.map(m => ({ ...m, timestamp: new Date(m.timestamp) })));
+
+          // Save a summary to ai_recommendations so it persists server-side
+          const userMessages = guestMessages.filter(m => m.role === 'user').map(m => m.content);
+          const assistantMessages = guestMessages.filter(m => m.role === 'assistant');
+          const lastRec = [...assistantMessages].reverse().find(m => m.recommendation);
+
+          await supabase.from('ai_recommendations').insert({
+            user_id: session.user.id,
+            recommendation_type: 'migrated_guest_session',
+            occasion: userMessages[0] || 'Guest conversation',
+            reasoning: `Migrated guest conversation (${guestMessages.length} messages): ${userMessages.join(' | ')}`,
+            recommended_items: lastRec?.recommendation?.recommended_items || [],
+            weather_context: { migrated: true, message_count: guestMessages.length },
+          });
+
+          console.log('Migrated guest conversation to authenticated account');
+        } catch (err) {
+          console.warn('Failed to migrate guest conversation:', err);
+        } finally {
+          // Clear guest data
+          sessionStorage.removeItem('guest_chat_messages');
+          sessionStorage.removeItem('guest_chat_context');
+          sessionStorage.removeItem('guest_session_id');
+        }
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+
   const updateContextFromMessage = useCallback((message: string) => {
     setConversationCtx(prev => {
       const ctx = { ...prev };
@@ -637,6 +706,8 @@ export const useStylingChat = () => {
       rejected_items: [],
       exchange_count: 0,
     });
+    sessionStorage.removeItem('guest_chat_messages');
+    sessionStorage.removeItem('guest_chat_context');
   }, []);
 
   return {
