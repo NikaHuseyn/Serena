@@ -319,40 +319,8 @@ export const useStylingChat = () => {
         responseContent += "I've put together some styling suggestions based on your request.";
       }
 
-      // --- Product search based on wardrobe state ---
-      let shoppingTitle: string | undefined;
-      let searchedMissingItems: any[] | undefined;
-
-      if (data?.recommendation?.recommended_items) {
-        const flatItems = flattenRecommendedItems(data.recommendation.recommended_items);
-        const wardrobeState = determineWardrobeState(
-          data?.wardrobe_status,
-          flatItems,
-          userMessage,
-        );
-
-        if (wardrobeState !== 'full_match') {
-          shoppingTitle = getSectionTitle(wardrobeState);
-          const occasion = data.recommendation.occasion || userMessage;
-          const budgetTier = data.recommendation.budget_tier;
-
-          try {
-            const productResults = await searchProductsForItems(
-              flatItems,
-              wardrobeState,
-              occasion,
-              budgetTier,
-            );
-            if (productResults.length > 0) {
-              searchedMissingItems = productResults;
-            }
-          } catch (err) {
-            console.warn('Product search failed, falling back to existing missing_items:', err);
-          }
-        }
-      }
-
-      const finalMissingItems = searchedMissingItems || data?.missing_items;
+      // Use server-side wardrobe state and product search results
+      const shoppingTitle = data?.shopping_section_title || undefined;
 
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -361,7 +329,7 @@ export const useStylingChat = () => {
         recommendation: data?.recommendation ? {
           ...data.recommendation,
           ai_insights: data.ai_insights,
-          missing_items: finalMissingItems,
+          missing_items: data.missing_items,
         } : undefined,
         venueContext: venueContext || undefined,
         eventContext: eventContext || undefined,
