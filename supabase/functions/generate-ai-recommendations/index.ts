@@ -1065,285 +1065,441 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
     }
 
     // ============================================
+    // WARDROBE STATE DETECTION
+    // ============================================
+    const EXPLICIT_SHOP_PATTERNS = [
+      /\b(find|show|get)\s+(me\s+)?(something|options?)\s+(to\s+)?(buy|purchase|shop)/i,
+      /\bwhere\s+can\s+i\s+(get|buy|find|purchase)/i,
+      /\bi\s+want\s+something\s+new/i,
+      /\bshop\s+(this|the)\s+look/i,
+      /\bbuy\s+(this|the|a|an|some)/i,
+      /\bshopping\s+(options|suggestions|links)/i,
+      /\bshow\s+me\s+(products|items|things)\s+to\s+buy/i,
+    ];
+    const userMessageText = user_message || occasion || '';
+    const isExplicitShop = EXPLICIT_SHOP_PATTERNS.some(p => p.test(userMessageText));
+
+    const ACCESSORY_KEYWORDS = ['earring', 'necklace', 'bracelet', 'ring', 'watch', 'bag', 'clutch', 'belt', 'scarf', 'hat', 'sunglasses', 'jewellery', 'jewelry', 'cufflinks', 'tie', 'brooch'];
+    const isAccessoryItem = (name: string) => {
+      const lower = (name || '').toLowerCase();
+      return ACCESSORY_KEYWORDS.some(kw => lower.includes(kw));
+    };
+
+    // Determine wardrobe state
+    type WardrobeState = 'no_wardrobe' | 'partial' | 'full_match' | 'explicit_shop';
+    let wardrobeState: WardrobeState;
+
+    if (isExplicitShop) {
+      wardrobeState = 'explicit_shop';
+    } else if (!user || !wardrobeItems || wardrobeItems.length === 0) {
+      wardrobeState = 'no_wardrobe';
+    } else {
+      // Check recommended items for wardrobe coverage
+      const items = recommendationData.recommended_items || {};
+      const allItems: any[] = [];
+      for (const [key, val] of Object.entries(items)) {
+        if (['character_suggestions', 'wardrobe_analysis'].includes(key)) continue;
+        if (Array.isArray(val)) allItems.push(...val);
+        else if (val && typeof val === 'object' && 'name' in (val as any)) allItems.push(val);
+      }
+      const fromWardrobe = allItems.filter((i: any) => i.source === 'from_wardrobe').length;
+      const needsPurchase = allItems.filter((i: any) => i.source !== 'from_wardrobe').length;
+      if (fromWardrobe > 0 && needsPurchase === 0) wardrobeState = 'full_match';
+      else if (fromWardrobe > 0 && needsPurchase > 0) wardrobeState = 'partial';
+      else wardrobeState = 'no_wardrobe';
+    }
+
+    // Determine section title
+    const shoppingSectionTitle = wardrobeState === 'full_match' ? '' :
+      (wardrobeState === 'no_wardrobe' || wardrobeState === 'explicit_shop') ? 'Shop This Look' : 'Complete Your Look';
+
+    console.log(`[Wardrobe State] ${wardrobeState} → section: "${shoppingSectionTitle}"`);
+
+    // ============================================
     // PRODUCT SEARCH: 4-Layer Strategy
     // Primary:     ShopStyle Collective API (best data, affiliate revenue)
-    // Secondary:   SerpAPI Google Shopping (fills gaps ShopStyle misses)
+    // Secondary:   Serper Google Shopping (fills gaps ShopStyle misses)
     // Fallback:    Pre-built search URLs (guaranteed, zero cost)
     // Enhancement: Firecrawl for rental/secondhand platforms only
     // ============================================
 
     let shoppingMatches: any[] = [];
-    const missingItems = recommendationData.missing_items_search || [];
-    if (missingItems.length > 0) {
-      console.log('Searching for', missingItems.length, 'missing items');
 
-      const getPriceLimit = (tier: string) => {
-        if (tier === 'budget') return 50;
-        if (tier === 'mid_range') return 150;
-        if (tier === 'luxury') return 9999;
-        return styleProfile?.budget_max || 500;
-      };
+    // For full_match state, skip product search entirely
+    if (wardrobeState === 'full_match') {
+      console.log('[Search] Skipping — full wardrobe match, no products needed');
+    } else {
+      // Determine which items to search for based on wardrobe state
+      let itemsToSearch: any[] = [];
+      const missingItemsFromAI = recommendationData.missing_items_search || [];
 
-      // ── API keys ──
-      const shopStyleApiKey = Deno.env.get('SHOPSTYLE_API_KEY');
-      const serpApiKey = Deno.env.get('SERPAPI_API_KEY');
-      const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+      if (wardrobeState === 'no_wardrobe') {
+        // Search for ALL recommended items (user has nothing)
+        const items = recommendationData.recommended_items || {};
+        for (const [key, val] of Object.entries(items)) {
+          if (['character_suggestions', 'wardrobe_analysis'].includes(key)) continue;
+          if (Array.isArray(val)) {
+            for (const v of val) {
+              if (v && typeof v === 'object' && 'name' in v) {
+                itemsToSearch.push({
+                  item_type: v.name,
+                  style_descriptor: v.reasoning || '',
+                  occasion_suitability: occasion || '',
+                  price_tier: missingItemsFromAI.find((m: any) => m.item_type === v.name)?.price_tier || 'mid_range',
+                  category: key,
+                  search_keywords: v.name.split(/\s+/).slice(0, 5),
+                });
+              }
+            }
+          } else if (val && typeof val === 'object' && 'name' in (val as any)) {
+            const v = val as any;
+            itemsToSearch.push({
+              item_type: v.name,
+              style_descriptor: v.reasoning || '',
+              occasion_suitability: occasion || '',
+              price_tier: missingItemsFromAI.find((m: any) => m.item_type === v.name)?.price_tier || 'mid_range',
+              category: key,
+              search_keywords: v.name.split(/\s+/).slice(0, 5),
+            });
+          }
+        }
+        // For no_wardrobe, skip accessories (lower priority) unless very few items
+        const clothing = itemsToSearch.filter(i => !isAccessoryItem(i.item_type));
+        const accessories = itemsToSearch.filter(i => isAccessoryItem(i.item_type));
+        itemsToSearch = [...clothing, ...accessories.slice(0, 2)];
+      } else if (wardrobeState === 'explicit_shop') {
+        // Search for ALL items regardless of wardrobe
+        const items = recommendationData.recommended_items || {};
+        for (const [key, val] of Object.entries(items)) {
+          if (['character_suggestions', 'wardrobe_analysis'].includes(key)) continue;
+          if (Array.isArray(val)) {
+            for (const v of val) {
+              if (v && typeof v === 'object' && 'name' in v) {
+                itemsToSearch.push({
+                  item_type: v.name,
+                  style_descriptor: v.reasoning || '',
+                  occasion_suitability: occasion || '',
+                  price_tier: missingItemsFromAI.find((m: any) => m.item_type === v.name)?.price_tier || 'mid_range',
+                  category: key,
+                  search_keywords: v.name.split(/\s+/).slice(0, 5),
+                });
+              }
+            }
+          } else if (val && typeof val === 'object' && 'name' in (val as any)) {
+            const v = val as any;
+            itemsToSearch.push({
+              item_type: v.name,
+              style_descriptor: v.reasoning || '',
+              occasion_suitability: occasion || '',
+              price_tier: missingItemsFromAI.find((m: any) => m.item_type === v.name)?.price_tier || 'mid_range',
+              category: key,
+              search_keywords: v.name.split(/\s+/).slice(0, 5),
+            });
+          }
+        }
+      } else {
+        // Partial wardrobe: only search items the AI flagged as missing
+        itemsToSearch = missingItemsFromAI;
+      }
 
-      // ── PRIMARY: ShopStyle Collective API ──
-      const searchShopStyle = async (query: string, maxPrice: number): Promise<any[]> => {
-        if (!shopStyleApiKey) return [];
-        try {
-          const encoded = encodeURIComponent(query);
-          // ShopStyle API v2 — filter by price, UK locale
-          const url = `https://api.shopstyle.com/api/v2/products?pid=${shopStyleApiKey}&fts=${encoded}&offset=0&limit=5&fl=p0:${maxPrice}&fl=d0:GB&fl=b0:GBP`;
-          console.log(`[ShopStyle] Searching: "${query}" (max £${maxPrice})`);
-          const response = await fetch(url);
-          if (!response.ok) {
-            console.warn('[ShopStyle] API error:', response.status);
+      // Cap at 5 items for performance
+      itemsToSearch = itemsToSearch.slice(0, 5);
+
+      if (itemsToSearch.length > 0) {
+        console.log('Searching for', itemsToSearch.length, 'items (state:', wardrobeState, ')');
+
+        const getPriceLimit = (tier: string) => {
+          if (tier === 'budget') return 50;
+          if (tier === 'mid_range') return 150;
+          if (tier === 'luxury') return 9999;
+          return styleProfile?.budget_max || 500;
+        };
+
+        // ── API keys ──
+        const shopStyleApiKey = Deno.env.get('SHOPSTYLE_API_KEY');
+        const serperApiKey = Deno.env.get('SERPER_API_KEY');
+        const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+
+        // ── PRIMARY: ShopStyle Collective API ──
+        const searchShopStyle = async (query: string, maxPrice: number): Promise<any[]> => {
+          if (!shopStyleApiKey) return [];
+          try {
+            const encoded = encodeURIComponent(query);
+            const url = `https://api.shopstyle.com/api/v2/products?pid=${shopStyleApiKey}&fts=${encoded}&offset=0&limit=5&fl=p0:${maxPrice}&fl=d0:GB&fl=b0:GBP`;
+            console.log(`[ShopStyle] Searching: "${query}" (max £${maxPrice})`);
+            const response = await fetch(url);
+            if (!response.ok) {
+              console.warn('[ShopStyle] API error:', response.status);
+              return [];
+            }
+            const data = await response.json();
+            const products = (data.products || []).map((p: any) => ({
+              retailer: p.retailer?.name || p.brand?.name || 'Retailer',
+              product_name: p.name || p.brandedName || 'Product',
+              price: p.priceLabel || (p.price ? `£${p.price}` : null),
+              product_url: p.clickUrl || p.url || '',
+              image_url: p.image?.sizes?.Best?.url || p.image?.sizes?.Large?.url || p.image?.sizes?.Medium?.url || null,
+              source: 'shopstyle',
+            }));
+            console.log(`[ShopStyle] Found ${products.length} products for "${query}"`);
+            return products;
+          } catch (err) {
+            console.warn('[ShopStyle] Error:', err);
             return [];
           }
-          const data = await response.json();
-          const products = (data.products || []).map((p: any) => ({
-            retailer: p.retailer?.name || p.brand?.name || 'Retailer',
-            product_name: p.name || p.brandedName || 'Product',
-            price: p.priceLabel || (p.price ? `£${p.price}` : null),
-            product_url: p.clickUrl || p.url || '',
-            image_url: p.image?.sizes?.Best?.url || p.image?.sizes?.Large?.url || p.image?.sizes?.Medium?.url || null,
-            source: 'shopstyle',
-          }));
-          console.log(`[ShopStyle] Found ${products.length} products for "${query}"`);
-          return products;
-        } catch (err) {
-          console.warn('[ShopStyle] Error:', err);
-          return [];
-        }
-      };
+        };
 
-      // ── SECONDARY: SerpAPI Google Shopping ──
-      const searchGoogleShopping = async (query: string, maxPrice: number): Promise<any[]> => {
-        if (!serpApiKey) return [];
-        try {
-          const encoded = encodeURIComponent(query);
-          const url = `https://serpapi.com/search.json?engine=google_shopping&q=${encoded}&gl=uk&hl=en&google_domain=google.co.uk&api_key=${serpApiKey}&num=5&tbs=mr:1,price:1,ppr_max:${maxPrice}`;
-          console.log(`[SerpAPI] Searching Google Shopping: "${query}"`);
-          const response = await fetch(url);
-          if (!response.ok) {
-            console.warn('[SerpAPI] API error:', response.status);
+        // ── SECONDARY: Serper Google Shopping API ──
+        const searchGoogleShopping = async (query: string, maxPrice: number): Promise<any[]> => {
+          if (!serperApiKey) return [];
+          try {
+            console.log(`[Serper] Searching Google Shopping: "${query}"`);
+            const response = await fetch('https://google.serper.dev/shopping', {
+              method: 'POST',
+              headers: {
+                'X-API-KEY': serperApiKey,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ q: query, gl: 'gb', hl: 'en', num: 8 }),
+            });
+            if (!response.ok) {
+              console.warn('[Serper] API error:', response.status);
+              return [];
+            }
+            const data = await response.json();
+            const results = (data.shopping || [])
+              .map((r: any, idx: number) => {
+                const priceStr = r.price || '';
+                const cleaned = priceStr.replace(/[^0-9.,]/g, '').replace(',', '.');
+                const numericPrice = parseFloat(cleaned);
+                return {
+                  retailer: r.source || 'Retailer',
+                  product_name: r.title || 'Product',
+                  price: !isNaN(numericPrice) ? `£${numericPrice.toFixed(2)}` : (priceStr || null),
+                  numericPrice: !isNaN(numericPrice) ? numericPrice : null,
+                  product_url: r.link || '',
+                  image_url: r.imageUrl || null,
+                  source: 'google_shopping',
+                };
+              })
+              // Filter by price
+              .filter((r: any) => r.numericPrice === null || r.numericPrice <= maxPrice)
+              .slice(0, 5)
+              .map(({ numericPrice, ...rest }: any) => rest); // remove internal field
+            console.log(`[Serper] Found ${results.length} products for "${query}"`);
+            return results;
+          } catch (err) {
+            console.warn('[Serper] Error:', err);
             return [];
           }
-          const data = await response.json();
-          const results = (data.shopping_results || []).slice(0, 5).map((r: any) => ({
-            retailer: r.source || r.merchant?.name || 'Retailer',
-            product_name: r.title || 'Product',
-            price: r.extracted_price ? `£${r.extracted_price}` : (r.price || null),
-            product_url: r.link || r.product_link || '',
-            image_url: r.thumbnail || null,
-            source: 'google_shopping',
+        };
+
+        // ── FALLBACK: Pre-built search URLs (guaranteed, zero cost) ──
+        const buildSearchUrls = (query: string, tier: string): any[] => {
+          const encoded = encodeURIComponent(query);
+          const retailersByTierUrls: Record<string, { name: string; url: string }[]> = {
+            budget: [
+              { name: 'ASOS', url: `https://www.asos.com/search/?q=${encoded}` },
+              { name: 'H&M', url: `https://www2.hm.com/en_gb/search-results.html?q=${encoded}` },
+              { name: 'Zara', url: `https://www.zara.com/uk/en/search?searchTerm=${encoded}` },
+            ],
+            mid_range: [
+              { name: '& Other Stories', url: `https://www.stories.com/en_gbp/search.html?q=${encoded}` },
+              { name: 'Reiss', url: `https://www.reiss.com/uk/search?q=${encoded}` },
+              { name: 'Mango', url: `https://shop.mango.com/gb/search?kw=${encoded}` },
+              { name: 'COS', url: `https://www.cos.com/en_gbp/search.html?q=${encoded}` },
+            ],
+            luxury: [
+              { name: 'Net-a-Porter', url: `https://www.net-a-porter.com/en-gb/shop/search/${encoded}` },
+              { name: 'Selfridges', url: `https://www.selfridges.com/GB/en/cat/?freeText=${encoded}` },
+              { name: 'Matches Fashion', url: `https://www.matchesfashion.com/search?q=${encoded}` },
+            ],
+          };
+          const retailers = retailersByTierUrls[tier] || retailersByTierUrls.mid_range;
+          return retailers.map(r => ({
+            retailer: r.name,
+            product_name: `Search ${r.name} for "${query}"`,
+            price: null,
+            product_url: r.url,
+            image_url: null,
+            source: 'search_url',
           }));
-          console.log(`[SerpAPI] Found ${results.length} products for "${query}"`);
-          return results;
-        } catch (err) {
-          console.warn('[SerpAPI] Error:', err);
-          return [];
-        }
-      };
-
-      // ── FALLBACK: Pre-built search URLs (guaranteed, zero cost) ──
-      const buildSearchUrls = (query: string, tier: string): any[] => {
-        const encoded = encodeURIComponent(query);
-        const retailersByTierUrls: Record<string, { name: string; url: string }[]> = {
-          budget: [
-            { name: 'ASOS', url: `https://www.asos.com/search/?q=${encoded}` },
-            { name: 'H&M', url: `https://www2.hm.com/en_gb/search-results.html?q=${encoded}` },
-            { name: 'Zara', url: `https://www.zara.com/uk/en/search?searchTerm=${encoded}` },
-          ],
-          mid_range: [
-            { name: '& Other Stories', url: `https://www.stories.com/en_gbp/search.html?q=${encoded}` },
-            { name: 'Reiss', url: `https://www.reiss.com/uk/search?q=${encoded}` },
-            { name: 'Mango', url: `https://shop.mango.com/gb/search?kw=${encoded}` },
-            { name: 'COS', url: `https://www.cos.com/en_gbp/search.html?q=${encoded}` },
-          ],
-          luxury: [
-            { name: 'Net-a-Porter', url: `https://www.net-a-porter.com/en-gb/shop/search/${encoded}` },
-            { name: 'Selfridges', url: `https://www.selfridges.com/GB/en/cat/?freeText=${encoded}` },
-            { name: 'Matches Fashion', url: `https://www.matchesfashion.com/search?q=${encoded}` },
-          ],
         };
-        const retailers = retailersByTierUrls[tier] || retailersByTierUrls.mid_range;
-        return retailers.map(r => ({
-          retailer: r.name,
-          product_name: `Search ${r.name} for "${query}"`,
-          price: null,
-          product_url: r.url,
-          image_url: null,
-          source: 'search_url',
-        }));
-      };
 
-      const buildRentalSearchUrls = (query: string): any[] => {
-        const encoded = encodeURIComponent(query);
-        return [
-          { platform: 'HURR', product_name: `Rent on HURR: "${query}"`, price: null, product_url: `https://www.hurr.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
-          { platform: 'By Rotation', product_name: `Rent on By Rotation: "${query}"`, price: null, product_url: `https://www.byrotation.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
-        ];
-      };
-
-      const buildSecondhandSearchUrls = (query: string): any[] => {
-        const encoded = encodeURIComponent(query);
-        return [
-          { platform: 'Vestiaire Collective', product_name: `Shop pre-owned: "${query}"`, price: null, product_url: `https://www.vestiairecollective.com/search/?q=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
-          { platform: 'Vinted', product_name: `Find on Vinted: "${query}"`, price: null, product_url: `https://www.vinted.co.uk/catalog?search_text=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
-          { platform: 'Depop', product_name: `Find on Depop: "${query}"`, price: null, product_url: `https://www.depop.com/search/?q=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
-        ];
-      };
-
-      // ── ENHANCEMENT: Firecrawl for rental & secondhand platforms only ──
-      const searchFirecrawlPlatform = async (query: string, platform: { name: string; domain: string }, type: 'rental' | 'secondhand'): Promise<any> => {
-        if (!firecrawlApiKey) return null;
-        try {
-          const response = await fetch('https://api.firecrawl.dev/v1/search', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${firecrawlApiKey}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              query: `${query} site:${platform.domain}`,
-              limit: 1,
-              scrapeOptions: { formats: ['markdown'] },
-            }),
-          });
-          if (!response.ok) return null;
-          const searchData = await response.json();
-          const result = (searchData?.data || [])[0];
-          if (!result) return null;
-          const markdown = result.markdown || '';
-          const imageUrl = result.metadata?.ogImage || result.metadata?.image || null;
-          if (type === 'rental') {
-            const rentalPriceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?\s*(?:\/\s*day|per\s*day|per\s*occasion|to\s*rent)/i)
-              || markdown.match(/(?:rent|rental|from)\s*£[\d,]+(?:\.\d{2})?/i)
-              || markdown.match(/£[\d,]+(?:\.\d{2})?/);
-            return {
-              platform: platform.name,
-              product_name: result.title || result.metadata?.title || 'Unknown product',
-              price: rentalPriceMatch ? rentalPriceMatch[0] : null,
-              product_url: result.url || '',
-              image_url: imageUrl,
-              type: 'rental',
-              source: 'firecrawl',
-            };
-          } else {
-            const priceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?/);
-            const conditionMatch = markdown.match(/(?:condition|quality)[:\s]*(excellent|very good|good|fair|new with tags|like new|pristine)/i);
-            const condition = conditionMatch ? conditionMatch[1] :
-              markdown.match(/\b(excellent|pristine|like new|new with tags)\b/i) ? 'excellent' :
-              markdown.match(/\b(very good|great condition)\b/i) ? 'good' : null;
-            return {
-              platform: platform.name,
-              product_name: result.title || result.metadata?.title || 'Unknown product',
-              price: priceMatch ? priceMatch[0] : null,
-              product_url: result.url || '',
-              image_url: imageUrl,
-              condition: condition || 'good',
-              type: 'secondhand',
-              source: 'firecrawl',
-            };
-          }
-        } catch (err) {
-          return null;
-        }
-      };
-
-      // ── Run all searches per missing item ──
-      const searchPromises = missingItems.map(async (item: any) => {
-        const keywords = item.search_keywords || [];
-        const category = item.category || '';
-        const maxPrice = getPriceLimit(item.price_tier);
-        const searchQuery = `${item.item_type} ${item.style_descriptor || ''}`.trim();
-        const tier = item.price_tier || 'mid_range';
-
-        // Internal DB search (always runs)
-        const keywordFilters = keywords
-          .map((kw: string) => `name.ilike.%${kw}%,description.ilike.%${kw}%,brand.ilike.%${kw}%`)
-          .join(',');
-
-        let dbQuery = supabase
-          .from('shopping_items')
-          .select('id, name, brand, category, price, rental_price, image_url, retailer_name, retailer_url, colors, sizes, description')
-          .eq('in_stock', true)
-          .lte('price', maxPrice);
-
-        if (category) dbQuery = dbQuery.ilike('category', `%${category}%`);
-        if (keywordFilters) dbQuery = dbQuery.or(keywordFilters);
-
-        const { data: matches } = await dbQuery.order('price', { ascending: true }).limit(3);
-
-        // ── RETAILER RESULTS: ShopStyle → SerpAPI → Search URLs ──
-        // Step 1: Try ShopStyle (primary)
-        let retailer_results = await searchShopStyle(searchQuery, maxPrice);
-
-        // Step 2: If ShopStyle returned <2 results, fill gaps with SerpAPI
-        if (retailer_results.length < 2) {
-          const serpResults = await searchGoogleShopping(searchQuery, maxPrice);
-          retailer_results = [...retailer_results, ...serpResults];
-          if (serpResults.length > 0) {
-            console.log(`[SerpAPI] Filled ${serpResults.length} gaps for "${searchQuery}"`);
-          }
-        }
-
-        // Step 3: If still no results, use guaranteed search URLs
-        if (retailer_results.length === 0) {
-          retailer_results = buildSearchUrls(searchQuery, tier);
-          console.log(`[Fallback] Using search URLs for "${searchQuery}"`);
-        }
-
-        retailer_results = retailer_results.slice(0, 6);
-
-        // ── RENTAL RESULTS: Firecrawl (rental platforms aren't on ShopStyle/Google) → fallback URLs ──
-        const rentalPlatforms = [
-          { name: 'HURR', domain: 'hurr.co.uk' },
-          { name: 'By Rotation', domain: 'byrotation.com' },
-          { name: 'My Wardrobe HQ', domain: 'mywardrobehq.com' },
-          { name: 'On Loan', domain: 'onloan.co.uk' },
-        ];
-        const rentalFirecrawlResults = (await Promise.all(
-          rentalPlatforms.map(p => searchFirecrawlPlatform(searchQuery, p, 'rental'))
-        )).filter(Boolean);
-        let rental_results = rentalFirecrawlResults.length > 0
-          ? rentalFirecrawlResults.slice(0, 3)
-          : buildRentalSearchUrls(searchQuery);
-
-        // ── SECONDHAND RESULTS: Firecrawl → fallback URLs ──
-        const secondhandPlatforms = [
-          { name: 'Vestiaire Collective', domain: 'vestiairecollective.com' },
-          { name: 'Depop', domain: 'depop.com' },
-          { name: 'Vinted', domain: 'vinted.co.uk' },
-          { name: 'The RealReal', domain: 'therealreal.com' },
-        ];
-        const secondhandFirecrawlResults = (await Promise.all(
-          secondhandPlatforms.map(p => searchFirecrawlPlatform(searchQuery, p, 'secondhand'))
-        )).filter(Boolean);
-        let secondhand_results = secondhandFirecrawlResults.length > 0
-          ? secondhandFirecrawlResults.slice(0, 3)
-          : buildSecondhandSearchUrls(searchQuery);
-
-        console.log(`[Result] "${searchQuery}": ${retailer_results.length} retailer (sources: ${[...new Set(retailer_results.map((r: any) => r.source))].join(',')}), ${rental_results.length} rental, ${secondhand_results.length} secondhand`);
-
-        return {
-          item_type: item.item_type,
-          style_descriptor: item.style_descriptor,
-          occasion_suitability: item.occasion_suitability,
-          price_tier: item.price_tier,
-          category: item.category,
-          db_matches: matches || [],
-          retailer_results,
-          rental_results,
-          secondhand_results,
+        const buildRentalSearchUrls = (query: string): any[] => {
+          const encoded = encodeURIComponent(query);
+          return [
+            { platform: 'HURR', product_name: `Rent on HURR: "${query}"`, price: null, product_url: `https://www.hurr.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
+            { platform: 'By Rotation', product_name: `Rent on By Rotation: "${query}"`, price: null, product_url: `https://www.byrotation.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
+          ];
         };
-      });
 
-      shoppingMatches = await Promise.all(searchPromises);
-      console.log('[Search Complete]', shoppingMatches.map(m => `${m.item_type}: ${m.retailer_results?.length || 0} retailer`).join(', '));
+        const buildSecondhandSearchUrls = (query: string): any[] => {
+          const encoded = encodeURIComponent(query);
+          return [
+            { platform: 'Vestiaire Collective', product_name: `Shop pre-owned: "${query}"`, price: null, product_url: `https://www.vestiairecollective.com/search/?q=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
+            { platform: 'Vinted', product_name: `Find on Vinted: "${query}"`, price: null, product_url: `https://www.vinted.co.uk/catalog?search_text=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
+            { platform: 'Depop', product_name: `Find on Depop: "${query}"`, price: null, product_url: `https://www.depop.com/search/?q=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
+          ];
+        };
+
+        // ── ENHANCEMENT: Firecrawl for rental & secondhand platforms only ──
+        const searchFirecrawlPlatform = async (query: string, platform: { name: string; domain: string }, type: 'rental' | 'secondhand'): Promise<any> => {
+          if (!firecrawlApiKey) return null;
+          try {
+            const response = await fetch('https://api.firecrawl.dev/v1/search', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${firecrawlApiKey}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                query: `${query} site:${platform.domain}`,
+                limit: 1,
+                scrapeOptions: { formats: ['markdown'] },
+              }),
+            });
+            if (!response.ok) return null;
+            const searchData = await response.json();
+            const result = (searchData?.data || [])[0];
+            if (!result) return null;
+            const markdown = result.markdown || '';
+            const imageUrl = result.metadata?.ogImage || result.metadata?.image || null;
+            if (type === 'rental') {
+              const rentalPriceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?\s*(?:\/\s*day|per\s*day|per\s*occasion|to\s*rent)/i)
+                || markdown.match(/(?:rent|rental|from)\s*£[\d,]+(?:\.\d{2})?/i)
+                || markdown.match(/£[\d,]+(?:\.\d{2})?/);
+              return {
+                platform: platform.name,
+                product_name: result.title || result.metadata?.title || 'Unknown product',
+                price: rentalPriceMatch ? rentalPriceMatch[0] : null,
+                product_url: result.url || '',
+                image_url: imageUrl,
+                type: 'rental',
+                source: 'firecrawl',
+              };
+            } else {
+              const priceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?/);
+              const conditionMatch = markdown.match(/(?:condition|quality)[:\s]*(excellent|very good|good|fair|new with tags|like new|pristine)/i);
+              const condition = conditionMatch ? conditionMatch[1] :
+                markdown.match(/\b(excellent|pristine|like new|new with tags)\b/i) ? 'excellent' :
+                markdown.match(/\b(very good|great condition)\b/i) ? 'good' : null;
+              return {
+                platform: platform.name,
+                product_name: result.title || result.metadata?.title || 'Unknown product',
+                price: priceMatch ? priceMatch[0] : null,
+                product_url: result.url || '',
+                image_url: imageUrl,
+                condition: condition || 'good',
+                type: 'secondhand',
+                source: 'firecrawl',
+              };
+            }
+          } catch (err) {
+            return null;
+          }
+        };
+
+        // Enrich generic search queries with occasion context
+        const enrichQuery = (itemName: string): string => {
+          const wordCount = itemName.trim().split(/\s+/).length;
+          if (wordCount <= 2 && occasion) {
+            return `${itemName} ${occasion}`.slice(0, 80);
+          }
+          return itemName;
+        };
+
+        // ── Run all searches per item ──
+        const searchPromises = itemsToSearch.map(async (item: any) => {
+          const keywords = item.search_keywords || [];
+          const category = item.category || '';
+          const maxPrice = getPriceLimit(item.price_tier);
+          const rawQuery = `${item.item_type} ${item.style_descriptor || ''}`.trim();
+          const searchQuery = enrichQuery(rawQuery);
+          const tier = item.price_tier || 'mid_range';
+
+          // Internal DB search (always runs)
+          const keywordFilters = keywords
+            .map((kw: string) => `name.ilike.%${kw}%,description.ilike.%${kw}%,brand.ilike.%${kw}%`)
+            .join(',');
+
+          let dbQuery = supabase
+            .from('shopping_items')
+            .select('id, name, brand, category, price, rental_price, image_url, retailer_name, retailer_url, colors, sizes, description')
+            .eq('in_stock', true)
+            .lte('price', maxPrice);
+
+          if (category) dbQuery = dbQuery.ilike('category', `%${category}%`);
+          if (keywordFilters) dbQuery = dbQuery.or(keywordFilters);
+
+          const { data: matches } = await dbQuery.order('price', { ascending: true }).limit(3);
+
+          // ── RETAILER RESULTS: ShopStyle → Serper → Search URLs ──
+          let retailer_results = await searchShopStyle(searchQuery, maxPrice);
+
+          // Fill gaps with Serper if ShopStyle returned <2 results
+          if (retailer_results.length < 2) {
+            const serperResults = await searchGoogleShopping(searchQuery, maxPrice);
+            retailer_results = [...retailer_results, ...serperResults];
+            if (serperResults.length > 0) {
+              console.log(`[Serper] Filled ${serperResults.length} gaps for "${searchQuery}"`);
+            }
+          }
+
+          // Guaranteed fallback search URLs
+          if (retailer_results.length === 0) {
+            retailer_results = buildSearchUrls(searchQuery, tier);
+            console.log(`[Fallback] Using search URLs for "${searchQuery}"`);
+          }
+
+          retailer_results = retailer_results.slice(0, 6);
+
+          // ── RENTAL RESULTS ──
+          const rentalPlatforms = [
+            { name: 'HURR', domain: 'hurr.co.uk' },
+            { name: 'By Rotation', domain: 'byrotation.com' },
+            { name: 'My Wardrobe HQ', domain: 'mywardrobehq.com' },
+            { name: 'On Loan', domain: 'onloan.co.uk' },
+          ];
+          const rentalFirecrawlResults = (await Promise.all(
+            rentalPlatforms.map(p => searchFirecrawlPlatform(searchQuery, p, 'rental'))
+          )).filter(Boolean);
+          let rental_results = rentalFirecrawlResults.length > 0
+            ? rentalFirecrawlResults.slice(0, 3)
+            : buildRentalSearchUrls(searchQuery);
+
+          // ── SECONDHAND RESULTS ──
+          const secondhandPlatforms = [
+            { name: 'Vestiaire Collective', domain: 'vestiairecollective.com' },
+            { name: 'Depop', domain: 'depop.com' },
+            { name: 'Vinted', domain: 'vinted.co.uk' },
+            { name: 'The RealReal', domain: 'therealreal.com' },
+          ];
+          const secondhandFirecrawlResults = (await Promise.all(
+            secondhandPlatforms.map(p => searchFirecrawlPlatform(searchQuery, p, 'secondhand'))
+          )).filter(Boolean);
+          let secondhand_results = secondhandFirecrawlResults.length > 0
+            ? secondhandFirecrawlResults.slice(0, 3)
+            : buildSecondhandSearchUrls(searchQuery);
+
+          console.log(`[Result] "${searchQuery}": ${retailer_results.length} retailer (sources: ${[...new Set(retailer_results.map((r: any) => r.source))].join(',')}), ${rental_results.length} rental, ${secondhand_results.length} secondhand`);
+
+          return {
+            item_type: item.item_type,
+            style_descriptor: item.style_descriptor,
+            occasion_suitability: item.occasion_suitability,
+            price_tier: item.price_tier,
+            category: item.category,
+            db_matches: matches || [],
+            retailer_results,
+            rental_results,
+            secondhand_results,
+          };
+        });
+
+        shoppingMatches = await Promise.all(searchPromises);
+        console.log('[Search Complete]', shoppingMatches.map(m => `${m.item_type}: ${m.retailer_results?.length || 0} retailer`).join(', '));
+      }
     }
 
     // Save recommendation to database only if user is authenticated
