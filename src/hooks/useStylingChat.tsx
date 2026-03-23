@@ -52,7 +52,17 @@ interface ConversationContext {
 }
 
 export const useStylingChat = () => {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // Restore guest conversation from sessionStorage on mount
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const stored = sessionStorage.getItem('guest_chat_messages');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.map((m: any) => ({ ...m, timestamp: new Date(m.timestamp) }));
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
   const [isLoading, setIsLoading] = useState(false);
   const { getLocation } = useLocation({ showToasts: false });
 
