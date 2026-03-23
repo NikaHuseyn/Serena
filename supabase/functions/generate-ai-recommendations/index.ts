@@ -666,7 +666,7 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
     const occ = (occasion || '').toLowerCase();
     const desc = (eventDetails?.description || '').toLowerCase();
     const isHistorical = /(1920|1930|1940|victorian|edwardian|regency|vintage|period)/.test(`${occ} ${desc}`);
-    const model = 'openai/gpt-5-mini';
+    const model = 'openai/gpt-4.1-mini';
 
     // Define tool for structured output
     const outfitTool = {
