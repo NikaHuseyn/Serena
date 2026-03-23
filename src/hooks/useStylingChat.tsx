@@ -302,7 +302,14 @@ export const useStylingChat = () => {
         eventContext: eventContext || undefined,
         conversationHistory: isFollowUp ? conversationContext : [],
         originalRequest: isFollowUp ? originalRequest : null,
-        guestEmail: session?.user?.email || `guest-${Date.now()}@temp.com`,
+        guestEmail: session?.user?.email || (() => {
+          let guestId = sessionStorage.getItem('guest_session_id');
+          if (!guestId) {
+            guestId = `guest-${Math.random().toString(36).substr(2, 9)}`;
+            sessionStorage.setItem('guest_session_id', guestId);
+          }
+          return `${guestId}@guest.temp`;
+        })(),
         user_message: userMessage,
         accumulated_context: conversationCtx,
         ...extraContext,

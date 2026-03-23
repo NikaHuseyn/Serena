@@ -403,6 +403,17 @@ Then add any dress code or practical notes as a brief footnote — NOT the headl
 End with exactly ONE follow-up question (or the refinement invitation if all context is known).
 
 
+${isGuest ? `
+GUEST USER CONTEXT:
+This user is browsing as a guest. They have no saved wardrobe or style preferences. Give excellent general styling advice for the occasion. Do not reference any personal wardrobe items. Show shopping options across all price tiers since no budget is set.
+` : !wardrobeItems?.length ? `
+AUTHENTICATED USER WITH EMPTY WARDROBE:
+This user is logged in but has not uploaded their wardrobe yet. Give excellent general styling advice and show shopping options.
+` : `
+AUTHENTICATED USER WITH WARDROBE:
+This user has ${wardrobeItems.length} wardrobe items. Prioritise their existing clothes in recommendations.
+`}
+
 USER STYLE PROFILE:
 - Name: ${styleProfile?.display_name || 'Not specified'}
 - Based in: ${styleProfile?.home_city || 'Not specified'}

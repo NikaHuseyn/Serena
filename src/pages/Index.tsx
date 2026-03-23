@@ -77,6 +77,12 @@ const IndexContent = () => {
 
             <p className="text-xs text-muted-foreground/60 mb-2">Try an example:</p>
             <SuggestionChips suggestions={suggestions} onSelect={sendMessage} />
+
+            {!user && (
+              <p className="text-sm text-muted-foreground mt-6 text-center">
+                ✨ Sign in to consult your AI stylist, share looks with friends, and build a wardrobe that works for your life.
+              </p>
+            )}
           </div>
         ) : (
           <div className="flex-1 py-4 overflow-y-auto">
