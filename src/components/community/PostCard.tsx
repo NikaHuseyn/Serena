@@ -36,6 +36,7 @@ interface PostCardProps {
   currentUserId?: string;
   onToggleLike: (postId: string) => void;
   onShare: (postId: string) => void;
+  onDelete?: (postId: string) => void;
 }
 
 const PostCard = ({ post, currentUserId, onToggleLike, onShare }: PostCardProps) => {
