@@ -245,6 +245,17 @@ const StyleStep: React.FC<{
         </div>
       </div>
 
+      {/* Primary occasions */}
+      <div>
+        <h3 className="font-semibold mb-2">What do you usually dress for?</h3>
+        <p className="text-sm text-muted-foreground mb-4">Select your most common occasions</p>
+        <div className="flex flex-wrap gap-2">
+          {['Work / Office', 'Casual everyday', 'Date nights', 'Weddings & events', 'Travel', 'Gym & active', 'Nights out', 'Business meetings', 'Brunch & lunch', 'Holidays & festivals'].map(occ => (
+            <ChipButton key={occ} label={occ} selected={data.primaryOccasions.includes(occ)} onToggle={() => onChange({ ...data, primaryOccasions: toggleList(occ, data.primaryOccasions) })} />
+          ))}
+        </div>
+      </div>
+
       {/* Items to avoid */}
       <div>
         <h3 className="font-semibold mb-2">Anything you never wear?</h3>
