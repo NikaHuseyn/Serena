@@ -566,68 +566,7 @@ HISTORICAL ACCURACY REQUIREMENTS:
 - 1940s: structured shoulders, A-line skirts, victory rolls, utility fashion, peep-toe pumps`;
 })()}
 
-Please provide a detailed outfit recommendation in the following JSON format:
-{
-  "character_suggestions": [
-    {
-      "name": "Character Name",
-      "source": "Book/Play/Movie",
-      "description": "Brief description of character and their style",
-      "difficulty": "Easy/Medium/Hard",
-      "why_perfect": "Why this character fits the theme and user"
-    }
-  ],
-  "wardrobe_analysis": {
-    "items_used": ["List wardrobe items that fit this outfit"],
-    "gaps_identified": ["What's missing from wardrobe for this occasion"],
-    "coverage_score": 0.6
-  },
-  "recommended_items": {
-    "top": { 
-      "name": "specific item name", 
-      "source": "from_wardrobe" OR "needs_purchase" OR "needs_rental",
-      "wardrobe_item_id": "actual wardrobe item name if from_wardrobe, null otherwise",
-      "confidence": 0.9, 
-      "reasoning": "detailed explanation",
-      "styling_tips": "how to wear this piece effectively",
-      "alternatives": ["alternative option 1", "alternative option 2"],
-      "purchase_options": {
-        "uk_retailers": [{ "store": "Store name", "price_range": "£50-100", "url": "https://..." }],
-        "rental_platforms": [{ "platform": "Platform name", "price_range": "£20-40 rental", "url": "https://..." }],
-        "vintage_options": [{ "source": "Vintage store", "price_range": "£30-80", "url": "https://..." }]
-      }
-    },
-    "bottom": { "name": "...", "source": "...", "confidence": 0.85, "reasoning": "...", "styling_tips": "...", "purchase_options": {} },
-    "shoes": { "name": "...", "source": "...", "confidence": 0.8, "reasoning": "...", "styling_tips": "...", "purchase_options": {} },
-    "accessories": [{ "name": "...", "confidence": 0.7, "reasoning": "...", "styling_tips": "..." }],
-    "outerwear": { "name": "...", "confidence": 0.75, "reasoning": "...", "styling_tips": "..." }
-  },
-  "missing_items_search": [
-    {
-      "item_type": "navy midi dress",
-      "style_descriptor": "elegant, fitted",
-      "occasion_suitability": "smart casual to formal",
-      "price_tier": "budget|mid_range|luxury",
-      "category": "dresses|tops|bottoms|shoes|outerwear|accessories|knitwear|bags",
-      "search_keywords": ["navy", "midi", "dress", "fitted"]
-    }
-  ],
-  "overall_confidence": 0.87,
-  "style_reasoning": "Open with ONE sentence referencing the specific setting and emotional goal. Then describe how the outfit will look. End with exactly ONE follow-up question or refinement invitation.",
-  "color_analysis": "...",
-  "fit_guidance": "...",
-  "styling_tips": ["tip 1", "tip 2", "tip 3"],
-  "alternative_options": {
-    "if_cooler": "...", "if_warmer": "...", "dressy_version": "...", "casual_version": "...",
-    "budget_friendly": "...", "investment_pieces": "..."
-  },
-  "shopping_suggestions": {
-    "priority_items": ["item 1", "item 2"],
-    "total_investment_needed": "£X-Y",
-    "wardrobe_utilization": "X%",
-    "recommended_approach": "..."
-  }
-}
+Please provide a detailed outfit recommendation as a structured tool call.
 
 Focus on creating a cohesive, stylish outfit. 
 
