@@ -9,8 +9,9 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 import { useStylingChat } from '@/hooks/useStylingChat';
 import { Sparkles, RotateCcw, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BudgetProvider } from '@/components/chat/BudgetContext';
 
-const Index = () => {
+const IndexContent = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
   const { messages, isLoading, sendMessage, clearChat, selectEmotionalTone, selectedEmotionalTone } = useStylingChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -55,15 +56,15 @@ const Index = () => {
               Get AI styling advice for any occasion, share looks with friends, and build a wardrobe that works
             </p>
             {!user && (
-              <p className="text-sm text-muted-foreground mb-8">
-                Sign in to get personalised recommendations from your wardrobe
+              <p className="text-sm text-foreground mb-8">
+                ✨ Sign in to consult your AI stylist, share looks with friends, and build a wardrobe that works for your life.
               </p>
             )}
 
             <div className="grid grid-cols-3 gap-6 mb-10 max-w-lg w-full">
               {[
                 { icon: Sparkles, label: 'Event-ready outfits', desc: 'Describe any occasion and get a complete look' },
-                { icon: Heart, label: 'Your wardrobe, your style', desc: 'Sign in to get suggestions from clothes you own' },
+                { icon: Heart, label: 'Style together', desc: 'Share looks, get feedback from friends, and discover what works for you' },
                 { icon: MessageCircle, label: 'Refine until it\'s perfect', desc: 'Chat to adjust colors, formality, budget' },
               ].map(({ icon: Icon, label, desc }) => (
                 <div key={label} className="flex flex-col items-center text-center gap-1.5">
@@ -94,6 +95,7 @@ const Index = () => {
                   weatherNote={message.weatherNote}
                   wardrobeStatus={message.wardrobeStatus}
                   emotionalToneCards={message.emotionalToneCards}
+                  toneRecommendations={message.toneRecommendations}
                   selectedToneId={selectedEmotionalTone}
                   onSelectTone={selectEmotionalTone}
                   shoppingTitle={message.shoppingTitle}
@@ -130,5 +132,11 @@ const Index = () => {
     </div>
   );
 };
+
+const Index = () => (
+  <BudgetProvider>
+    <IndexContent />
+  </BudgetProvider>
+);
 
 export default Index;

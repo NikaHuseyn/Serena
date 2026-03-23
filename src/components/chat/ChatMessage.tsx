@@ -39,13 +39,14 @@ interface ChatMessageProps {
     has_wardrobe: boolean;
   };
   emotionalToneCards?: EmotionalTone[];
+  toneRecommendations?: any;
   selectedToneId?: string | null;
   onSelectTone?: (toneId: string) => void;
   isLoading?: boolean;
   shoppingTitle?: string;
 }
 
-const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, selectedToneId, onSelectTone, isLoading, shoppingTitle }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, selectedToneId, onSelectTone, isLoading, shoppingTitle }: ChatMessageProps) => {
   const isUser = role === 'user';
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
