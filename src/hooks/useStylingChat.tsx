@@ -557,9 +557,9 @@ export const useStylingChat = () => {
         const explicitTone = detectExplicitEmotionalGoal(userMessage);
 
         if (vagueVenue && !explicitTone && !selectedEmotionalTone) {
-          // Vague occasion, no explicit tone → generate multi-tone options
+          // Vague occasion, no explicit tone → single immediate recommendation + tone cards as refinement
           const tones = getRelevantEmotionalTones(vagueVenue.mealType, vagueVenue.occasionType);
-          await executeMultiToneRecommendation(userMessage, vagueVenue, tones);
+          await executeVagueRecommendation(userMessage, vagueVenue, tones);
         } else {
           // Either explicit tone, previously selected tone, or non-venue request
           const extraContext: Record<string, any> = {};
