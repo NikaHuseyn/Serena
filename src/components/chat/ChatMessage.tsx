@@ -4,7 +4,6 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import CompleteYourLook from './CompleteYourLook';
 import EmotionalToneCards from './EmotionalToneCards';
-import BudgetChips from './BudgetChips';
 
 interface OutfitItem {
   name: string;
@@ -43,11 +42,9 @@ interface ChatMessageProps {
   onSelectTone?: (toneId: string) => void;
   isLoading?: boolean;
   shoppingTitle?: string;
-  budgetChips?: boolean;
-  onBudgetChipSelect?: (chip: string) => void;
 }
 
-const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, onSelectTone, isLoading, shoppingTitle, budgetChips, onBudgetChipSelect }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, onSelectTone, isLoading, shoppingTitle }: ChatMessageProps) => {
   const isUser = role === 'user';
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
@@ -258,10 +255,6 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
               </button>
             ))}
           </div>
-        )}
-        {/* Budget chips */}
-        {budgetChips && onBudgetChipSelect && (
-          <BudgetChips onSelect={onBudgetChipSelect} />
         )}
         {/* Emotional tone cards for vague occasions */}
         {emotionalToneCards && toneRecommendations && onSelectTone && (
