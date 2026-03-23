@@ -333,11 +333,6 @@ const CompletionStep: React.FC<{
   styleData: StyleData;
   onComplete: () => void;
 }> = ({ profileData, styleData, onComplete }) => {
-  const budgetLabel = profileData.budgetNoLimit
-    ? 'No limit'
-    : profileData.defaultBudget
-      ? `${profileData.budgetCurrency || '£'}${profileData.defaultBudget}`
-      : 'Not set';
 
   return (
     <div className="text-center space-y-6 py-8">
