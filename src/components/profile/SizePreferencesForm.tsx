@@ -246,48 +246,6 @@ const SizePreferencesForm = ({ profile, onUpdate }: SizePreferencesFormProps) =>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Brand-Specific Sizes</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex flex-wrap gap-2">
-            {userSizes?.map((size) => (
-              <Badge key={size.id} variant="secondary" className="flex items-center gap-2">
-                {size.brand ? `${size.brand} - ` : ''}{size.category}: {size.size_value}
-                <button
-                  onClick={() => deleteSizeMutation.mutate(size.id)}
-                  className="ml-1 hover:text-red-500"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Input
-              placeholder="Category (e.g., jeans)"
-              value={newSizeCategory}
-              onChange={(e) => setNewSizeCategory(e.target.value)}
-            />
-            <Input
-              placeholder="Size (e.g., UK 10, US M)"
-              value={newSizeValue}
-              onChange={(e) => setNewSizeValue(e.target.value)}
-            />
-            <Input
-              placeholder="Brand (optional)"
-              value={newSizeBrand}
-              onChange={(e) => setNewSizeBrand(e.target.value)}
-            />
-            <Button onClick={handleAddSize} disabled={!newSizeCategory || !newSizeValue}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Size
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
