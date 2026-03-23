@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingBag, Shirt, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CompleteYourLook from './CompleteYourLook';
+import { BudgetProvider } from './BudgetContext';
 
 interface EmotionalTone {
   id: string;
@@ -145,7 +146,9 @@ const EmotionalToneCards = ({ tones, toneRecommendations, onSelectTone, wardrobe
 
           {/* Missing items with shopping tabs */}
           {selectedData.missing_items && selectedData.missing_items.length > 0 && (
-            <CompleteYourLook missingItems={selectedData.missing_items} />
+            <BudgetProvider>
+              <CompleteYourLook missingItems={selectedData.missing_items} />
+            </BudgetProvider>
           )}
         </div>
       )}
