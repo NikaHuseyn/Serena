@@ -731,12 +731,8 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
         body.tools = [outfitTool];
         body.tool_choice = { type: 'function', function: { name: 'provide_outfit_recommendation' } };
       }
-      if (model.startsWith('openai/')) {
-        body.max_completion_tokens = 16000;
-      } else {
-        body.max_tokens = 3000;
-        body.temperature = 0.7;
-      }
+      body.max_tokens = 3000;
+      body.temperature = 0.7;
       return body;
     };
 
