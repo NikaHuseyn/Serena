@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShoppingBag, Shirt, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CompleteYourLook from './CompleteYourLook';
+import { BudgetProvider } from './BudgetContext';
 
 interface EmotionalTone {
   id: string;
