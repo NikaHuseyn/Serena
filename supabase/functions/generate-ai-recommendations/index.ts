@@ -431,7 +431,7 @@ USER STYLE PROFILE:
 
 LEARNED PREFERENCES FROM FEEDBACK:
 ${userInsights?.length > 0 ? userInsights.map(insight => 
-  `- ${insight.insight_type}: ${JSON.stringify(insight.insight_data)} (confidence: ${Math.round(insight.confidence_score * 100)}%)`
+  `- ${insight.insight_type}: ${insight.insight_value || 'N/A'} (confidence: ${Math.round((insight.confidence_score || 0.5) * 100)}%)`
 ).join('\n') : '- No learned preferences yet'}
 
 RECENT FEEDBACK ANALYSIS:
