@@ -464,10 +464,33 @@ export const useStylingChat = () => {
     }
   }, [fetchWeather, callRecommendation, buildWeatherNote]);
 
-  const selectEmotionalTone = useCallback((toneId: string) => {
+  const selectEmotionalTone = useCallback(async (toneId: string) => {
     setSelectedEmotionalTone(toneId);
     setConversationCtx(prev => ({ ...prev, emotional_goal: toneId }));
-  }, []);
+
+    // Find the original user message that triggered the tone cards
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user');
+    if (!lastUserMsg) return;
+
+    // Find the tone label for display
+    const lastAssistantMsg = [...messages].reverse().find(m => m.role === 'assistant' && m.emotionalToneCards);
+    const toneInfo = lastAssistantMsg?.emotionalToneCards?.find((t: EmotionalTone) => t.id === toneId);
+    const toneLabel = toneInfo?.label || toneId;
+
+    setIsLoading(true);
+    try {
+      const vagueVenue = detectVagueVenue(lastUserMsg.content);
+      const extraContext: Record<string, any> = { emotional_tone: toneId };
+      if (vagueVenue) {
+        extraContext.inferred_venue_formality = vagueVenue.inferredFormality;
+        extraContext.inferred_meal_type = vagueVenue.mealType;
+        extraContext.inferred_occasion_type = vagueVenue.occasionType;
+      }
+      await executeRecommendation(lastUserMsg.content, null, null, extraContext);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [messages, executeRecommendation]);
 
   const sendMessage = useCallback(async (userMessage: string) => {
     // Update accumulated context from this message
