@@ -212,7 +212,8 @@ const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: Comple
     (m) =>
       (m.retailer_results?.length || 0) > 0 ||
       (m.rental_results?.length || 0) > 0 ||
-      (m.secondhand_results?.length || 0) > 0
+      (m.secondhand_results?.length || 0) > 0 ||
+      (m.fallback_links?.length || 0) > 0
   );
 
   if (itemsWithResults.length === 0) return null;
