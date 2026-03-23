@@ -104,7 +104,6 @@ const ProfileStep: React.FC<{
   onChange: (d: ProfileData) => void;
   onNext: () => void;
 }> = ({ data, onChange, onNext }) => {
-  const { currency, chips } = useBudget();
 
   const bodyTypes = ['Petite', 'Tall', 'Curvy', 'Athletic', 'Straight', 'Hourglass', 'Pear', 'Apple'];
   const fitOptions = ['Fitted & tailored', 'Relaxed & loose', 'Depends on the piece', 'Mix of both'];
