@@ -174,48 +174,6 @@ const ProfileStep: React.FC<{
         </div>
       </div>
 
-      {/* Default budget (optional) */}
-      <div>
-        <label className="block text-sm font-medium mb-3">Default budget</label>
-        <div className="relative mb-3">
-          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-medium">{currency.symbol}</span>
-          <Input
-            type="text"
-            inputMode="numeric"
-            className="pl-8"
-            placeholder={data.budgetNoLimit ? 'No limit' : 'Enter your budget'}
-            disabled={data.budgetNoLimit}
-            value={data.budgetNoLimit ? '' : (data.defaultBudget !== null ? String(data.defaultBudget) : '')}
-            onChange={e => {
-              const v = e.target.value.replace(/\D/g, '');
-              onChange({ ...data, defaultBudget: v ? parseInt(v, 10) : null, budgetNoLimit: false, budgetCurrency: currency.symbol });
-            }}
-          />
-        </div>
-        <div className="flex flex-wrap gap-2">
-          {budgetChips.map(c => (
-            <ChipButton
-              key={c.label}
-              label={c.label}
-              selected={!data.budgetNoLimit && data.defaultBudget === c.value}
-              onToggle={() => onChange({ ...data, defaultBudget: c.value, budgetNoLimit: false, budgetCurrency: currency.symbol })}
-            />
-          ))}
-          <button
-            type="button"
-            onClick={() => onChange({ ...data, budgetNoLimit: !data.budgetNoLimit, defaultBudget: data.budgetNoLimit ? data.defaultBudget : null })}
-            className={cn(
-              "px-4 py-2.5 rounded-xl border-2 transition-all duration-200 text-sm font-medium",
-              data.budgetNoLimit
-                ? "border-primary bg-primary/10 text-primary"
-                : "border-border hover:border-primary/50 hover:bg-primary/5"
-            )}
-          >
-            No limit ✨
-          </button>
-        </div>
-      </div>
-
       <Button onClick={onNext} className="btn-fashion w-full" disabled={!data.displayName.trim() || !data.homeCity.trim()}>
         Continue <ArrowRight className="h-4 w-4 ml-2" />
       </Button>
