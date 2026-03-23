@@ -221,7 +221,7 @@ const StyleStep: React.FC<{
 
       {/* Colour swatches */}
       <div>
-        <h3 className="font-semibold mb-4">Favourite Colours (Choose 3-6)</h3>
+        <h3 className="font-semibold mb-4">Favourite Colours</h3>
         <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
           {colorPreferences.map(color => (
             <button
