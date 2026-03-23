@@ -127,10 +127,12 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
         </div>
 
         {recommendation.missing_items?.length > 0 && (
-          <CompleteYourLook
-            missingItems={recommendation.missing_items}
-            title={shoppingTitle}
-          />
+          <BudgetProvider>
+            <CompleteYourLook
+              missingItems={recommendation.missing_items}
+              title={shoppingTitle}
+            />
+          </BudgetProvider>
         )}
 
         {recommendation.ai_insights?.styling_tips?.length > 0 && (
