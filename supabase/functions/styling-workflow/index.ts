@@ -1093,7 +1093,7 @@ async function generateFinalStyling(
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          model: event.is_historical ? "openai/gpt-5" : "google/gemini-2.5-flash",
+          model: event.is_historical ? "openai/gpt-4.1" : "google/gemini-2.5-flash",
           messages: [
             {
               role: "system",
