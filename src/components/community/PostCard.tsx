@@ -3,7 +3,7 @@ import React, { useMemo } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal } from 'lucide-react';
+import { MoreHorizontal, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,9 +36,10 @@ interface PostCardProps {
   currentUserId?: string;
   onToggleLike: (postId: string) => void;
   onShare: (postId: string) => void;
+  onDelete?: (postId: string) => void;
 }
 
-const PostCard = ({ post, currentUserId, onToggleLike, onShare }: PostCardProps) => {
+const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: PostCardProps) => {
   const { badges } = useBadges(post.user_id);
   const isOwnPost = currentUserId === post.user_id;
 
@@ -80,6 +81,15 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare }: PostCardProps)
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {isOwnPost && onDelete && (
+                <DropdownMenuItem
+                  onClick={() => onDelete(post.id)}
+                  className="text-destructive focus:text-destructive"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Post
+                </DropdownMenuItem>
+              )}
               {!isOwnPost && (
                 <ReportPostDialog postId={post.id}>
                   <DropdownMenuItem onSelect={(e) => e.preventDefault()}>

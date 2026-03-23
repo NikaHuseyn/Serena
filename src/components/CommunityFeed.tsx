@@ -14,7 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 const CommunityFeed = () => {
-  const { posts, loading, error, createPost, toggleLike } = useSocialPosts();
+  const { posts, loading, error, createPost, toggleLike, deletePost } = useSocialPosts();
   const { toast } = useToast();
   const [showPostForm, setShowPostForm] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -144,6 +144,14 @@ const CommunityFeed = () => {
                 currentUserId={currentUserId}
                 onToggleLike={toggleLike}
                 onShare={handleShare}
+                onDelete={async (postId) => {
+                  try {
+                    await deletePost(postId);
+                    toast({ title: "Post deleted", description: "Your post has been removed." });
+                  } catch {
+                    toast({ title: "Error", description: "Failed to delete post.", variant: "destructive" });
+                  }
+                }}
               />
             ))
           )}

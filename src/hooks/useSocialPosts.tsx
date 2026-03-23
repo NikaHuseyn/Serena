@@ -196,6 +196,31 @@ export const useSocialPosts = () => {
     }
   };
 
+  const deletePost = async (postId: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const { error } = await supabase
+        .from('posts')
+        .delete()
+        .eq('id', postId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setPosts(prev => prev.filter(p => p.id !== postId));
+
+      trackEvent({
+        event_type: 'community_post_delete',
+        event_data: { post_id: postId }
+      });
+    } catch (err) {
+      console.error('Error deleting post:', err);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
   }, []);
@@ -206,6 +231,7 @@ export const useSocialPosts = () => {
     error,
     createPost,
     toggleLike,
+    deletePost,
     refetch: fetchPosts
   };
 };
