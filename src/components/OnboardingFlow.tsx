@@ -206,12 +206,12 @@ const StyleStep: React.FC<{
           <Palette className="h-12 w-12 text-primary" />
         </div>
         <h2 className="text-2xl font-bold mb-2">Your Style DNA</h2>
-        <p className="text-muted-foreground">Select styles and colours that resonate with you</p>
+        <p className="text-muted-foreground">Select styles and colours that resonate with you — all optional</p>
       </div>
 
       {/* Style personalities */}
       <div>
-        <h3 className="font-semibold mb-4">Style Personalities (Choose 2-4)</h3>
+        <h3 className="font-semibold mb-4">Style Personalities</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {styleTypes.map(s => (
             <ChipButton key={s} label={s} selected={data.selectedStyles.includes(s)} onToggle={() => onChange({ ...data, selectedStyles: toggleList(s, data.selectedStyles) })} />
@@ -221,7 +221,7 @@ const StyleStep: React.FC<{
 
       {/* Colour swatches */}
       <div>
-        <h3 className="font-semibold mb-4">Favourite Colours (Choose 3-6)</h3>
+        <h3 className="font-semibold mb-4">Favourite Colours</h3>
         <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
           {colorPreferences.map(color => (
             <button
@@ -283,7 +283,7 @@ const StyleStep: React.FC<{
         </div>
       </div>
 
-      <Button onClick={onNext} className="btn-fashion w-full" disabled={data.selectedStyles.length === 0 || data.selectedColors.length === 0}>
+      <Button onClick={onNext} className="btn-fashion w-full">
         Save My Style <ArrowRight className="h-4 w-4 ml-2" />
       </Button>
     </div>
