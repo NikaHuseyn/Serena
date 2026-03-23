@@ -43,6 +43,8 @@ export interface ChatMessage {
     content: string;
     missing_items?: any[];
   }>;
+  /** Section title: "Shop This Look" or "Complete Your Look" */
+  shoppingTitle?: string;
   timestamp: Date;
 }
 
