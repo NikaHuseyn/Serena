@@ -24,8 +24,8 @@ const PostInteractions = ({ post, onToggleLike, onShare, compact = false }: Post
         onClick={() => onToggleLike(post.id)}
         className={`${
           post.user_liked 
-            ? 'text-rose-600 hover:text-rose-700' 
-            : 'text-gray-600 hover:text-rose-600'
+            ? 'text-destructive hover:text-destructive/80' 
+            : 'text-muted-foreground hover:text-destructive'
         } transition-colors`}
       >
         <Heart 
@@ -39,7 +39,7 @@ const PostInteractions = ({ post, onToggleLike, onShare, compact = false }: Post
       <Button
         variant="ghost"
         size={compact ? "sm" : "default"}
-        className="text-gray-600 hover:text-blue-600 transition-colors"
+        className="text-muted-foreground hover:text-primary transition-colors"
       >
         <MessageCircle className="h-4 w-4 mr-1" />
         <span className={compact ? 'text-xs' : 'text-sm'}>
@@ -51,7 +51,7 @@ const PostInteractions = ({ post, onToggleLike, onShare, compact = false }: Post
         variant="ghost"
         size={compact ? "sm" : "default"}
         onClick={() => onShare(post.id)}
-        className="text-gray-600 hover:text-green-600 transition-colors"
+        className="text-muted-foreground hover:text-primary transition-colors"
       >
         <Share2 className="h-4 w-4" />
       </Button>
