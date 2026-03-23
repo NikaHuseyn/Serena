@@ -95,6 +95,7 @@ const IndexContent = () => {
                   weatherNote={message.weatherNote}
                   wardrobeStatus={message.wardrobeStatus}
                   emotionalToneCards={message.emotionalToneCards}
+                  toneRecommendations={message.toneRecommendations}
                   selectedToneId={selectedEmotionalTone}
                   onSelectTone={selectEmotionalTone}
                   shoppingTitle={message.shoppingTitle}
