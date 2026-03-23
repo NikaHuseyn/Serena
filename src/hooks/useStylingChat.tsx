@@ -229,6 +229,7 @@ export const useStylingChat = () => {
         conversationHistory: isFollowUp ? conversationContext : [],
         originalRequest: isFollowUp ? originalRequest : null,
         guestEmail: session?.user?.email || `guest-${Date.now()}@temp.com`,
+        user_message: userMessage,
         ...extraContext,
       },
       headers
