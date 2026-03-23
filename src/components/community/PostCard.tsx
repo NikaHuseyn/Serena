@@ -11,6 +11,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import PostInteractions from './PostInteractions';
+import CommentSection from './CommentSection';
 import FollowButton from './FollowButton';
 import BadgeDisplay from './BadgeDisplay';
 import ReportPostDialog from './ReportPostDialog';
@@ -152,6 +153,9 @@ const PostCard = ({ post, onToggleLike, onShare }: PostCardProps) => {
           onToggleLike={onToggleLike}
           onShare={onShare}
         />
+
+        {/* Comments */}
+        <CommentSection postId={post.id} commentsCount={post.comments_count} />
 
         {/* Post Date */}
         <div className="mt-4 text-xs text-gray-500">

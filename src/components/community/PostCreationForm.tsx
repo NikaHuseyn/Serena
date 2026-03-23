@@ -3,7 +3,9 @@ import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { Camera, Send, X } from 'lucide-react';
+import { Camera, Send, X, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface PostCreationFormProps {
   onCreatePost: (postData: { caption: string; tags?: string[]; image_urls: string[] }) => Promise<void>;
@@ -32,40 +34,71 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  const uploadFiles = async (userId: string): Promise<string[]> => {
+    const urls: string[] = [];
+    for (const file of selectedFiles) {
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+      const { error } = await supabase.storage
+        .from('community-photos')
+        .upload(path, file, { contentType: file.type });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage
+        .from('community-photos')
+        .getPublicUrl(path);
+      urls.push(urlData.publicUrl);
+    }
+    return urls;
+  };
+
   const handleCreatePost = async () => {
-    // Allow posting without text
-    
     try {
       setSubmitting(true);
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('Please sign in to post');
+        return;
+      }
+
+      let imageUrls: string[] = [];
+      if (selectedFiles.length > 0) {
+        imageUrls = await uploadFiles(user.id);
+      }
+
       await onCreatePost({
         caption: newPostText || '',
-        tags: ['New', 'Style'],
-        image_urls: ['/placeholder-outfit-new.jpg'] // Placeholder for now
+        tags: [],
+        image_urls: imageUrls,
       });
-      
+
       setNewPostText('');
+      previewUrls.forEach(url => URL.revokeObjectURL(url));
+      setPreviewUrls([]);
+      setSelectedFiles([]);
       onClose();
     } catch (err) {
       console.error('Failed to create post:', err);
+      toast.error('Failed to create post. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <Card className="border-2 border-pink-200">
+    <Card className="border-2 border-border">
       <CardContent className="p-4">
         <div className="space-y-4">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-rose-600 rounded-full flex items-center justify-center">
-              <span className="text-white text-sm font-medium">You</span>
+            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
+              <span className="text-primary-foreground text-sm font-medium">You</span>
             </div>
             <div>
-              <p className="font-medium">Share your outfit</p>
-              <p className="text-sm text-gray-500">Show off your style to the community</p>
+              <p className="font-medium text-foreground">Share your outfit</p>
+              <p className="text-sm text-muted-foreground">Show off your style to the community</p>
             </div>
           </div>
-          
+
           <input
             ref={fileInputRef}
             type="file"
@@ -108,25 +141,32 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
               <p className="text-muted-foreground">Click to upload outfit photo</p>
             </button>
           )}
-          
+
           <Input
             value={newPostText}
             onChange={(e) => setNewPostText(e.target.value)}
             placeholder="Describe your outfit, occasion, or styling tips..."
-            className="resize-none"
           />
-          
+
           <div className="flex justify-end space-x-2">
-            <Button variant="outline" onClick={onClose}>
+            <Button variant="outline" onClick={onClose} disabled={submitting}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleCreatePost}
               disabled={submitting}
-              className="bg-gradient-to-r from-pink-500 to-rose-600"
             >
-              <Send className="h-4 w-4 mr-2" />
-              {submitting ? 'Sharing...' : 'Share'}
+              {submitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-2" />
+                  Share
+                </>
+              )}
             </Button>
           </div>
         </div>
