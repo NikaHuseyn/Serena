@@ -13,6 +13,24 @@ interface PostCreationFormProps {
 const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
   const [newPostText, setNewPostText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [previewUrls, setPreviewUrls] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const validFiles = files.filter(f => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024);
+    if (validFiles.length === 0) return;
+    setSelectedFiles(prev => [...prev, ...validFiles]);
+    const urls = validFiles.map(f => URL.createObjectURL(f));
+    setPreviewUrls(prev => [...prev, ...urls]);
+  };
+
+  const removeImage = (index: number) => {
+    URL.revokeObjectURL(previewUrls[index]);
+    setPreviewUrls(prev => prev.filter((_, i) => i !== index));
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
 
   const handleCreatePost = async () => {
     // Allow posting without text
