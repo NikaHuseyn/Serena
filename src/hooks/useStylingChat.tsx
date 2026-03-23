@@ -29,6 +29,8 @@ export interface ChatMessage {
   };
   /** Emotional tone cards for vague occasions */
   emotionalToneCards?: EmotionalTone[];
+  /** Tone-specific recommendations returned after selecting an emotional tone */
+  toneRecommendations?: any;
   /** Section title: "Shop This Look" or "Complete Your Look" */
   shoppingTitle?: string;
   timestamp: Date;
