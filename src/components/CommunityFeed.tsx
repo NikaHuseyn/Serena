@@ -144,6 +144,14 @@ const CommunityFeed = () => {
                 currentUserId={currentUserId}
                 onToggleLike={toggleLike}
                 onShare={handleShare}
+                onDelete={async (postId) => {
+                  try {
+                    await deletePost(postId);
+                    toast({ title: "Post deleted", description: "Your post has been removed." });
+                  } catch {
+                    toast({ title: "Error", description: "Failed to delete post.", variant: "destructive" });
+                  }
+                }}
               />
             ))
           )}
