@@ -348,7 +348,7 @@ const CompletionStep: React.FC<{
         <p>🎨 Style: <strong>{styleData.selectedStyles.join(' · ') || 'Not set'}</strong></p>
         <p>❤️ Loves: <strong>{styleData.selectedColors.join(', ') || 'Not set'}</strong></p>
         {profileData.bodyType && <p>👤 Body type: <strong>{profileData.bodyType}</strong></p>}
-        <p>💰 Budget: <strong>{budgetLabel}</strong></p>
+        
         {styleData.shoppingPreference && <p>🛍️ Shopping: <strong>{styleData.shoppingPreference}</strong></p>}
       </div>
 
