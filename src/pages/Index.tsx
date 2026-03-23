@@ -9,9 +9,8 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 import { useStylingChat } from '@/hooks/useStylingChat';
 import { Sparkles, RotateCcw, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { BudgetProvider } from '@/components/chat/BudgetContext';
 
-const IndexContent = () => {
+const Index = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
   const { messages, isLoading, sendMessage, clearChat, selectEmotionalTone } = useStylingChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -38,11 +37,6 @@ const IndexContent = () => {
   }
 
   const hasMessages = messages.length > 0;
-
-  const handleBudgetChipSelect = (chip: string) => {
-    // Send the budget selection as a message to Oracle
-    sendMessage(`My budget is: ${chip}`);
-  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col pt-14">
@@ -103,8 +97,6 @@ const IndexContent = () => {
                   toneRecommendations={message.toneRecommendations}
                   onSelectTone={selectEmotionalTone}
                   shoppingTitle={message.shoppingTitle}
-                  budgetChips={message.budgetChips}
-                  onBudgetChipSelect={handleBudgetChipSelect}
                 />
               ))}
               {isLoading && <ChatMessage role="assistant" content="" isLoading />}
@@ -138,11 +130,5 @@ const IndexContent = () => {
     </div>
   );
 };
-
-const Index = () => (
-  <BudgetProvider>
-    <IndexContent />
-  </BudgetProvider>
-);
 
 export default Index;

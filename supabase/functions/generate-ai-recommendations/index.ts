@@ -61,6 +61,8 @@ serve(async (req) => {
       is_multi_tone = false,
       // User's raw message for explicit shop intent detection
       user_message = null,
+      // Accumulated conversation context
+      accumulated_context = null,
     } = await req.json();
 
     // Helper to parse AI JSON safely
@@ -130,7 +132,7 @@ serve(async (req) => {
         .from('wardrobe_items')
         .select('*')
         .eq('user_id', user.id)
-        .limit(50); // Increased to analyze more wardrobe items
+        .limit(50);
       wardrobeItems = userWardrobeItems;
 
       // Fetch user preference insights from feedback
@@ -192,14 +194,12 @@ serve(async (req) => {
     };
     
     let detectedCountry: string | null = null;
-    // Check city names first (more specific)
     for (const [city, country] of Object.entries(cityToCountry)) {
       if (countryDetectionText.toLowerCase().includes(city.toLowerCase())) {
         detectedCountry = country;
         break;
       }
     }
-    // Then check country names
     if (!detectedCountry) {
       for (const country of knownCountries) {
         if (countryDetectionText.toLowerCase().includes(country.toLowerCase())) {
@@ -221,8 +221,145 @@ serve(async (req) => {
       }
     }
 
+    // ============================================
+    // CONVERSATIONAL CONTEXT — build accumulated knowledge
+    // ============================================
+    const ctx = accumulated_context || {};
+    const exchangeCount = ctx.exchange_count || 0;
+    const knownLocation = ctx.location || (styleProfile?.home_city ? styleProfile.home_city : null);
+    const knownVenue = ctx.venue_type || (venueContext?.venue_name ? venueContext.venue_name : null);
+    const knownEmotionalGoal = ctx.emotional_goal || emotional_tone_label || emotional_tone || null;
+    const knownCompany = ctx.who_with || null;
+    const knownBudget = ctx.budget || null;
+    const knownDressCode = ctx.dress_code || (venueContext?.dress_code && venueContext.dress_code !== 'none_specified' ? venueContext.dress_code : null) || (eventContext?.dress_code && eventContext.dress_code !== 'none_specified' ? eventContext.dress_code : null);
+    const knownDate = ctx.date || null;
+    const userPreferences = ctx.style_preferences || [];
+    const likedItems = ctx.liked_items || [];
+    const rejectedItems = ctx.rejected_items || [];
+
+    // Determine what's still missing and pick the ONE most important follow-up question
+    let followUpQuestion: string | null = null;
+    if (exchangeCount < 3) {
+      const userMsg = (user_message || occasion || '').toLowerCase();
+      
+      // Priority 1: Location/venue/dress code
+      if (!knownLocation && !knownVenue && !knownDressCode && !venueContext && !eventContext) {
+        // Check if the user already mentioned a location in this message
+        const mentionsLocation = Object.keys(cityToCountry).some(city => userMsg.includes(city.toLowerCase()));
+        if (!mentionsLocation) {
+          followUpQuestion = "Where are you headed? Any idea what kind of place — or is there a dress code?";
+        }
+      }
+      // Priority 2: Date (for weather)
+      else if (!knownDate && !weatherData?.forecastDate) {
+        const mentionsDate = /\b(today|tonight|tomorrow|this weekend|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}(?:st|nd|rd|th))\b/i.test(userMsg);
+        if (!mentionsDate && knownLocation) {
+          followUpQuestion = "When is it — so I can check the forecast for you?";
+        }
+      }
+      // Priority 3: Budget (only when shopping)
+      else if (!knownBudget) {
+        const mentionsBudget = /budget|£|£?\d+|\$|under|spend|afford|price/i.test(userMsg);
+        if (!mentionsBudget) {
+          // Only ask about budget when we have enough other context
+          if (knownLocation && (knownVenue || knownDressCode)) {
+            followUpQuestion = "Do you have a budget in mind?";
+          }
+        }
+      }
+      // Priority 4: Who they're with
+      else if (!knownCompany) {
+        const mentionsCompany = /\b(date|romantic|partner|boyfriend|girlfriend|husband|wife|friends?|mates?|girls?|guys?|lads?|colleagues?|boss|client|family|parents?|mum|dad|solo|alone)\b/i.test(userMsg);
+        if (!mentionsCompany) {
+          followUpQuestion = "Is this a date night, friends thing, or something else?";
+        }
+      }
+      // Priority 5: Emotional goal (last resort)
+      else if (!knownEmotionalGoal) {
+        const mentionsTone = /\b(romantic|sexy|confident|powerful|bold|cool|edgy|relaxed|casual|fun|playful|elegant|chic|warm|friendly|professional|polished)\b/i.test(userMsg);
+        if (!mentionsTone) {
+          followUpQuestion = "How do you want to feel — romantic, confident, bold, relaxed, something else?";
+        }
+      }
+    }
+
+    // If we've had 3+ exchanges or everything is known, use a soft invitation
+    if (exchangeCount >= 3 && !followUpQuestion) {
+      followUpQuestion = null; // No more questions, just respond
+    }
+
+    // Build assumption line for when info is missing
+    const assumptions: string[] = [];
+    if (!knownLocation && !venueContext && !eventContext) {
+      const city = styleProfile?.home_city || 'a neutral international setting';
+      assumptions.push(city);
+    }
+    if (!knownVenue && !venueContext && !eventContext && !knownDressCode) {
+      // Infer from occasion
+      const occ = (occasion || '').toLowerCase();
+      if (occ.includes('dinner') || occ.includes('restaurant')) assumptions.push('restaurant dinner');
+      else if (occ.includes('party') || occ.includes('night out')) assumptions.push('night out');
+      else if (occ.includes('brunch')) assumptions.push('daytime brunch');
+      else if (occ.includes('wedding')) assumptions.push('wedding');
+      else if (occ.includes('work') || occ.includes('office') || occ.includes('interview')) assumptions.push('professional setting');
+      else if (occ.includes('date')) assumptions.push('date night');
+    }
+    if (!knownEmotionalGoal && !emotional_tone) {
+      const occ = (occasion || '').toLowerCase();
+      if (occ.includes('date') || occ.includes('romantic')) assumptions.push('romantic vibe');
+      else if (occ.includes('work') || occ.includes('interview') || occ.includes('meeting')) assumptions.push('polished and professional');
+      else if (occ.includes('friend') || occ.includes('brunch') || occ.includes('casual')) assumptions.push('relaxed and put-together');
+      else if (occ.includes('party') || occ.includes('night out') || occ.includes('club')) assumptions.push('bold and confident');
+    }
+
+    const assumptionLine = assumptions.length > 0 
+      ? `Assuming ${assumptions.join(', ')} — here's what I'd suggest:\n\n`
+      : '';
+
 // Enhanced AI prompt with more context
-    const prompt = `You are an expert fashion stylist and costume consultant with deep knowledge of fashion trends, literary characters, theatrical costume design, and themed party styling. Create a highly personalized outfit recommendation.
+    const prompt = `You are an expert fashion stylist called Oracle. You are conversational, warm, and opinionated — like a stylish best friend.
+
+CORE BEHAVIOUR:
+- ALWAYS give a recommendation immediately, no matter how little information you have.
+- Make smart assumptions when information is missing. State assumptions briefly in ONE line before the recommendation.
+- NEVER refuse to recommend or say you need more information.
+- After your recommendation, ask EXACTLY ONE follow-up question — the single most important missing piece of context.
+- If you have all the context you need, end with "Does this feel right, or want me to adjust anything?" instead of a question.
+- NEVER ask more than one question per response.
+- NEVER ask about something the user already stated.
+- Questions should sound natural and friendly, like a friend talking — never like a form field.
+- Maximum 3 follow-up exchanges, then stop asking and just respond.
+
+${followUpQuestion ? `
+FOLLOW-UP QUESTION TO ASK (ask this at the END of your response, after the recommendation):
+"${followUpQuestion}"
+` : exchangeCount < 3 ? `
+All key context is known. End your response with: "Does this feel right, or want me to adjust anything?"
+` : `
+You've already had ${exchangeCount} exchanges. Do NOT ask any more questions. Just give the recommendation and invite refinement naturally.
+`}
+
+${assumptions.length > 0 ? `
+ASSUMPTIONS TO STATE (put this in ONE brief line before your recommendation):
+${assumptions.join(', ')}
+` : ''}
+
+${accumulated_context ? `
+ACCUMULATED CONVERSATION CONTEXT (what Oracle already knows from this conversation):
+- Location: ${ctx.location || 'not yet known'}
+- Venue: ${ctx.venue_type || 'not yet specified'}
+- Dress code: ${ctx.dress_code || 'not yet specified'}
+- Emotional goal: ${ctx.emotional_goal || 'not yet specified'}
+- Who with: ${ctx.who_with || 'not yet specified'}
+- Budget: ${ctx.budget || 'not yet specified'}
+- Date/time: ${ctx.date || 'not yet specified'}
+- Style preferences mentioned: ${(ctx.style_preferences || []).join(', ') || 'none yet'}
+- Items they liked: ${(ctx.liked_items || []).join(', ') || 'none yet'}
+- Items they rejected: ${(ctx.rejected_items || []).join(', ') || 'none yet'}
+- Exchange count: ${exchangeCount}
+
+IMPORTANT: Acknowledge new information naturally in one short sentence before giving your updated recommendation. Do NOT repeat context the user already knows.
+` : ''}
 
 YOUR PRIORITY FRAMEWORK — FOLLOW THIS EXACT ORDER:
 
@@ -239,10 +376,10 @@ If NO dress code exists or can be inferred, move directly to Priority 2.
 PRIORITY 2 — VISUAL ENVIRONMENT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Within the dress code constraint, reason about what will look visually STUNNING in the specific setting:
-- Lighting: candlelit dinner? outdoor golden hour? neon-lit bar? gallery spotlights? Consider how fabrics catch light, how colours shift under different lighting.
-- Visual backdrop: beach, city skyline, rustic interior, modern minimalist space, lush garden, white architecture. Choose pieces that complement or deliberately contrast with the setting.
-- Colour palette of the setting: recommend colours that will photograph well and stand out (or blend elegantly) against the likely environment. A burgundy dress pops against white minimalist interiors; pastels glow in golden-hour garden light.
-- Whether the setting is photography-heavy — how the outfit reads on camera, flash-friendly fabrics, patterns that photograph well.
+- Lighting: candlelit dinner? outdoor golden hour? neon-lit bar? gallery spotlights?
+- Visual backdrop: beach, city skyline, rustic interior, modern minimalist space
+- Colour palette of the setting: recommend colours that will photograph well
+- Whether the setting is photography-heavy
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRIORITY 3 — EMOTIONAL GOAL
@@ -252,16 +389,15 @@ Within the above constraints, reason about how the user wants to FEEL:
 - Girls night out → fun, confident, memorable
 - Work/networking → authoritative, polished
 - Family occasion → appropriate but still stylish
-- Solo/performance → expressive, ownable
-The emotional goal may be provided as a user selection. If no selection was made, infer it from the occasion and proceed — do NOT ask again. Every item should serve this emotional goal.
+The emotional goal may be provided as a user selection. If no selection was made, infer it from the occasion and proceed — do NOT ask again.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PRIORITY 4 — PHYSICAL CONTEXT
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Practical considerations applied last:
-- Standing all night vs seated dinner — comfort in shoes, fabric drape
-- Dancing vs dining — movement, breathability, will the outfit restrict or flow?
-- Indoor to outdoor transitions — layering strategy, temperature shifts
+- Standing all night vs seated dinner
+- Dancing vs dining
+- Indoor to outdoor transitions
 - Weather and temperature
 - Comfort for duration of event
 
@@ -271,6 +407,7 @@ OUTPUT FORMAT
 Lead the recommendation with ONE sentence that references the specific setting and emotional goal — NEVER a generic opener like "Here's what I'd suggest" or "For this occasion".
 Then give the outfit recommendation.
 Then add any dress code or practical notes as a brief footnote — NOT the headline.
+End with exactly ONE follow-up question (or the refinement invitation if all context is known).
 
 
 USER STYLE PROFILE:
@@ -393,11 +530,11 @@ ${eventContext?.source === 'scraped' ? `
 - Style Keywords: ${eventContext.style_keywords?.join(', ') || 'None'}
 - Practical Notes: ${eventContext.practical_notes || 'None'}
 
-CRITICAL: This event information was scraped from the actual event's website. You MUST tailor the outfit recommendation to match this event's specific dress code, setting (indoor/outdoor), and time of day. If the event is outdoor, consider layering and practical footwear. If evening, lean more formal. This takes priority over generic occasion-based styling.
+CRITICAL: This event information was scraped from the actual event's website. You MUST tailor the outfit recommendation to match this event's specific dress code, setting (indoor/outdoor), and time of day.
 ` : eventContext?.source === 'name_only' ? `
 🎫 EVENT MENTIONED: "${eventContext.event_name}"${eventContext.event_type ? ` (${eventContext.event_type})` : ''}
 
-We could not scrape the event's website for details. Use your own knowledge of this event to infer the likely dress code, setting (indoor/outdoor), time of day, and formality level. Factor this into the outfit recommendation. If you don't recognise the event, make reasonable assumptions based on the event type.
+We could not scrape the event's website for details. Use your own knowledge of this event to infer the likely dress code, setting (indoor/outdoor), time of day, and formality level.
 ` : ''}
 
 ${(eventContext && venueContext) ? `
@@ -406,14 +543,14 @@ ${(eventContext && venueContext) ? `
 2. Venue formality and atmosphere from the scraped VENUE page
 3. Event type inferred from the user's message
 4. Your general knowledge (fallback)
-If the event dress code conflicts with the venue dress code, follow the EVENT dress code. Use the venue context for atmosphere and styling cues.
+If the event dress code conflicts with the venue dress code, follow the EVENT dress code.
 ` : ''}
 
 ${culturalNorms.length > 0 ? `
 🌍 CULTURAL DRESS NORMS FOR ${detectedCountry?.toUpperCase()} (from travel research - FOLLOW THESE):
 ${culturalNorms.map(n => `**${n.context_type.replace(/_/g, ' ').toUpperCase()}:** ${n.guidance.slice(0, 500)}`).join('\n\n')}
 
-CRITICAL: These are real cultural dress expectations for ${detectedCountry}. Your outfit recommendation MUST respect these norms. If modesty is expected, do not suggest revealing clothing. If religious site dress codes apply and the user mentions visiting temples/mosques/churches, ensure the outfit complies.
+CRITICAL: These are real cultural dress expectations for ${detectedCountry}. Your outfit recommendation MUST respect these norms.
 ` : ''}
 
 🚫 ABSOLUTE PROHIBITION FOR HISTORICAL/THEMED EVENTS 🚫
@@ -427,39 +564,27 @@ NEVER SUGGEST ANY OF THE FOLLOWING MODERN ITEMS:
 - Modern midi dresses that aren't period-cut
 - Contemporary shirt dresses, wrap dresses, or modern silhouettes
 - Athleisure, sportswear, or casual modern wear
-- Modern boots (unless authentic period style like Victorian lace-up boots)
-- Baseball caps, modern accessories
-- Any clothing item invented after the specified historical period
 
 ONLY SUGGEST:
 - Authentic period garments (bias-cut gowns for 1930s, drop-waist for 1920s, etc.)
 - Period-appropriate shoes (T-strap heels, Mary Janes, Oxford pumps from that era)
 - Historically accurate accessories (period hats, gloves, beaded bags, fur stoles)
 - Vintage or reproduction pieces that are true to the era
-- Items from costume shops, vintage specialists, or period fashion retailers
-
-IF YOU SUGGEST MODERN ITEMS LIKE JEANS OR SNEAKERS FOR A HISTORICAL EVENT, THE RECOMMENDATION WILL BE REJECTED.
 ` : ''}
 
 STYLING BRIEF:
 ${recommendationType === 'event_outfit' ? 
-  `Create an outfit specifically tailored for this event. ${(occasion?.toLowerCase().includes('1930') || occasion?.toLowerCase().includes('1920') || occasion?.toLowerCase().includes('1940') || eventDetails?.description?.toLowerCase().includes('1930') || eventDetails?.description?.toLowerCase().includes('1920')) ? '⚠️ CRITICAL HISTORICAL ACCURACY REQUIRED ⚠️: This is a PERIOD EVENT. Every single item must be authentically from or accurately reproduce the specified historical era. Modern clothing is FORBIDDEN.' : ''} ${eventDetails?.description || occasion || ''}` :
+  `Create an outfit specifically tailored for this event. ${(occasion?.toLowerCase().includes('1930') || occasion?.toLowerCase().includes('1920') || occasion?.toLowerCase().includes('1940') || eventDetails?.description?.toLowerCase().includes('1930') || eventDetails?.description?.toLowerCase().includes('1920')) ? '⚠️ CRITICAL HISTORICAL ACCURACY REQUIRED ⚠️' : ''} ${eventDetails?.description || occasion || ''}` :
   'Create a versatile daily outfit that reflects the user\'s personal style while being practical for their lifestyle.'
 }
 
 HISTORICAL ACCURACY REQUIREMENTS (when applicable):
 If the occasion mentions "1930s", "1920s", "1940s" or any historical period:
-- 1930s: bias-cut silk gowns, midi-to-floor length, Art Deco beading, T-strap heels, cloche or wide-brimmed hats, fur stoles, satin fabrics
+- 1930s: bias-cut silk gowns, midi-to-floor length, Art Deco beading, T-strap heels
 - 1920s: drop-waist dresses, knee-length, fringe, beading, feather headbands, Mary Jane heels
 - 1940s: structured shoulders, A-line skirts, victory rolls, utility fashion, peep-toe pumps
-- Suggest ONLY vintage shops, costume rental platforms (HURR, By Rotation with period sections), theatrical costume shops
-- Reference authentic period fashion icons and designers from that exact era
 
-CRITICAL: Use the learned preferences and recent feedback to improve this recommendation. Pay special attention to:
-1. Aspects the user consistently likes/dislikes from previous feedback
-2. Learned preferences with high confidence scores
-3. Improvement suggestions from past recommendations
-4. Color, style, and fit preferences that have been reinforced through positive feedback
+CRITICAL: Use the learned preferences and recent feedback to improve this recommendation.
 
 Please provide a detailed outfit recommendation in the following JSON format:
 {
@@ -483,98 +608,19 @@ Please provide a detailed outfit recommendation in the following JSON format:
       "source": "from_wardrobe" OR "needs_purchase" OR "needs_rental",
       "wardrobe_item_id": "actual wardrobe item name if from_wardrobe, null otherwise",
       "confidence": 0.9, 
-      "reasoning": "detailed explanation of why this works for the user's body type, style preferences, and occasion",
+      "reasoning": "detailed explanation",
       "styling_tips": "how to wear this piece effectively",
       "alternatives": ["alternative option 1", "alternative option 2"],
-      "character_connection": "how this relates to the suggested character if themed",
       "purchase_options": {
-        "uk_retailers": [
-          {
-            "store": "Store name (e.g., ASOS, Zara, Selfridges)",
-            "price_range": "£50-100",
-            "url": "https://direct-link-to-search-or-category",
-            "notes": "Why this retailer is good for this item"
-          }
-        ],
-        "rental_platforms": [
-          {
-            "platform": "Platform name (e.g., HURR, By Rotation, Rent the Runway)",
-            "price_range": "£20-40 rental",
-            "url": "https://direct-link",
-            "notes": "Rental duration and benefits"
-          }
-        ],
-        "vintage_options": [
-          {
-            "source": "Vintage store or online marketplace",
-            "price_range": "£30-80",
-            "url": "https://link-to-search",
-            "notes": "What to look for"
-          }
-        ]
+        "uk_retailers": [{ "store": "Store name", "price_range": "£50-100", "url": "https://..." }],
+        "rental_platforms": [{ "platform": "Platform name", "price_range": "£20-40 rental", "url": "https://..." }],
+        "vintage_options": [{ "source": "Vintage store", "price_range": "£30-80", "url": "https://..." }]
       }
     },
-    "bottom": { 
-      "name": "specific item name",
-      "source": "from_wardrobe" OR "needs_purchase" OR "needs_rental",
-      "wardrobe_item_id": "actual wardrobe item name if from_wardrobe, null otherwise",
-      "confidence": 0.85, 
-      "reasoning": "detailed explanation",
-      "styling_tips": "how to style this piece",
-      "alternatives": ["alternative option 1", "alternative option 2"],
-      "character_connection": "how this relates to the suggested character if themed",
-      "purchase_options": {
-        "uk_retailers": [],
-        "rental_platforms": [],
-        "vintage_options": []
-      }
-    },
-    "shoes": { 
-      "name": "specific item name",
-      "source": "from_wardrobe" OR "needs_purchase" OR "needs_rental",
-      "wardrobe_item_id": "actual wardrobe item name if from_wardrobe, null otherwise",
-      "confidence": 0.8, 
-      "reasoning": "detailed explanation",
-      "styling_tips": "how to choose and style shoes",
-      "alternatives": ["alternative option 1", "alternative option 2"],
-      "character_connection": "how this relates to the suggested character if themed",
-      "purchase_options": {
-        "uk_retailers": [],
-        "rental_platforms": [],
-        "vintage_options": []
-      }
-    },
-    "accessories": [
-      { 
-        "name": "specific accessory name",
-        "source": "from_wardrobe" OR "needs_purchase" OR "needs_rental",
-        "wardrobe_item_id": "actual wardrobe item name if from_wardrobe, null otherwise",
-        "confidence": 0.7, 
-        "reasoning": "why this accessory complements the outfit",
-        "styling_tips": "how to incorporate this accessory",
-        "character_connection": "how this relates to the suggested character if themed",
-        "purchase_options": {
-          "uk_retailers": [],
-          "rental_platforms": [],
-          "vintage_options": []
-        }
-      }
-    ],
-    "outerwear": { 
-      "name": "specific outerwear name",
-      "source": "from_wardrobe" OR "needs_purchase" OR "needs_rental",
-      "wardrobe_item_id": "actual wardrobe item name if from_wardrobe, null otherwise",
-      "confidence": 0.75, 
-      "reasoning": "weather and style considerations",
-      "styling_tips": "layering advice",
-      "alternatives": ["alternative option 1", "alternative option 2"],
-      "character_connection": "how this relates to the suggested character if themed",
-      "purchase_options": {
-        "uk_retailers": [],
-        "rental_platforms": [],
-        "vintage_options": []
-      }
-    }
+    "bottom": { "name": "...", "source": "...", "confidence": 0.85, "reasoning": "...", "styling_tips": "...", "purchase_options": {} },
+    "shoes": { "name": "...", "source": "...", "confidence": 0.8, "reasoning": "...", "styling_tips": "...", "purchase_options": {} },
+    "accessories": [{ "name": "...", "confidence": 0.7, "reasoning": "...", "styling_tips": "..." }],
+    "outerwear": { "name": "...", "confidence": 0.75, "reasoning": "...", "styling_tips": "..." }
   },
   "missing_items_search": [
     {
@@ -587,132 +633,32 @@ Please provide a detailed outfit recommendation in the following JSON format:
     }
   ],
   "overall_confidence": 0.87,
-  "style_reasoning": "Open with ONE sentence referencing the specific setting and emotional goal — never a generic opener. Then describe how the outfit will look in that lighting and backdrop, what emotional impact it creates, and how colours/silhouettes work with the environment. Add any dress code compliance or practical notes as a brief footnote at the end — never the headline.",
-  "color_analysis": "Detailed explanation of color choices and how they work with the user's preferences and complexion",
-  "fit_guidance": "Specific advice on fit and silhouette based on body type and preferences",
-  "styling_tips": [
-    "Professional tip 1 about proportions and silhouette",
-    "Practical advice about comfort and functionality", 
-    "Style enhancement tip about accessories or details",
-    "Maintenance or care tip for the recommended pieces"
-  ],
+  "style_reasoning": "Open with ONE sentence referencing the specific setting and emotional goal. Then describe how the outfit will look. End with exactly ONE follow-up question or refinement invitation.",
+  "color_analysis": "...",
+  "fit_guidance": "...",
+  "styling_tips": ["tip 1", "tip 2", "tip 3"],
   "alternative_options": {
-    "if_cooler": "Specific layering suggestions if temperature drops",
-    "if_warmer": "Modifications for warmer weather",
-    "dressy_version": "How to elevate this look for more formal occasions",
-    "casual_version": "How to dress down for more relaxed settings",
-    "budget_friendly": "More affordable alternatives that achieve similar look",
-    "investment_pieces": "Key items worth investing in for long-term wardrobe building"
+    "if_cooler": "...", "if_warmer": "...", "dressy_version": "...", "casual_version": "...",
+    "budget_friendly": "...", "investment_pieces": "..."
   },
   "shopping_suggestions": {
-    "priority_items": ["item 1 to buy/rent first", "item 2 to buy/rent second"],
-    "total_investment_needed": "£X-Y for purchases, £A-B for rentals",
-    "wardrobe_utilization": "X% of outfit uses existing wardrobe items",
-    "recommended_approach": "Buy key pieces, rent special occasion items, use existing wardrobe for basics",
-    "uk_shopping_guide": {
-      "high_street_stores": {
-        "ASOS": {
-          "url": "https://www.asos.com",
-          "best_for": "Specific categories this retailer excels at",
-          "price_point": "Budget to mid-range"
-        },
-        "Zara": {
-          "url": "https://www.zara.com/uk",
-          "best_for": "Trend-focused pieces",
-          "price_point": "Mid-range"
-        },
-        "H&M": {
-          "url": "https://www2.hm.com/en_gb",
-          "best_for": "Affordable basics and trend pieces",
-          "price_point": "Budget"
-        },
-        "& Other Stories": {
-          "url": "https://www.stories.com/en_gbp",
-          "best_for": "Elevated everyday pieces",
-          "price_point": "Mid-range"
-        }
-      },
-      "rental_platforms": {
-        "HURR": {
-          "url": "https://www.hurrcollective.com",
-          "best_for": "Designer pieces and special occasions",
-          "rental_duration": "4-8-20 days",
-          "price_range": "£20-£150"
-        },
-        "By Rotation": {
-          "url": "https://www.byrotation.com",
-          "best_for": "Peer-to-peer rentals, trendy pieces",
-          "rental_duration": "Flexible",
-          "price_range": "£15-£100"
-        },
-        "ROTARO": {
-          "url": "https://www.rotaro.co.uk",
-          "best_for": "Premium and sustainable brands",
-          "rental_duration": "4-8 days",
-          "price_range": "£25-£120"
-        }
-      },
-      "vintage_and_period": {
-        "Beyond Retro": {
-          "url": "https://www.beyondretro.com",
-          "best_for": "Authentic vintage pieces",
-          "locations": "Multiple London locations + online"
-        },
-        "Rokit": {
-          "url": "https://www.rokit.co.uk",
-          "best_for": "Curated vintage clothing",
-          "locations": "London locations + online"
-        },
-        "Etsy UK": {
-          "url": "https://www.etsy.com/uk/c/vintage",
-          "best_for": "Specific era pieces from independent sellers",
-          "search_tip": "Search '[decade] dress UK' for period pieces"
-        }
-      },
-      "department_stores": {
-        "Selfridges": {
-          "url": "https://www.selfridges.com",
-          "best_for": "Luxury and designer pieces",
-          "price_point": "High-end"
-        },
-        "John Lewis": {
-          "url": "https://www.johnlewis.com",
-          "best_for": "Quality classics and occasionwear",
-          "price_point": "Mid to high"
-        }
-      }
-    },
-    "costume_and_theatrical": {
-      "Angels Fancy Dress": {
-        "url": "https://www.fancydress.com",
-        "best_for": "Professional costume hire and purchase",
-        "notes": "Extensive period costume collection"
-      },
-      "Escapade": {
-        "url": "https://www.escapade.co.uk",
-        "best_for": "Themed party costumes and accessories",
-        "notes": "Good for 1920s-1950s pieces"
-      }
-    }
+    "priority_items": ["item 1", "item 2"],
+    "total_investment_needed": "£X-Y",
+    "wardrobe_utilization": "X%",
+    "recommended_approach": "..."
   }
 }
 
-Focus on creating a cohesive, stylish outfit that authentically represents the user's personal style while being appropriate for the occasion and weather. 
+Focus on creating a cohesive, stylish outfit. 
 
 CRITICAL FINAL INSTRUCTIONS:
 1. WARDROBE FIRST: Always check if the user has suitable items in their wardrobe before suggesting purchases
 2. SMART MIXING: Create outfits that combine existing wardrobe items with strategic new purchases or rentals
-3. REAL LINKS: Provide actual URLs to UK retailers, rental platforms, and vintage shops - not generic suggestions
-4. VALUE OPTIMIZATION: Help users maximize their existing wardrobe while strategically filling gaps
-5. For period/themed events: Provide specific links to costume rental shops and vintage stores with authentic pieces
-6. Price transparency: Always include price ranges for both purchase and rental options in GBP (£)
-7. MISSING ITEMS: For every item with source "needs_purchase" or "needs_rental", you MUST include a corresponding entry in "missing_items_search" with:
-   - item_type: specific item description (e.g. "navy midi dress")
-   - style_descriptor: 2-3 style keywords (e.g. "elegant, fitted")
-   - occasion_suitability: formality range (e.g. "smart casual to formal")
-   - price_tier: based on user budget profile - "budget" (under £50), "mid_range" (£50-150), or "luxury" (£150+)
-   - category: one of dresses, tops, bottoms, shoes, outerwear, accessories, knitwear, bags
-   - search_keywords: array of 3-5 keywords for database search
+3. REAL LINKS: Provide actual URLs to UK retailers, rental platforms, and vintage shops
+4. VALUE OPTIMIZATION: Help users maximize their existing wardrobe
+5. For period/themed events: Provide specific links to costume rental shops and vintage stores
+6. Price transparency: Always include price ranges in GBP (£)
+7. MISSING ITEMS: For every item with source "needs_purchase" or "needs_rental", include a corresponding entry in "missing_items_search"
 
 Remember: The goal is to create perfect, achievable outfits using what the user owns + targeted shopping/rental recommendations with real, clickable links.`;
 
@@ -720,7 +666,6 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
     const occ = (occasion || '').toLowerCase();
     const desc = (eventDetails?.description || '').toLowerCase();
     const isHistorical = /(1920|1930|1940|victorian|edwardian|regency|vintage|period)/.test(`${occ} ${desc}`);
-    // Use GPT-5 Mini for faster responses - still high quality but more efficient
     const model = 'openai/gpt-5-mini';
 
     // Define tool for structured output
@@ -738,10 +683,10 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
                 top: {
                   type: 'object',
                   properties: {
-                    name: { type: 'string', description: 'Specific item name - for historical events use period-accurate pieces only' },
+                    name: { type: 'string', description: 'Specific item name' },
                     source: { type: 'string', enum: ['from_wardrobe', 'needs_purchase', 'needs_rental'] },
                     confidence: { type: 'number' },
-                    reasoning: { type: 'string', description: 'Why this item works for the user and occasion' },
+                    reasoning: { type: 'string' },
                     styling_tips: { type: 'string' },
                     purchase_options: {
                       type: 'object',
@@ -802,8 +747,8 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
               },
               required: ['top', 'bottom', 'shoes']
             },
-            overall_confidence: { type: 'number', description: 'Overall confidence score 0-1' },
-            style_reasoning: { type: 'string', description: 'Comprehensive explanation of outfit choices' },
+            overall_confidence: { type: 'number' },
+            style_reasoning: { type: 'string', description: 'Comprehensive explanation ending with exactly ONE follow-up question or refinement invitation' },
             color_analysis: { type: 'string' },
             fit_guidance: { type: 'string' },
             styling_tips: { type: 'array', items: { type: 'string' } },
@@ -817,13 +762,12 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
             },
             missing_items_search: {
               type: 'array',
-              description: 'Structured search data for each item the user needs to buy or rent',
               items: {
                 type: 'object',
                 properties: {
-                  item_type: { type: 'string', description: 'Specific item description e.g. navy midi dress' },
-                  style_descriptor: { type: 'string', description: 'Style keywords e.g. elegant, fitted' },
-                  occasion_suitability: { type: 'string', description: 'Formality range e.g. smart casual to formal' },
+                  item_type: { type: 'string' },
+                  style_descriptor: { type: 'string' },
+                  occasion_suitability: { type: 'string' },
                   price_tier: { type: 'string', enum: ['budget', 'mid_range', 'luxury'] },
                   category: { type: 'string' },
                   search_keywords: { type: 'array', items: { type: 'string' } }
@@ -838,43 +782,35 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
     };
 
     const systemPrompt = isHistorical
-      ? `You are an expert fashion historian and costume consultant specializing in period-accurate clothing. For this ${occ.includes('1930') ? '1930s' : occ.includes('1920') ? '1920s' : occ.includes('1940') ? '1940s' : 'historical'} event, you MUST only recommend authentic period pieces. NEVER suggest: jeans, denim, sneakers, trainers, t-shirts, hoodies, modern midi dresses, or any item invented after the specified era. Focus on: bias-cut gowns, T-strap heels, Art Deco accessories, vintage shops, and costume rentals.`
+      ? `You are Oracle, an expert fashion historian and costume consultant. For this historical event, you MUST only recommend authentic period pieces. NEVER suggest modern items like jeans or sneakers. Always give a recommendation immediately — never refuse or ask for more info first. End with exactly ONE follow-up question.`
       : emotional_tone
-        ? `You are a world-class fashion stylist. The user wants to feel "${emotional_tone_label || emotional_tone}". Every piece you recommend should serve this emotional goal. Lead with the feeling — how the outfit makes the user FEEL in the setting — not generic styling advice. Be conversational and warm, never clinical. Never ask the user for more information — use your expert judgment.`
+        ? `You are Oracle, a world-class fashion stylist. The user wants to feel "${emotional_tone_label || emotional_tone}". Every piece you recommend should serve this emotional goal. Lead with the feeling. Be conversational and warm. Always give a recommendation immediately. End with exactly ONE follow-up question if important context is missing, or a refinement invitation if not.`
         : inferred_venue_formality
-          ? `You are a world-class fashion stylist. The user described a vague venue or occasion. You should NEVER ask for more details or say you need more information. Use the context clues provided (formality level, meal type, occasion type) to make a confident, expert recommendation. Be conversational and warm. Open with a sentence that acknowledges the specific vibe, not a generic opener.`
-          : 'You are a world-class fashion stylist with expertise in personal styling, body types, and current trends. Create practical, stylish outfits tailored to each client.';
+          ? `You are Oracle, a world-class fashion stylist. The user described a vague venue or occasion. NEVER ask for more details before recommending — make smart assumptions and state them briefly. Use the context clues provided to make a confident recommendation. Be conversational and warm. End with exactly ONE follow-up question.`
+          : `You are Oracle, a world-class fashion stylist. Be conversational and warm — like a stylish best friend. ALWAYS give a recommendation immediately based on whatever the user said, even if information is missing. Make smart assumptions and state them briefly. End with exactly ONE follow-up question if important context is missing, or a refinement invitation if not. NEVER ask more than one question. NEVER refuse to recommend.`;
 
     // Build messages array with conversation history for context
     const conversationContext = eventDetails?.conversationHistory || conversationHistory || [];
     const hasConversationContext = conversationContext.length > 0;
     
-    // If there's conversation history, modify the prompt to acknowledge it
     let contextualPrompt = prompt;
     if (hasConversationContext) {
       const historyText = conversationContext.map((msg: any) => 
-        `${msg.role === 'user' ? 'User' : 'Stylist'}: ${msg.content}`
+        `${msg.role === 'user' ? 'User' : 'Oracle'}: ${msg.content}`
       ).join('\n');
       
-      // Use original request to preserve full context (dress code, style, gender, etc.)
       const fullOriginalContext = originalRequest || conversationContext.find((m: any) => m.role === 'user')?.content || '';
       
       contextualPrompt = `${prompt}
 
-ORIGINAL REQUEST (FULL CONTEXT - preserve all details like dress code, gender, style era, etc.):
-${fullOriginalContext}
+ORIGINAL REQUEST (FULL CONTEXT): ${fullOriginalContext}
 
 CONVERSATION HISTORY:
 ${historyText}
 
-CURRENT USER MESSAGE (modification/clarification to the original request): ${occasion}
+CURRENT USER MESSAGE: ${occasion}
 
-CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
-1. Keep ALL details from the original request (dress code, event type, style era, location, etc.)
-2. Only change what the user specifically asks to modify in their current message
-3. If they say "make it female" or "change to female", KEEP the same dress code/style but change the gender of recommendations
-4. If they say "make it more casual", KEEP everything else but adjust formality
-5. Do NOT start from scratch - this is a refinement, not a new request`;
+CRITICAL: The user is refining their original request. Keep ALL details from the original request. Only change what the user specifically asks to modify. Do NOT start from scratch.`;
     }
 
     const messages = [
@@ -882,7 +818,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
       { role: 'user', content: contextualPrompt }
     ];
 
-    // Build payload based on model family (GPT-5 vs Gemini)
     const buildBody = (msgs: any[], useTool = true) => {
       const body: any = { model, messages: msgs };
       if (useTool) {
@@ -890,7 +825,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
         body.tool_choice = { type: 'function', function: { name: 'provide_outfit_recommendation' } };
       }
       if (model.startsWith('openai/')) {
-        // GPT-5 Mini uses reasoning tokens from the same budget, so allocate enough
         body.max_completion_tokens = 16000;
       } else {
         body.max_tokens = 3000;
@@ -920,7 +854,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
       return resp.json();
     };
 
-    // Parse response from tool call
     const parseToolResponse = (raw: any) => {
       console.log('Raw AI response:', JSON.stringify(raw, null, 2));
       const message = raw.choices?.[0]?.message;
@@ -930,21 +863,18 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
         throw new Error('No message in AI response');
       }
       
-      // Check for tool call response (OpenAI format)
       if (message?.tool_calls?.[0]?.function?.arguments) {
         console.log('Found tool_calls format');
         const args = message.tool_calls[0].function.arguments;
         return JSON.parse(typeof args === 'string' ? args : JSON.stringify(args));
       }
       
-      // Check for function_call response (alternate format)
       if (message?.function_call?.arguments) {
         console.log('Found function_call format');
         const args = message.function_call.arguments;
         return JSON.parse(typeof args === 'string' ? args : JSON.stringify(args));
       }
       
-      // Fallback to content parsing
       const content = message?.content?.trim?.() || '';
       console.log('Trying content parsing, content length:', content.length);
       const jsonMatch = content.match(/\{[\s\S]*\}/);
@@ -957,7 +887,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
       throw new Error('No valid response from AI');
     };
 
-    // First attempt with tool calling
     console.log('Calling AI with tool calling, model:', model, 'isHistorical:', isHistorical);
     const aiResponse = await callAI(messages);
     let recommendationData: any;
@@ -967,7 +896,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
       console.log('Successfully parsed AI tool response');
     } catch (parseError) {
       console.error('Failed to parse AI tool response:', parseError);
-      // Minimal fallback - but with proper period items for historical events
       if (isHistorical) {
         const era = occ.includes('1930') ? '1930s' : occ.includes('1920') ? '1920s' : '1940s';
         recommendationData = {
@@ -976,45 +904,21 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
               name: era === '1930s' ? 'Silk bias-cut evening gown with Art Deco beading' : era === '1920s' ? 'Beaded drop-waist flapper dress with fringe details' : 'Structured crepe dress with padded shoulders',
               source: 'needs_rental',
               confidence: 0.9,
-              reasoning: `Authentic ${era} silhouette that captures the glamour of the era. The ${era === '1930s' ? 'bias cut hugs curves elegantly' : era === '1920s' ? 'drop waist and fringe epitomize flapper style' : 'structured shoulders define 1940s fashion'}.`,
-              styling_tips: `Pair with ${era === '1930s' ? 'a faux fur stole and long satin gloves' : era === '1920s' ? 'a feathered headband and long pearl necklace' : 'victory rolls hairstyle and red lipstick'}.`,
+              reasoning: `Authentic ${era} silhouette.`,
+              styling_tips: `Pair with period-appropriate accessories.`,
               purchase_options: {
                 vintage_options: [{ source: 'Beyond Retro', price_range: '£60-150', url: 'https://www.beyondretro.com' }],
                 rental_platforms: [{ platform: 'Angels Fancy Dress', price_range: '£40-80', url: 'https://www.fancydress.com' }]
               }
             },
-            bottom: {
-              name: 'N/A - Full-length gown (period authentic)',
-              confidence: 0.95,
-              reasoning: `${era} evening wear typically featured full-length gowns as complete outfits.`,
-              styling_tips: 'Ensure hemline is appropriate for the era.'
-            },
-            shoes: {
-              name: era === '1930s' ? 'Gold or silver T-strap heels' : era === '1920s' ? 'Low-heeled Mary Janes with decorative buckle' : 'Peep-toe platform pumps',
-              source: 'needs_purchase',
-              confidence: 0.88,
-              reasoning: `Period-accurate footwear that complements ${era} fashion.`,
-              styling_tips: 'Choose metallic or muted tones to match era aesthetics.',
-              purchase_options: {
-                vintage_options: [{ source: 'Rokit Vintage', price_range: '£30-60', url: 'https://www.rokit.co.uk' }]
-              }
-            },
-            accessories: [
-              { name: era === '1930s' ? 'Beaded clutch bag with Art Deco clasp' : era === '1920s' ? 'Long pearl rope necklace' : 'Structured leather clutch', confidence: 0.85, reasoning: 'Essential period accessory', styling_tips: 'Complete the vintage look' }
-            ]
+            bottom: { name: 'N/A - Full-length gown (period authentic)', confidence: 0.95, reasoning: `${era} evening wear featured full-length gowns.`, styling_tips: 'Ensure hemline is era-appropriate.' },
+            shoes: { name: era === '1930s' ? 'Gold or silver T-strap heels' : era === '1920s' ? 'Low-heeled Mary Janes' : 'Peep-toe platform pumps', source: 'needs_purchase', confidence: 0.88, reasoning: 'Period-accurate footwear.', styling_tips: 'Choose metallic or muted tones.' },
+            accessories: [{ name: era === '1930s' ? 'Beaded clutch bag with Art Deco clasp' : era === '1920s' ? 'Long pearl rope necklace' : 'Structured leather clutch', confidence: 0.85, reasoning: 'Essential period accessory', styling_tips: 'Complete the vintage look' }]
           },
           overall_confidence: 0.88,
-          style_reasoning: `This ensemble captures authentic ${era} glamour with period-appropriate silhouettes, fabrics, and accessories. Each piece has been selected to create a cohesive, historically accurate look.`,
-          styling_tips: [
-            `Research ${era} makeup and hairstyles to complete the look`,
-            'Consider period-appropriate jewelry like Art Deco pieces',
-            'Check vintage shops and costume rental services for authentic items',
-            'Practice walking in period shoes before the event'
-          ],
-          shopping_suggestions: {
-            priority_items: ['Dress from costume rental', 'Period-appropriate shoes'],
-            total_investment_needed: '£80-200 for rentals, £50-100 for purchased accessories'
-          }
+          style_reasoning: `This ensemble captures authentic ${era} glamour with period-appropriate silhouettes.`,
+          styling_tips: ['Research period makeup and hairstyles', 'Consider period-appropriate jewelry', 'Check vintage shops for authentic items'],
+          shopping_suggestions: { priority_items: ['Dress from costume rental', 'Period-appropriate shoes'], total_investment_needed: '£80-200' }
         };
       } else {
         recommendationData = {
@@ -1046,7 +950,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
       const violations = names.filter((n) => banned.some((b) => n.toLowerCase().includes(b)));
 
       if (violations.length > 0) {
-        // One retry with explicit correction
         const correction = `\nIMPORTANT: Your previous suggestion included modern items for a historical event: ${[...new Set(violations)].join(', ')}. Regenerate strictly period-accurate. DO NOT include jeans, denim, sneakers/trainers, t-shirts, hoodies, athleisure. Respond with JSON only.`;
         const retryResponse = await callAI([
           messages[0],
@@ -1057,7 +960,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
           recommendationData = retried;
         } catch (e) {
           console.warn('Retry parse failed, keeping validated fallback/result.');
-          // As a last resort, scrub offending items from names
           const scrub = (s: string) => s.replace(/jeans|denim|sneaker|trainers?|t-shirt|tee|hoodie|sweatshirt|baseball cap|athleisure/gi, '');
           if (items.top?.name) items.top.name = scrub(items.top.name);
           if (items.bottom?.name) items.bottom.name = scrub(items.bottom.name);
@@ -1091,7 +993,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
       return ACCESSORY_KEYWORDS.some(kw => lower.includes(kw));
     };
 
-    // Determine wardrobe state
     type WardrobeState = 'no_wardrobe' | 'partial' | 'full_match' | 'explicit_shop';
     let wardrobeState: WardrobeState;
 
@@ -1100,7 +1001,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
     } else if (!user || !wardrobeItems || wardrobeItems.length === 0) {
       wardrobeState = 'no_wardrobe';
     } else {
-      // Check recommended items for wardrobe coverage
       const items = recommendationData.recommended_items || {};
       const allItems: any[] = [];
       for (const [key, val] of Object.entries(items)) {
@@ -1115,7 +1015,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
       else wardrobeState = 'no_wardrobe';
     }
 
-    // Determine section title
     const shoppingSectionTitle = wardrobeState === 'full_match' ? '' :
       (wardrobeState === 'no_wardrobe' || wardrobeState === 'explicit_shop') ? 'Shop This Look' : 'Complete Your Look';
 
@@ -1123,24 +1022,17 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
 
     // ============================================
     // PRODUCT SEARCH: 4-Layer Strategy
-    // Primary:     ShopStyle Collective API (best data, affiliate revenue)
-    // Secondary:   Serper Google Shopping (fills gaps ShopStyle misses)
-    // Fallback:    Pre-built search URLs (guaranteed, zero cost)
-    // Enhancement: Firecrawl for rental/secondhand platforms only
     // ============================================
 
     let shoppingMatches: any[] = [];
 
-    // For full_match state, skip product search entirely
     if (wardrobeState === 'full_match') {
-      console.log('[Search] Skipping — full wardrobe match, no products needed');
+      console.log('[Search] Skipping — full wardrobe match');
     } else {
-      // Determine which items to search for based on wardrobe state
       let itemsToSearch: any[] = [];
       const missingItemsFromAI = recommendationData.missing_items_search || [];
 
       if (wardrobeState === 'no_wardrobe') {
-        // Search for ALL recommended items (user has nothing)
         const items = recommendationData.recommended_items || {};
         for (const [key, val] of Object.entries(items)) {
           if (['character_suggestions', 'wardrobe_analysis'].includes(key)) continue;
@@ -1169,12 +1061,10 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
             });
           }
         }
-        // For no_wardrobe, skip accessories (lower priority) unless very few items
         const clothing = itemsToSearch.filter(i => !isAccessoryItem(i.item_type));
         const accessories = itemsToSearch.filter(i => isAccessoryItem(i.item_type));
         itemsToSearch = [...clothing, ...accessories.slice(0, 2)];
       } else if (wardrobeState === 'explicit_shop') {
-        // Search for ALL items regardless of wardrobe
         const items = recommendationData.recommended_items || {};
         for (const [key, val] of Object.entries(items)) {
           if (['character_suggestions', 'wardrobe_analysis'].includes(key)) continue;
@@ -1204,11 +1094,9 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
           }
         }
       } else {
-        // Partial wardrobe: only search items the AI flagged as missing
         itemsToSearch = missingItemsFromAI;
       }
 
-      // Cap at 5 items for performance
       itemsToSearch = itemsToSearch.slice(0, 5);
 
       if (itemsToSearch.length > 0) {
@@ -1221,12 +1109,10 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
           return styleProfile?.budget_max || 500;
         };
 
-        // ── API keys ──
         const shopStyleApiKey = Deno.env.get('SHOPSTYLE_API_KEY');
         const serperApiKey = Deno.env.get('SERPER_API_KEY');
         const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
 
-        // ── PRIMARY: ShopStyle Collective API ──
         const searchShopStyle = async (query: string, maxPrice: number): Promise<any[]> => {
           if (!shopStyleApiKey) return [];
           try {
@@ -1234,10 +1120,7 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
             const url = `https://api.shopstyle.com/api/v2/products?pid=${shopStyleApiKey}&fts=${encoded}&offset=0&limit=5&fl=p0:${maxPrice}&fl=d0:GB&fl=b0:GBP`;
             console.log(`[ShopStyle] Searching: "${query}" (max £${maxPrice})`);
             const response = await fetch(url);
-            if (!response.ok) {
-              console.warn('[ShopStyle] API error:', response.status);
-              return [];
-            }
+            if (!response.ok) { console.warn('[ShopStyle] API error:', response.status); return []; }
             const data = await response.json();
             const products = (data.products || []).map((p: any) => ({
               retailer: p.retailer?.name || p.brand?.name || 'Retailer',
@@ -1249,32 +1132,22 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
             }));
             console.log(`[ShopStyle] Found ${products.length} products for "${query}"`);
             return products;
-          } catch (err) {
-            console.warn('[ShopStyle] Error:', err);
-            return [];
-          }
+          } catch (err) { console.warn('[ShopStyle] Error:', err); return []; }
         };
 
-        // ── SECONDARY: Serper Google Shopping API ──
         const searchGoogleShopping = async (query: string, maxPrice: number): Promise<any[]> => {
           if (!serperApiKey) return [];
           try {
             console.log(`[Serper] Searching Google Shopping: "${query}"`);
             const response = await fetch('https://google.serper.dev/shopping', {
               method: 'POST',
-              headers: {
-                'X-API-KEY': serperApiKey,
-                'Content-Type': 'application/json',
-              },
+              headers: { 'X-API-KEY': serperApiKey, 'Content-Type': 'application/json' },
               body: JSON.stringify({ q: query, gl: 'gb', hl: 'en', num: 8 }),
             });
-            if (!response.ok) {
-              console.warn('[Serper] API error:', response.status);
-              return [];
-            }
+            if (!response.ok) { console.warn('[Serper] API error:', response.status); return []; }
             const data = await response.json();
             const results = (data.shopping || [])
-              .map((r: any, idx: number) => {
+              .map((r: any) => {
                 const priceStr = r.price || '';
                 const cleaned = priceStr.replace(/[^0-9.,]/g, '').replace(',', '.');
                 const numericPrice = parseFloat(cleaned);
@@ -1288,19 +1161,14 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
                   source: 'google_shopping',
                 };
               })
-              // Filter by price
               .filter((r: any) => r.numericPrice === null || r.numericPrice <= maxPrice)
               .slice(0, 5)
-              .map(({ numericPrice, ...rest }: any) => rest); // remove internal field
+              .map(({ numericPrice, ...rest }: any) => rest);
             console.log(`[Serper] Found ${results.length} products for "${query}"`);
             return results;
-          } catch (err) {
-            console.warn('[Serper] Error:', err);
-            return [];
-          }
+          } catch (err) { console.warn('[Serper] Error:', err); return []; }
         };
 
-        // ── FALLBACK: Pre-built search URLs (guaranteed, zero cost) ──
         const buildSearchUrls = (query: string, tier: string): any[] => {
           const encoded = encodeURIComponent(query);
           const retailersByTierUrls: Record<string, { name: string; url: string }[]> = {
@@ -1349,21 +1217,13 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
           ];
         };
 
-        // ── ENHANCEMENT: Firecrawl for rental & secondhand platforms only ──
         const searchFirecrawlPlatform = async (query: string, platform: { name: string; domain: string }, type: 'rental' | 'secondhand'): Promise<any> => {
           if (!firecrawlApiKey) return null;
           try {
             const response = await fetch('https://api.firecrawl.dev/v1/search', {
               method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${firecrawlApiKey}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                query: `${query} site:${platform.domain}`,
-                limit: 1,
-                scrapeOptions: { formats: ['markdown'] },
-              }),
+              headers: { 'Authorization': `Bearer ${firecrawlApiKey}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ query: `${query} site:${platform.domain}`, limit: 1, scrapeOptions: { formats: ['markdown'] } }),
             });
             if (!response.ok) return null;
             const searchData = await response.json();
@@ -1375,47 +1235,22 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
               const rentalPriceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?\s*(?:\/\s*day|per\s*day|per\s*occasion|to\s*rent)/i)
                 || markdown.match(/(?:rent|rental|from)\s*£[\d,]+(?:\.\d{2})?/i)
                 || markdown.match(/£[\d,]+(?:\.\d{2})?/);
-              return {
-                platform: platform.name,
-                product_name: result.title || result.metadata?.title || 'Unknown product',
-                price: rentalPriceMatch ? rentalPriceMatch[0] : null,
-                product_url: result.url || '',
-                image_url: imageUrl,
-                type: 'rental',
-                source: 'firecrawl',
-              };
+              return { platform: platform.name, product_name: result.title || result.metadata?.title || 'Unknown product', price: rentalPriceMatch ? rentalPriceMatch[0] : null, product_url: result.url || '', image_url: imageUrl, type: 'rental', source: 'firecrawl' };
             } else {
               const priceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?/);
               const conditionMatch = markdown.match(/(?:condition|quality)[:\s]*(excellent|very good|good|fair|new with tags|like new|pristine)/i);
-              const condition = conditionMatch ? conditionMatch[1] :
-                markdown.match(/\b(excellent|pristine|like new|new with tags)\b/i) ? 'excellent' :
-                markdown.match(/\b(very good|great condition)\b/i) ? 'good' : null;
-              return {
-                platform: platform.name,
-                product_name: result.title || result.metadata?.title || 'Unknown product',
-                price: priceMatch ? priceMatch[0] : null,
-                product_url: result.url || '',
-                image_url: imageUrl,
-                condition: condition || 'good',
-                type: 'secondhand',
-                source: 'firecrawl',
-              };
+              const condition = conditionMatch ? conditionMatch[1] : markdown.match(/\b(excellent|pristine|like new|new with tags)\b/i) ? 'excellent' : markdown.match(/\b(very good|great condition)\b/i) ? 'good' : null;
+              return { platform: platform.name, product_name: result.title || result.metadata?.title || 'Unknown product', price: priceMatch ? priceMatch[0] : null, product_url: result.url || '', image_url: imageUrl, condition: condition || 'good', type: 'secondhand', source: 'firecrawl' };
             }
-          } catch (err) {
-            return null;
-          }
+          } catch (err) { return null; }
         };
 
-        // Enrich generic search queries with occasion context
         const enrichQuery = (itemName: string): string => {
           const wordCount = itemName.trim().split(/\s+/).length;
-          if (wordCount <= 2 && occasion) {
-            return `${itemName} ${occasion}`.slice(0, 80);
-          }
+          if (wordCount <= 2 && occasion) return `${itemName} ${occasion}`.slice(0, 80);
           return itemName;
         };
 
-        // ── Run all searches per item ──
         const searchPromises = itemsToSearch.map(async (item: any) => {
           const keywords = item.search_keywords || [];
           const category = item.category || '';
@@ -1424,7 +1259,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
           const searchQuery = enrichQuery(rawQuery);
           const tier = item.price_tier || 'mid_range';
 
-          // Internal DB search (always runs)
           const keywordFilters = keywords
             .map((kw: string) => `name.ilike.%${kw}%,description.ilike.%${kw}%,brand.ilike.%${kw}%`)
             .join(',');
@@ -1440,27 +1274,16 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
 
           const { data: matches } = await dbQuery.order('price', { ascending: true }).limit(3);
 
-          // ── RETAILER RESULTS: ShopStyle → Serper → Search URLs ──
           let retailer_results = await searchShopStyle(searchQuery, maxPrice);
-
-          // Fill gaps with Serper if ShopStyle returned <2 results
           if (retailer_results.length < 2) {
             const serperResults = await searchGoogleShopping(searchQuery, maxPrice);
             retailer_results = [...retailer_results, ...serperResults];
-            if (serperResults.length > 0) {
-              console.log(`[Serper] Filled ${serperResults.length} gaps for "${searchQuery}"`);
-            }
           }
-
-          // Guaranteed fallback search URLs
           if (retailer_results.length === 0) {
             retailer_results = buildSearchUrls(searchQuery, tier);
-            console.log(`[Fallback] Using search URLs for "${searchQuery}"`);
           }
-
           retailer_results = retailer_results.slice(0, 6);
 
-          // ── RENTAL RESULTS ──
           const rentalPlatforms = [
             { name: 'HURR', domain: 'hurr.co.uk' },
             { name: 'By Rotation', domain: 'byrotation.com' },
@@ -1474,7 +1297,6 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
             ? rentalFirecrawlResults.slice(0, 3)
             : buildRentalSearchUrls(searchQuery);
 
-          // ── SECONDHAND RESULTS ──
           const secondhandPlatforms = [
             { name: 'Vestiaire Collective', domain: 'vestiairecollective.com' },
             { name: 'Depop', domain: 'depop.com' },
@@ -1488,7 +1310,7 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
             ? secondhandFirecrawlResults.slice(0, 3)
             : buildSecondhandSearchUrls(searchQuery);
 
-          console.log(`[Result] "${searchQuery}": ${retailer_results.length} retailer (sources: ${[...new Set(retailer_results.map((r: any) => r.source))].join(',')}), ${rental_results.length} rental, ${secondhand_results.length} secondhand`);
+          console.log(`[Result] "${searchQuery}": ${retailer_results.length} retailer, ${rental_results.length} rental, ${secondhand_results.length} secondhand`);
 
           return {
             item_type: item.item_type,
@@ -1528,13 +1350,11 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
 
       if (saveError) {
         console.error('Error saving recommendation:', saveError);
-        // Don't throw error, just log it and continue without saving
       } else {
         savedRecommendation = dbRecommendation;
       }
     }
 
-    // Create recommendation response (with or without database record)
     const recommendationResponse = savedRecommendation || {
       id: 'anonymous-' + Date.now(),
       recommendation_type: recommendationType,
@@ -1571,6 +1391,8 @@ CRITICAL INSTRUCTION: The user is refining their original request. You MUST:
           guidance: n.guidance.slice(0, 300),
         })),
       } : null,
+      // Return the follow-up question for the client to use
+      follow_up_question: followUpQuestion,
       rate_limit_info: rateLimitResult ? {
         remaining_requests: rateLimitResult.remaining_requests,
         rate_limit: rateLimitResult.rate_limit,

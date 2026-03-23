@@ -37,11 +37,23 @@ export interface ChatMessage {
   }>;
   /** Section title: "Shop This Look" or "Complete Your Look" */
   shoppingTitle?: string;
-  /** Whether to show budget selection chips */
-  budgetChips?: boolean;
   timestamp: Date;
 }
 
+/** Accumulated conversation context passed to every Oracle call */
+interface ConversationContext {
+  location: string | null;
+  venue_type: string | null;
+  dress_code: string | null;
+  emotional_goal: string | null;
+  who_with: string | null;
+  budget: string | null;
+  date: string | null;
+  style_preferences: string[];
+  liked_items: string[];
+  rejected_items: string[];
+  exchange_count: number;
+}
 
 export const useStylingChat = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -57,6 +69,77 @@ export const useStylingChat = () => {
 
   // Tracks selected emotional tone for follow-up context
   const [selectedEmotionalTone, setSelectedEmotionalTone] = useState<string | null>(null);
+
+  // Accumulated conversation context
+  const [conversationCtx, setConversationCtx] = useState<ConversationContext>({
+    location: null,
+    venue_type: null,
+    dress_code: null,
+    emotional_goal: null,
+    who_with: null,
+    budget: null,
+    date: null,
+    style_preferences: [],
+    liked_items: [],
+    rejected_items: [],
+    exchange_count: 0,
+  });
+
+  /** Extract context clues from a user message and merge into accumulated context */
+  const updateContextFromMessage = useCallback((message: string) => {
+    setConversationCtx(prev => {
+      const ctx = { ...prev };
+      const msg = message.toLowerCase();
+
+      // Location detection
+      const cities = ['london', 'paris', 'new york', 'dubai', 'tokyo', 'milan', 'barcelona', 'rome', 'berlin', 'amsterdam', 'istanbul', 'bangkok', 'singapore', 'mumbai', 'los angeles', 'chicago', 'sydney', 'melbourne', 'toronto', 'vancouver'];
+      for (const city of cities) {
+        if (msg.includes(city)) { ctx.location = city.charAt(0).toUpperCase() + city.slice(1); break; }
+      }
+
+      // Who with
+      if (/\b(date|romantic|partner|boyfriend|girlfriend|husband|wife)\b/i.test(msg)) ctx.who_with = 'date';
+      else if (/\b(friends?|mates?|girls?|guys?|lads?|group)\b/i.test(msg)) ctx.who_with = 'friends';
+      else if (/\b(work|business|corporate|client|colleague|networking|boss)\b/i.test(msg)) ctx.who_with = 'work';
+      else if (/\b(family|parents?|in-?laws?|mum|dad|mother|father)\b/i.test(msg)) ctx.who_with = 'family';
+
+      // Budget
+      const budgetMatch = msg.match(/(?:budget|spend|under|around|about)\s*(?:is\s*)?[£$]?\s*(\d+)/i) || msg.match(/[£$](\d+)/);
+      if (budgetMatch) ctx.budget = `£${budgetMatch[1]}`;
+      if (/no\s*(?:budget|limit)/i.test(msg)) ctx.budget = 'no limit';
+
+      // Emotional goal
+      if (/\b(romantic|sexy|seductive|alluring)\b/i.test(msg)) ctx.emotional_goal = 'romantic';
+      else if (/\b(professional|polished|powerful|authoritative)\b/i.test(msg)) ctx.emotional_goal = 'polished';
+      else if (/\b(warm|friendly|approachable|comfortable)\b/i.test(msg)) ctx.emotional_goal = 'warm';
+      else if (/\b(chic|effortless|elegant|sophisticated)\b/i.test(msg)) ctx.emotional_goal = 'chic';
+      else if (/\b(bold|striking|dramatic|head-?turning)\b/i.test(msg)) ctx.emotional_goal = 'bold';
+      else if (/\b(cool|edgy|trendy|minimal|sleek)\b/i.test(msg)) ctx.emotional_goal = 'cool';
+      else if (/\b(fun|colourful|colorful|playful|vibrant)\b/i.test(msg)) ctx.emotional_goal = 'fun';
+      else if (/\b(relaxed|laid-?back|casual|chill)\b/i.test(msg)) ctx.emotional_goal = 'relaxed';
+
+      // Date
+      if (/\b(today|tonight)\b/i.test(msg)) ctx.date = 'today';
+      else if (/\b(tomorrow)\b/i.test(msg)) ctx.date = 'tomorrow';
+      else if (/\b(this weekend|saturday|sunday)\b/i.test(msg)) ctx.date = 'this weekend';
+
+      // Dress code
+      if (/\b(black tie|formal|white tie)\b/i.test(msg)) ctx.dress_code = 'formal';
+      else if (/\b(smart casual)\b/i.test(msg)) ctx.dress_code = 'smart casual';
+      else if (/\b(casual|relaxed)\b/i.test(msg)) ctx.dress_code = 'casual';
+      else if (/\b(cocktail)\b/i.test(msg)) ctx.dress_code = 'cocktail';
+
+      // Venue type
+      if (/\b(restaurant|dining)\b/i.test(msg)) ctx.venue_type = 'restaurant';
+      else if (/\b(bar|pub|club|lounge)\b/i.test(msg)) ctx.venue_type = 'bar';
+      else if (/\b(cafe|café|coffee)\b/i.test(msg)) ctx.venue_type = 'café';
+      else if (/\b(gallery|museum|exhibition)\b/i.test(msg)) ctx.venue_type = 'gallery';
+      else if (/\b(theatre|theater|concert|show)\b/i.test(msg)) ctx.venue_type = 'theatre';
+
+      ctx.exchange_count = prev.exchange_count + 1;
+      return ctx;
+    });
+  }, []);
 
   const scrapeVenue = useCallback(async (venueName: string) => {
     try {
@@ -129,9 +212,6 @@ export const useStylingChat = () => {
     return '🌤';
   }
 
-  /**
-   * Build weather note string from weather data.
-   */
   const buildWeatherNote = useCallback((weatherData: any, mentionedLocation: string | null, mentionedDate: string | null): string | undefined => {
     if (!weatherData || weatherData.temperature == null) return undefined;
     const weatherIcon = getWeatherIcon(weatherData.condition);
@@ -146,9 +226,6 @@ export const useStylingChat = () => {
     return `${weatherIcon} ${locationDisplay}${dayPart}: ${weatherData.temperature}°C, ${conditionDesc}`;
   }, []);
 
-  /**
-   * Fetch weather data.
-   */
   const fetchWeather = useCallback(async (userMessage: string) => {
     const mentionedLocation = extractLocation(userMessage);
     const mentionedDate = extractFutureDate(userMessage);
@@ -190,9 +267,6 @@ export const useStylingChat = () => {
     return { weatherData: null, mentionedLocation, mentionedDate };
   }, [getLocation]);
 
-  /**
-   * Call the AI recommendation edge function.
-   */
   const callRecommendation = useCallback(async (
     userMessage: string,
     resolvedVenueName: string | null,
@@ -232,6 +306,7 @@ export const useStylingChat = () => {
         originalRequest: isFollowUp ? originalRequest : null,
         guestEmail: session?.user?.email || `guest-${Date.now()}@temp.com`,
         user_message: userMessage,
+        accumulated_context: conversationCtx,
         ...extraContext,
       },
       headers
@@ -240,11 +315,8 @@ export const useStylingChat = () => {
     if (error) throw new Error(error.message || 'Failed to get recommendation');
 
     return { data, venueContext, eventContext };
-  }, [messages, scrapeVenue, scrapeEvent]);
+  }, [messages, conversationCtx, scrapeVenue, scrapeEvent]);
 
-  /**
-   * Core recommendation flow — called after venue/event detection is resolved.
-   */
   const executeRecommendation = useCallback(async (
     userMessage: string,
     resolvedVenueName: string | null,
@@ -300,12 +372,7 @@ export const useStylingChat = () => {
         responseContent += "I've put together some styling suggestions based on your request.";
       }
 
-      // Use server-side wardrobe state and product search results
       const shoppingTitle = data?.shopping_section_title || undefined;
-
-      // Detect if the AI is asking about budget
-      const budgetQuestionPattern = /budget|how much|price range|spend/i;
-      const hasBudgetQuestion = budgetQuestionPattern.test(responseContent) && /\?/.test(responseContent);
 
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
@@ -321,7 +388,6 @@ export const useStylingChat = () => {
         culturalContext: data?.cultural_context || undefined,
         wardrobeStatus: data?.wardrobe_status || undefined,
         shoppingTitle,
-        budgetChips: hasBudgetQuestion,
         weatherNote,
         timestamp: new Date(),
       };
@@ -353,7 +419,6 @@ export const useStylingChat = () => {
       const { weatherData, mentionedLocation, mentionedDate } = await fetchWeather(userMessage);
       const weatherNote = buildWeatherNote(weatherData, mentionedLocation, mentionedDate);
 
-      // Generate recommendations for all tones in parallel
       const toneResults = await Promise.all(tones.map(async (tone) => {
         try {
           const { data } = await callRecommendation(
@@ -385,7 +450,6 @@ export const useStylingChat = () => {
 
       const validResults = toneResults.filter(Boolean) as NonNullable<typeof toneResults[0]>[];
 
-      // Build conversational intro
       const mealLabel = vagueVenue.mealType || 'occasion';
       let intro = '';
       if (vagueVenue.mealType === 'dinner') {
@@ -398,7 +462,6 @@ export const useStylingChat = () => {
         intro = `Great choice. Here are a few outfit directions depending on how you want to feel:`;
       }
 
-      // Build tone recommendations map
       const toneRecommendations: Record<string, { recommendation: any; content: string; missing_items?: any[] }> = {};
       for (const result of validResults) {
         toneRecommendations[result.toneId] = {
@@ -433,14 +496,15 @@ export const useStylingChat = () => {
     }
   }, [fetchWeather, callRecommendation, buildWeatherNote]);
 
-  /**
-   * Handle emotional tone card selection.
-   */
   const selectEmotionalTone = useCallback((toneId: string) => {
     setSelectedEmotionalTone(toneId);
+    setConversationCtx(prev => ({ ...prev, emotional_goal: toneId }));
   }, []);
 
   const sendMessage = useCallback(async (userMessage: string) => {
+    // Update accumulated context from this message
+    updateContextFromMessage(userMessage);
+
     // --- Handle pending venue city clarification ---
     if (pendingVenue) {
       const selectedCity = userMessage.trim();
@@ -512,7 +576,6 @@ export const useStylingChat = () => {
 
       // If we have a specific venue or event, do normal flow
       if (resolvedVenueName || detectedEvent) {
-        // Pass selected emotional tone as context if present
         const extraContext: Record<string, any> = {};
         if (selectedEmotionalTone) {
           extraContext.emotional_tone = selectedEmotionalTone;
@@ -559,12 +622,25 @@ export const useStylingChat = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, pendingVenue, selectedEmotionalTone, executeRecommendation, executeMultiToneRecommendation]);
+  }, [messages, pendingVenue, selectedEmotionalTone, conversationCtx, updateContextFromMessage, executeRecommendation, executeMultiToneRecommendation]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
     setPendingVenue(null);
     setSelectedEmotionalTone(null);
+    setConversationCtx({
+      location: null,
+      venue_type: null,
+      dress_code: null,
+      emotional_goal: null,
+      who_with: null,
+      budget: null,
+      date: null,
+      style_preferences: [],
+      liked_items: [],
+      rejected_items: [],
+      exchange_count: 0,
+    });
   }, []);
 
   return {
