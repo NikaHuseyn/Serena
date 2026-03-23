@@ -118,8 +118,7 @@ Content:
 ${scrapedContent}`
           }
         ],
-        max_tokens: 500,
-        temperature: 0.3,
+        max_completion_tokens: 500,
       }),
     });
 
