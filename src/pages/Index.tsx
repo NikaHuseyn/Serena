@@ -56,8 +56,8 @@ const IndexContent = () => {
               Get AI styling advice for any occasion, share looks with friends, and build a wardrobe that works
             </p>
             {!user && (
-              <p className="text-sm text-muted-foreground mb-8">
-                Sign in to get personalised recommendations from your wardrobe
+              <p className="text-sm text-foreground mb-8">
+                ✨ Sign in to consult your AI stylist, share looks with friends, and build a wardrobe that works for your life.
               </p>
             )}
 
