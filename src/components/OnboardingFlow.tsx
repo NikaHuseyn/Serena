@@ -410,6 +410,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
         preferred_colors: styleData.selectedColors,
         items_to_avoid: allAvoid,
         shopping_preference: styleData.shoppingPreference || null,
+        primary_occasions: styleData.primaryOccasions.length > 0 ? styleData.primaryOccasions : null,
         onboarding_completed: true,
         onboarding_completed_at: new Date().toISOString(),
       } as any);
