@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { ShoppingBag, Tag, Recycle, ExternalLink, SlidersHorizontal } from 'lucide-react';
+import { ShoppingBag, Tag, Recycle, ExternalLink, SlidersHorizontal, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
