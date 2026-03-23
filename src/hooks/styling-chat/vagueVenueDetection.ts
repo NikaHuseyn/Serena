@@ -42,7 +42,7 @@ const OCCASION_PATTERNS: { pattern: RegExp; occasion: string }[] = [
 ];
 
 // Generic venue words that confirm venue is vague (no proper name)
-const GENERIC_VENUE_WORDS = /\b(restaurant|bar|club|place|spot|venue|cafe|café|bistro|pub|lounge|eatery|joint|somewhere)\b/i;
+const GENERIC_VENUE_WORDS = /\b(restaurant|bar|club|place|spot|venue|cafe|café|bistro|pub|lounge|eatery|joint|somewhere|dinner|lunch|brunch|breakfast|drinks|supper|cocktails?)\b/i;
 
 /**
  * Detects if a message describes a venue vaguely (adjective + generic noun)
