@@ -3,6 +3,9 @@ import { ShoppingBag, Tag, Recycle, ExternalLink, SlidersHorizontal } from 'luci
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { useBudget } from './BudgetContext';
 
 interface MissingItem {
   item_type: string;
@@ -48,10 +51,10 @@ const parsePrice = (price: string | null): number | null => {
   return match ? parseFloat(match[1]) : null;
 };
 
-const isWithinBudget = (price: string | null, maxBudget: number | null): boolean => {
-  if (maxBudget === null) return true;
+const isWithinBudget = (price: string | null, maxBudget: number | null, noLimit: boolean): boolean => {
+  if (noLimit || maxBudget === null) return true;
   const parsed = parsePrice(price);
-  if (parsed === null) return true; // show items with unknown price
+  if (parsed === null) return true;
   return parsed <= maxBudget;
 };
 
@@ -88,18 +91,18 @@ const ProductCard = ({ product, priceLabel, subtitle }: {
   </div>
 );
 
-const MissingItemCard = ({ item, savedTab, maxBudget }: { item: MissingItem; savedTab: TabType; maxBudget: number | null }) => {
+const MissingItemCard = ({ item, savedTab, maxBudget, noLimit }: { item: MissingItem; savedTab: TabType; maxBudget: number | null; noLimit: boolean }) => {
   const filteredRetailer = useMemo(() =>
-    item.retailer_results?.filter(r => isWithinBudget(r.price, maxBudget)) || [],
-    [item.retailer_results, maxBudget]
+    item.retailer_results?.filter(r => isWithinBudget(r.price, maxBudget, noLimit)) || [],
+    [item.retailer_results, maxBudget, noLimit]
   );
   const filteredRental = useMemo(() =>
-    item.rental_results?.filter(r => isWithinBudget(r.price, maxBudget)) || [],
-    [item.rental_results, maxBudget]
+    item.rental_results?.filter(r => isWithinBudget(r.price, maxBudget, noLimit)) || [],
+    [item.rental_results, maxBudget, noLimit]
   );
   const filteredSecondhand = useMemo(() =>
-    item.secondhand_results?.filter(r => isWithinBudget(r.price, maxBudget)) || [],
-    [item.secondhand_results, maxBudget]
+    item.secondhand_results?.filter(r => isWithinBudget(r.price, maxBudget, noLimit)) || [],
+    [item.secondhand_results, maxBudget, noLimit]
   );
 
   const hasBuy = filteredRetailer.length > 0;
@@ -174,19 +177,14 @@ const MissingItemCard = ({ item, savedTab, maxBudget }: { item: MissingItem; sav
 };
 
 const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: CompleteYourLookProps) => {
+  const { budget, setBudgetFromSlider, setNoLimit } = useBudget();
+  const { maxBudget, noLimit } = budget;
+
   const savedTab = (() => {
     try { return (localStorage.getItem('cyl-tab-pref') as TabType) || 'buy'; } catch { return 'buy' as TabType; }
   })();
 
-  const savedBudget = (() => {
-    try {
-      const v = localStorage.getItem('cyl-max-budget');
-      return v ? parseInt(v, 10) : null;
-    } catch { return null; }
-  })();
-
-  const [maxBudget, setMaxBudget] = useState<number | null>(savedBudget);
-  const [showFilter, setShowFilter] = useState(maxBudget !== null);
+  const [showFilter, setShowFilter] = useState(maxBudget !== null || noLimit);
 
   const itemsWithResults = missingItems.filter(
     (m) =>
@@ -212,8 +210,12 @@ const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: Comple
             const next = !showFilter;
             setShowFilter(next);
             if (!next) {
-              setMaxBudget(null);
-              try { localStorage.removeItem('cyl-max-budget'); } catch {}
+              setBudgetFromSlider(500);
+              setNoLimit(false);
+              try {
+                localStorage.removeItem('cyl-max-budget');
+                localStorage.removeItem('cyl-no-limit');
+              } catch {}
             }
           }}
         >
@@ -224,33 +226,46 @@ const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: Comple
 
       {showFilter && (
         <div className="mb-4 rounded-lg border border-border bg-muted/40 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-muted-foreground">Max budget</span>
-            <span className="text-xs font-semibold text-foreground">
-              {maxBudget !== null ? `£${maxBudget}` : 'No limit'}
-            </span>
+          {/* No limit toggle */}
+          <div className="flex items-center justify-between mb-3">
+            <Label htmlFor="no-limit-toggle" className="text-xs font-medium text-muted-foreground cursor-pointer">
+              No limit
+            </Label>
+            <Switch
+              id="no-limit-toggle"
+              checked={noLimit}
+              onCheckedChange={(checked) => setNoLimit(checked)}
+            />
           </div>
-          <Slider
-            defaultValue={[maxBudget ?? 500]}
-            min={10}
-            max={1000}
-            step={10}
-            onValueChange={([val]) => {
-              setMaxBudget(val);
-              try { localStorage.setItem('cyl-max-budget', String(val)); } catch {}
-            }}
-            className="w-full"
-          />
-          <div className="flex justify-between mt-1">
-            <span className="text-[10px] text-muted-foreground">£10</span>
-            <span className="text-[10px] text-muted-foreground">£1000</span>
+
+          {/* Slider */}
+          <div className={noLimit ? 'opacity-40 pointer-events-none' : ''}>
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-medium text-muted-foreground">Max budget</span>
+              <span className="text-xs font-semibold text-foreground">
+                {maxBudget !== null ? `£${maxBudget}` : '£500'}
+              </span>
+            </div>
+            <Slider
+              defaultValue={[maxBudget ?? 500]}
+              value={[maxBudget ?? 500]}
+              min={10}
+              max={5000}
+              step={10}
+              onValueChange={([val]) => setBudgetFromSlider(val)}
+              className="w-full"
+            />
+            <div className="flex justify-between mt-1">
+              <span className="text-[10px] text-muted-foreground">£10</span>
+              <span className="text-[10px] text-muted-foreground">£5,000</span>
+            </div>
           </div>
         </div>
       )}
 
       <div className="space-y-3">
         {itemsWithResults.map((item, idx) => (
-          <MissingItemCard key={idx} item={item} savedTab={savedTab} maxBudget={maxBudget} />
+          <MissingItemCard key={idx} item={item} savedTab={savedTab} maxBudget={maxBudget} noLimit={noLimit} />
         ))}
       </div>
     </div>

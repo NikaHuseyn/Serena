@@ -9,8 +9,9 @@ import { useOnboarding } from '@/hooks/useOnboarding';
 import { useStylingChat } from '@/hooks/useStylingChat';
 import { Sparkles, RotateCcw, Heart, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { BudgetProvider } from '@/components/chat/BudgetContext';
 
-const Index = () => {
+const IndexContent = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
   const { messages, isLoading, sendMessage, clearChat, selectEmotionalTone } = useStylingChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -24,22 +25,24 @@ const Index = () => {
     "Smart casual brunch with friends"
   ];
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Show loading briefly for auth check
   if (onboardingLoading && !user) {
     return null;
   }
 
-  // Show onboarding for new authenticated users
   if (user && shouldShowOnboarding) {
     return <OnboardingFlow onComplete={completeOnboarding} />;
   }
 
   const hasMessages = messages.length > 0;
+
+  const handleBudgetChipSelect = (chip: string) => {
+    // Send the budget selection as a message to Oracle
+    sendMessage(`My budget is: ${chip}`);
+  };
 
   return (
     <div className="min-h-screen bg-background flex flex-col pt-14">
@@ -47,7 +50,6 @@ const Index = () => {
       
       <main className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4">
         {!hasMessages ? (
-          // Empty state - centered welcome
           <div className="flex-1 flex flex-col items-center justify-center py-12">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-6">
               <Sparkles className="h-6 w-6 text-primary" />
@@ -82,7 +84,6 @@ const Index = () => {
             <SuggestionChips suggestions={suggestions} onSelect={sendMessage} />
           </div>
         ) : (
-          // Chat messages
           <div className="flex-1 py-4 overflow-y-auto">
             <div className="space-y-0 divide-y divide-border">
               {messages.map((message) => (
@@ -102,6 +103,8 @@ const Index = () => {
                   toneRecommendations={message.toneRecommendations}
                   onSelectTone={selectEmotionalTone}
                   shoppingTitle={message.shoppingTitle}
+                  budgetChips={message.budgetChips}
+                  onBudgetChipSelect={handleBudgetChipSelect}
                 />
               ))}
               {isLoading && <ChatMessage role="assistant" content="" isLoading />}
@@ -110,7 +113,6 @@ const Index = () => {
           </div>
         )}
 
-        {/* Input area */}
         <div className="sticky bottom-0 bg-background pt-4 pb-6">
           {hasMessages && (
             <div className="flex justify-center mb-4">
@@ -136,5 +138,11 @@ const Index = () => {
     </div>
   );
 };
+
+const Index = () => (
+  <BudgetProvider>
+    <IndexContent />
+  </BudgetProvider>
+);
 
 export default Index;

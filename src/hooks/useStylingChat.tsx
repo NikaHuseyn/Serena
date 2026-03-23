@@ -37,6 +37,8 @@ export interface ChatMessage {
   }>;
   /** Section title: "Shop This Look" or "Complete Your Look" */
   shoppingTitle?: string;
+  /** Whether to show budget selection chips */
+  budgetChips?: boolean;
   timestamp: Date;
 }
 
@@ -301,6 +303,10 @@ export const useStylingChat = () => {
       // Use server-side wardrobe state and product search results
       const shoppingTitle = data?.shopping_section_title || undefined;
 
+      // Detect if the AI is asking about budget
+      const budgetQuestionPattern = /budget|how much|price range|spend/i;
+      const hasBudgetQuestion = budgetQuestionPattern.test(responseContent) && /\?/.test(responseContent);
+
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -315,6 +321,7 @@ export const useStylingChat = () => {
         culturalContext: data?.cultural_context || undefined,
         wardrobeStatus: data?.wardrobe_status || undefined,
         shoppingTitle,
+        budgetChips: hasBudgetQuestion,
         weatherNote,
         timestamp: new Date(),
       };

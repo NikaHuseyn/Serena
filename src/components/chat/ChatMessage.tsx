@@ -1,20 +1,16 @@
 import React, { useState } from 'react';
-import { User, Sparkles, ExternalLink, ShoppingBag, Tag, MapPin, Ticket, Globe, X, Shirt } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { User, Sparkles, ShoppingBag, Tag, MapPin, Ticket, Globe, X, Shirt } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import CompleteYourLook from './CompleteYourLook';
 import EmotionalToneCards from './EmotionalToneCards';
+import BudgetChips from './BudgetChips';
 
 interface OutfitItem {
   name: string;
   reasoning?: string;
   source?: string;
   wardrobe_item_id?: string | null;
-  purchase_options?: {
-    uk_retailers?: Array<{ store: string; url: string; price_range: string }>;
-    rental_platforms?: Array<{ platform: string; url: string; price_range: string }>;
-  };
 }
 
 interface EmotionalTone {
@@ -47,9 +43,11 @@ interface ChatMessageProps {
   onSelectTone?: (toneId: string) => void;
   isLoading?: boolean;
   shoppingTitle?: string;
+  budgetChips?: boolean;
+  onBudgetChipSelect?: (chip: string) => void;
 }
 
-const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, onSelectTone, isLoading, shoppingTitle }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, onSelectTone, isLoading, shoppingTitle, budgetChips, onBudgetChipSelect }: ChatMessageProps) => {
   const isUser = role === 'user';
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
@@ -76,7 +74,6 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
         {item.reasoning && (
           <p className="text-sm text-muted-foreground mt-1">{item.reasoning}</p>
         )}
-        {renderShoppingLinks(item.purchase_options)}
       </div>
     );
   };
@@ -96,37 +93,7 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
     return result;
   };
 
-  const renderShoppingLinks = (options?: OutfitItem['purchase_options']) => {
-    if (!options) return null;
-    const hasLinks = (options.uk_retailers?.length || 0) > 0 || (options.rental_platforms?.length || 0) > 0;
-    if (!hasLinks) return null;
-
-    return (
-      <div className="flex flex-wrap gap-2 mt-2">
-        {options.uk_retailers?.slice(0, 2).map((retailer, idx) => (
-          <Button key={idx} variant="outline" size="sm" className="text-xs h-7" asChild>
-            <a href={retailer.url} target="_blank" rel="noopener noreferrer">
-              <ShoppingBag className="h-3 w-3 mr-1" />
-              {retailer.store} ({retailer.price_range})
-              <ExternalLink className="h-3 w-3 ml-1" />
-            </a>
-          </Button>
-        ))}
-        {options.rental_platforms?.slice(0, 1).map((platform, idx) => (
-          <Button key={idx} variant="outline" size="sm" className="text-xs h-7" asChild>
-            <a href={platform.url} target="_blank" rel="noopener noreferrer">
-              <Tag className="h-3 w-3 mr-1" />
-              Rent: {platform.platform}
-              <ExternalLink className="h-3 w-3 ml-1" />
-            </a>
-          </Button>
-        ))}
-      </div>
-    );
-  };
-
   const renderWardrobeBanner = () => {
-    // Only show for logged-in users with empty wardrobe, not guests
     if (!wardrobeStatus?.is_authenticated || wardrobeStatus.has_wardrobe || bannerDismissed) return null;
 
     return (
@@ -157,19 +124,17 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
 
     return (
       <div className="mt-4 space-y-2">
-        {/* Outfit items */}
         <div className="space-y-1">
           {flatItems.map((item, idx) => renderOutfitItem(item, idx))}
         </div>
 
-        {/* Complete your look - missing items with buy/rent tabs */}
         {recommendation.missing_items?.length > 0 && (
           <CompleteYourLook
             missingItems={recommendation.missing_items}
             title={shoppingTitle}
           />
         )}
-        {/* Styling tips */}
+
         {recommendation.ai_insights?.styling_tips?.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border">
             <span className="text-sm font-medium text-muted-foreground">Styling Tips</span>
@@ -181,7 +146,6 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
           </div>
         )}
 
-        {/* Wardrobe analysis */}
         {recommendation.ai_insights?.wardrobe_analysis?.items_used?.length > 0 && (
           <div className="mt-4 pt-4 border-t border-border">
             <span className="text-sm font-medium text-muted-foreground">From Your Wardrobe</span>
@@ -294,6 +258,10 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
               </button>
             ))}
           </div>
+        )}
+        {/* Budget chips */}
+        {budgetChips && onBudgetChipSelect && (
+          <BudgetChips onSelect={onBudgetChipSelect} />
         )}
         {/* Emotional tone cards for vague occasions */}
         {emotionalToneCards && toneRecommendations && onSelectTone && (
