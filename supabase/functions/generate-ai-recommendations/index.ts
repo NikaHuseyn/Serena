@@ -604,15 +604,7 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
                     source: { type: 'string', enum: ['from_wardrobe', 'needs_purchase', 'needs_rental'] },
                     confidence: { type: 'number' },
                     reasoning: { type: 'string' },
-                    styling_tips: { type: 'string' },
-                    purchase_options: {
-                      type: 'object',
-                      properties: {
-                        uk_retailers: { type: 'array', items: { type: 'object', properties: { store: { type: 'string' }, price_range: { type: 'string' }, url: { type: 'string' } } } },
-                        rental_platforms: { type: 'array', items: { type: 'object', properties: { platform: { type: 'string' }, price_range: { type: 'string' }, url: { type: 'string' } } } },
-                        vintage_options: { type: 'array', items: { type: 'object', properties: { source: { type: 'string' }, price_range: { type: 'string' }, url: { type: 'string' } } } }
-                      }
-                    }
+                    styling_tips: { type: 'string' }
                   },
                   required: ['name', 'confidence', 'reasoning', 'styling_tips']
                 },
@@ -623,8 +615,7 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
                     source: { type: 'string', enum: ['from_wardrobe', 'needs_purchase', 'needs_rental'] },
                     confidence: { type: 'number' },
                     reasoning: { type: 'string' },
-                    styling_tips: { type: 'string' },
-                    purchase_options: { type: 'object' }
+                    styling_tips: { type: 'string' }
                   },
                   required: ['name', 'confidence', 'reasoning', 'styling_tips']
                 },
@@ -635,8 +626,7 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
                     source: { type: 'string', enum: ['from_wardrobe', 'needs_purchase', 'needs_rental'] },
                     confidence: { type: 'number' },
                     reasoning: { type: 'string' },
-                    styling_tips: { type: 'string' },
-                    purchase_options: { type: 'object' }
+                    styling_tips: { type: 'string' }
                   },
                   required: ['name', 'confidence', 'reasoning', 'styling_tips']
                 },
