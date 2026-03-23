@@ -37,6 +37,7 @@ interface MissingItem {
 
 interface CompleteYourLookProps {
   missingItems: MissingItem[];
+  title?: string;
 }
 
 type TabType = 'buy' | 'rent' | 'secondhand';
@@ -172,7 +173,7 @@ const MissingItemCard = ({ item, savedTab, maxBudget }: { item: MissingItem; sav
   );
 };
 
-const CompleteYourLook = ({ missingItems }: CompleteYourLookProps) => {
+const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: CompleteYourLookProps) => {
   const savedTab = (() => {
     try { return (localStorage.getItem('cyl-tab-pref') as TabType) || 'buy'; } catch { return 'buy' as TabType; }
   })();
@@ -201,7 +202,7 @@ const CompleteYourLook = ({ missingItems }: CompleteYourLookProps) => {
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <ShoppingBag className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold text-foreground">Complete Your Look</h3>
+          <h3 className="text-sm font-semibold text-foreground">{title}</h3>
         </div>
         <Button
           variant={showFilter ? 'secondary' : 'ghost'}

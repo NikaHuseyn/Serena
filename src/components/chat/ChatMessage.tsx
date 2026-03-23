@@ -46,9 +46,10 @@ interface ChatMessageProps {
   toneRecommendations?: Record<string, { recommendation: any; content: string; missing_items?: any[] }>;
   onSelectTone?: (toneId: string) => void;
   isLoading?: boolean;
+  shoppingTitle?: string;
 }
 
-const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, onSelectTone, isLoading }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, onSelectTone, isLoading, shoppingTitle }: ChatMessageProps) => {
   const isUser = role === 'user';
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
@@ -163,7 +164,10 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
 
         {/* Complete your look - missing items with buy/rent tabs */}
         {recommendation.missing_items?.length > 0 && (
-          <CompleteYourLook missingItems={recommendation.missing_items} />
+          <CompleteYourLook
+            missingItems={recommendation.missing_items}
+            title={shoppingTitle}
+          />
         )}
         {/* Styling tips */}
         {recommendation.ai_insights?.styling_tips?.length > 0 && (

@@ -5,6 +5,14 @@ import { toast } from 'sonner';
 import { detectVenue, detectEvent, VenueDetectionResult } from './styling-chat/venueEventDetection';
 import { extractLocation, extractFutureDate, formatDateLabel } from './styling-chat/weatherExtraction';
 import { detectVagueVenue, getRelevantEmotionalTones, detectExplicitEmotionalGoal, EmotionalTone } from './styling-chat/vagueVenueDetection';
+import {
+  determineWardrobeState,
+  getSectionTitle,
+  searchProductsForItems,
+  detectExplicitShopIntent,
+  type RecommendedItem,
+  type WardrobeState,
+} from '@/services/productSearchService';
 
 export interface ChatMessage {
   id: string;
@@ -35,7 +43,24 @@ export interface ChatMessage {
     content: string;
     missing_items?: any[];
   }>;
+  /** Section title: "Shop This Look" or "Complete Your Look" */
+  shoppingTitle?: string;
   timestamp: Date;
+}
+
+/** Flatten recommended_items object into array of RecommendedItem */
+function flattenRecommendedItems(items: Record<string, any>): RecommendedItem[] {
+  const result: RecommendedItem[] = [];
+  const excludeKeys = ['character_suggestions', 'wardrobe_analysis'];
+  Object.entries(items).forEach(([key, value]) => {
+    if (excludeKeys.includes(key)) return;
+    if (Array.isArray(value)) {
+      result.push(...value.filter((v: any) => v && typeof v === 'object' && 'name' in v));
+    } else if (value && typeof value === 'object' && 'name' in value) {
+      result.push(value as RecommendedItem);
+    }
+  });
+  return result;
 }
 
 export const useStylingChat = () => {
@@ -294,6 +319,41 @@ export const useStylingChat = () => {
         responseContent += "I've put together some styling suggestions based on your request.";
       }
 
+      // --- Product search based on wardrobe state ---
+      let shoppingTitle: string | undefined;
+      let searchedMissingItems: any[] | undefined;
+
+      if (data?.recommendation?.recommended_items) {
+        const flatItems = flattenRecommendedItems(data.recommendation.recommended_items);
+        const wardrobeState = determineWardrobeState(
+          data?.wardrobe_status,
+          flatItems,
+          userMessage,
+        );
+
+        if (wardrobeState !== 'full_match') {
+          shoppingTitle = getSectionTitle(wardrobeState);
+          const occasion = data.recommendation.occasion || userMessage;
+          const budgetTier = data.recommendation.budget_tier;
+
+          try {
+            const productResults = await searchProductsForItems(
+              flatItems,
+              wardrobeState,
+              occasion,
+              budgetTier,
+            );
+            if (productResults.length > 0) {
+              searchedMissingItems = productResults;
+            }
+          } catch (err) {
+            console.warn('Product search failed, falling back to existing missing_items:', err);
+          }
+        }
+      }
+
+      const finalMissingItems = searchedMissingItems || data?.missing_items;
+
       const assistantMsg: ChatMessage = {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -301,12 +361,13 @@ export const useStylingChat = () => {
         recommendation: data?.recommendation ? {
           ...data.recommendation,
           ai_insights: data.ai_insights,
-          missing_items: data.missing_items
+          missing_items: finalMissingItems,
         } : undefined,
         venueContext: venueContext || undefined,
         eventContext: eventContext || undefined,
         culturalContext: data?.cultural_context || undefined,
         wardrobeStatus: data?.wardrobe_status || undefined,
+        shoppingTitle,
         weatherNote,
         timestamp: new Date(),
       };
