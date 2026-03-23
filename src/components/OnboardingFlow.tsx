@@ -108,7 +108,7 @@ const ProfileStep: React.FC<{
   const bodyTypes = ['Petite', 'Tall', 'Curvy', 'Athletic', 'Straight', 'Hourglass', 'Pear', 'Apple'];
   const fitOptions = ['Fitted & tailored', 'Relaxed & loose', 'Depends on the piece', 'Mix of both'];
 
-  const budgetChips = chips.filter(c => !c.noLimit);
+  
 
   return (
     <div className="space-y-6 max-w-lg mx-auto">
