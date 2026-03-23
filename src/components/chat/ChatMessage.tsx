@@ -46,6 +46,7 @@ interface ChatMessageProps {
   toneRecommendations?: Record<string, { recommendation: any; content: string; missing_items?: any[] }>;
   onSelectTone?: (toneId: string) => void;
   isLoading?: boolean;
+  shoppingTitle?: string;
 }
 
 const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, onSelectTone, isLoading }: ChatMessageProps) => {
