@@ -59,6 +59,8 @@ serve(async (req) => {
       emotional_tone = null,
       emotional_tone_label = null,
       is_multi_tone = false,
+      // User's raw message for explicit shop intent detection
+      user_message = null,
     } = await req.json();
 
     // Helper to parse AI JSON safely
