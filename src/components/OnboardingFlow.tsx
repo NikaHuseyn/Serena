@@ -29,6 +29,8 @@ interface StyleData {
   itemsToAvoid: string[];
   avoidFreeText: string;
   shoppingPreference: string;
+  primaryOccasions: string[];
+  shoppingPreference: string;
 }
 
 interface OnboardingStep {
