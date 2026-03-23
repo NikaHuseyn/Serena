@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { ShoppingBag, Tag, Recycle, ExternalLink, SlidersHorizontal, Search } from 'lucide-react';
+import { ShoppingBag, Tag, Recycle, ExternalLink, SlidersHorizontal, Search, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
-import { Switch } from '@/components/ui/switch';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useBudget } from './BudgetContext';
 
@@ -199,7 +198,7 @@ const MissingItemCard = ({ item, savedTab, maxBudget, noLimit }: { item: Missing
 };
 
 const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: CompleteYourLookProps) => {
-  const { budget, setBudgetFromSlider, setNoLimit } = useBudget();
+  const { budget, currency, chips, setBudgetFromInput, setNoLimit, setBudgetFromChip } = useBudget();
   const { maxBudget, noLimit } = budget;
 
   const savedTab = (() => {
@@ -207,6 +206,49 @@ const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: Comple
   })();
 
   const [showFilter, setShowFilter] = useState(maxBudget !== null || noLimit);
+  const [activeChip, setActiveChip] = useState<string | null>(() => {
+    if (noLimit) return 'No limit ✨';
+    const match = chips.find(c => !c.noLimit && c.value === maxBudget);
+    return match?.label ?? null;
+  });
+  const [lastValue, setLastValue] = useState<number | null>(maxBudget);
+
+  const handleChipClick = (chip: typeof chips[0]) => {
+    if (chip.noLimit) {
+      setActiveChip(chip.label);
+      setLastValue(maxBudget);
+      setNoLimit(true);
+    } else {
+      setActiveChip(chip.label);
+      setNoLimit(false);
+      if (chip.value !== null) setBudgetFromInput(chip.value);
+    }
+  };
+
+  const handleNoLimitToggle = () => {
+    if (noLimit) {
+      setNoLimit(false);
+      setActiveChip(null);
+      if (lastValue !== null) setBudgetFromInput(lastValue);
+    } else {
+      setLastValue(maxBudget);
+      setActiveChip('No limit ✨');
+      setNoLimit(true);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '');
+    if (raw === '') {
+      setBudgetFromInput(null);
+      setActiveChip(null);
+      return;
+    }
+    const val = parseInt(raw, 10);
+    setBudgetFromInput(val);
+    const match = chips.find(c => !c.noLimit && c.value === val);
+    setActiveChip(match?.label ?? null);
+  };
 
   const itemsWithResults = missingItems.filter(
     (m) =>
@@ -233,8 +275,9 @@ const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: Comple
             const next = !showFilter;
             setShowFilter(next);
             if (!next) {
-              setBudgetFromSlider(500);
+              setBudgetFromInput(null);
               setNoLimit(false);
+              setActiveChip(null);
               try {
                 localStorage.removeItem('cyl-max-budget');
                 localStorage.removeItem('cyl-no-limit');
@@ -248,41 +291,59 @@ const CompleteYourLook = ({ missingItems, title = 'Complete Your Look' }: Comple
       </div>
 
       {showFilter && (
-        <div className="mb-4 rounded-lg border border-border bg-muted/40 p-3">
-          {/* No limit toggle */}
-          <div className="flex items-center justify-between mb-3">
-            <Label htmlFor="no-limit-toggle" className="text-xs font-medium text-muted-foreground cursor-pointer">
-              No limit
+        <div className="mb-4 rounded-lg border border-border bg-muted/40 p-3 space-y-3">
+          {/* Currency text input */}
+          <div>
+            <Label htmlFor="budget-input" className="text-xs font-medium text-muted-foreground mb-1.5 block">
+              Max budget
             </Label>
-            <Switch
-              id="no-limit-toggle"
-              checked={noLimit}
-              onCheckedChange={(checked) => setNoLimit(checked)}
-            />
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-medium text-muted-foreground">
+                {currency.symbol}
+              </span>
+              <Input
+                id="budget-input"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                disabled={noLimit}
+                value={noLimit ? '' : (maxBudget !== null ? String(maxBudget) : '')}
+                onChange={handleInputChange}
+                placeholder={noLimit ? 'No limit' : 'Enter your budget'}
+                className="pl-7 h-9 text-sm"
+              />
+            </div>
           </div>
 
-          {/* Slider */}
-          <div className={noLimit ? 'opacity-40 pointer-events-none' : ''}>
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs font-medium text-muted-foreground">Max budget</span>
-              <span className="text-xs font-semibold text-foreground">
-                {maxBudget !== null ? `£${maxBudget}` : '£500'}
-              </span>
-            </div>
-            <Slider
-              defaultValue={[maxBudget ?? 500]}
-              value={[maxBudget ?? 500]}
-              min={10}
-              max={5000}
-              step={10}
-              onValueChange={([val]) => setBudgetFromSlider(val)}
-              className="w-full"
-            />
-            <div className="flex justify-between mt-1">
-              <span className="text-[10px] text-muted-foreground">£10</span>
-              <span className="text-[10px] text-muted-foreground">£5,000</span>
-            </div>
+          {/* Quick-select chips */}
+          <div className="flex flex-wrap gap-1.5">
+            {chips.filter(c => !c.noLimit).map((chip) => (
+              <button
+                key={chip.label}
+                onClick={() => handleChipClick(chip)}
+                className={`px-2.5 py-1 text-xs border rounded-full transition-colors ${
+                  activeChip === chip.label
+                    ? 'border-primary bg-primary/10 text-primary font-medium'
+                    : 'border-border text-muted-foreground hover:bg-primary/5 hover:border-primary/30'
+                }`}
+              >
+                {chip.label}
+              </button>
+            ))}
           </div>
+
+          {/* No limit toggle */}
+          <button
+            onClick={handleNoLimitToggle}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded-full transition-colors ${
+              noLimit
+                ? 'border-primary bg-primary/10 text-primary font-medium'
+                : 'border-border text-muted-foreground hover:bg-primary/5 hover:border-primary/30'
+            }`}
+          >
+            <Sparkles className="h-3 w-3" />
+            No limit
+          </button>
         </div>
       )}
 
