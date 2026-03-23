@@ -39,7 +39,7 @@ interface ChatMessageProps {
     has_wardrobe: boolean;
   };
   emotionalToneCards?: EmotionalTone[];
-  toneRecommendations?: Record<string, { recommendation: any; content: string; missing_items?: any[] }>;
+  selectedToneId?: string | null;
   onSelectTone?: (toneId: string) => void;
   isLoading?: boolean;
   shoppingTitle?: string;
