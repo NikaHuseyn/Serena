@@ -291,8 +291,7 @@ const CalendarStep: React.FC<{ onNext: () => void }> = ({ onNext }) => {
       if (success) { setConnected(true); setTimeout(onNext, 1000); }
       else { setIsConnecting(false); }
     } catch {
-      setConnected(true);
-      setTimeout(onNext, 1000);
+      setIsConnecting(false);
     }
   };
 
