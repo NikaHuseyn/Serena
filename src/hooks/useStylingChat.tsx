@@ -590,7 +590,7 @@ export const useStylingChat = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [messages, pendingVenue, selectedEmotionalTone, conversationCtx, updateContextFromMessage, executeRecommendation, executeMultiToneRecommendation]);
+  }, [messages, pendingVenue, selectedEmotionalTone, conversationCtx, updateContextFromMessage, executeRecommendation, executeVagueRecommendation]);
 
   const clearChat = useCallback(() => {
     setMessages([]);
