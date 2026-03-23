@@ -29,12 +29,6 @@ export interface ChatMessage {
   };
   /** Emotional tone cards for vague occasions */
   emotionalToneCards?: EmotionalTone[];
-  /** Multi-tone recommendations keyed by tone id */
-  toneRecommendations?: Record<string, {
-    recommendation: any;
-    content: string;
-    missing_items?: any[];
-  }>;
   /** Section title: "Shop This Look" or "Complete Your Look" */
   shoppingTitle?: string;
   timestamp: Date;
