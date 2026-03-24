@@ -494,7 +494,9 @@ EVENT DETAILS:
 ` : ''}
 
 WEATHER CONTEXT:
-${weatherData ? `Temperature: ${weatherData.temperature}°C, Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}, Source: ${weatherData.source}
+${weatherData ? `${weatherData.source !== 'current_location'
+  ? `Temperature: ${weatherData.temperature}°C, Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}, Source: ${weatherData.source}`
+  : `Temperature: [use your knowledge of typical weather for this location/season], Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}, Source: ${weatherData.source}`}
 
 ⚠️ WEATHER REFERENCE RULES (CRITICAL):
 - If source is "current_location" (device GPS): NEVER mention specific temperature in the opening recommendation line
@@ -1052,6 +1054,11 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
               search_keywords: v.name.split(/\s+/).slice(0, 5),
             });
           }
+        }
+        if (exchangeCount === 0) {
+          const clothing = itemsToSearch.filter(i => !isAccessoryItem(i.item_type));
+          const accessories = itemsToSearch.filter(i => isAccessoryItem(i.item_type));
+          itemsToSearch = [...clothing, ...accessories.slice(0, 0)];
         }
       } else {
         itemsToSearch = missingItemsFromAI;

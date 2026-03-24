@@ -6,6 +6,19 @@ import { detectVenue, detectEvent, VenueDetectionResult } from './styling-chat/v
 import { extractLocation, extractFutureDate, formatDateLabel } from './styling-chat/weatherExtraction';
 import { detectVagueVenue, getRelevantEmotionalTones, detectExplicitEmotionalGoal, EmotionalTone } from './styling-chat/vagueVenueDetection';
 
+const KNOWN_DRESS_CODES = [
+  'black tie', 'white tie',
+  'black tie optional',
+  'creative black tie',
+  'smart casual', 'business casual',
+  'cocktail', 'cocktail attire',
+  'formal', 'semi formal', 'semi-formal',
+  'casual', 'beach casual',
+  'garden party', 'lounge suit',
+  'morning dress', 'festive',
+  'resort casual'
+];
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -189,10 +202,19 @@ export const useStylingChat = () => {
       else if (/\b(this weekend|saturday|sunday)\b/i.test(msg)) ctx.date = 'this weekend';
 
       // Dress code
-      if (/\b(black tie|formal|white tie)\b/i.test(msg)) ctx.dress_code = 'formal';
-      else if (/\b(smart casual)\b/i.test(msg)) ctx.dress_code = 'smart casual';
-      else if (/\b(casual|relaxed)\b/i.test(msg)) ctx.dress_code = 'casual';
-      else if (/\b(cocktail)\b/i.test(msg)) ctx.dress_code = 'cocktail';
+      if (/\b(black tie|white tie|black tie optional|creative black tie)\b/i.test(msg)) {
+        ctx.dress_code = 'black tie';
+      } else if (/\b(cocktail|cocktail attire)\b/i.test(msg)) {
+        ctx.dress_code = 'cocktail';
+      } else if (/\b(smart casual|business casual)\b/i.test(msg)) {
+        ctx.dress_code = 'smart casual';
+      } else if (/\b(lounge suit|morning dress)\b/i.test(msg)) {
+        ctx.dress_code = 'formal';
+      } else if (/\b(beach casual|resort casual|garden party)\b/i.test(msg)) {
+        ctx.dress_code = 'casual';
+      } else if (/\b(semi.?formal)\b/i.test(msg)) {
+        ctx.dress_code = 'semi-formal';
+      }
 
       // Venue type
       if (/\b(restaurant|dining)\b/i.test(msg)) ctx.venue_type = 'restaurant';
@@ -561,6 +583,9 @@ export const useStylingChat = () => {
     try {
       const vagueVenue = detectVagueVenue(lastUserMsg.content);
       const extraContext: Record<string, any> = { emotional_tone: toneId };
+      if (conversationCtx.dress_code) {
+        extraContext.known_dress_code = conversationCtx.dress_code;
+      }
       if (vagueVenue) {
         extraContext.inferred_venue_formality = vagueVenue.inferredFormality;
         extraContext.inferred_meal_type = vagueVenue.mealType;
@@ -613,9 +638,14 @@ export const useStylingChat = () => {
     setIsLoading(true);
 
     try {
+      // Strip explicit dress code phrases before venue/event detection
+      const strippedForVenue = KNOWN_DRESS_CODES
+        .reduce((msg, code) => msg.replace(new RegExp(`\\b${code}\\b`, 'gi'), ''), userMessage)
+        .trim();
+
       // First check for specific named venue
-      const venueResult: VenueDetectionResult | null = detectVenue(userMessage);
-      const detectedEvent = detectEvent(userMessage);
+      const venueResult: VenueDetectionResult | null = detectVenue(strippedForVenue);
+      const detectedEvent = detectEvent(strippedForVenue);
 
       // If venue is ambiguous (multi-city, no city specified), ask the user
       if (venueResult?.isMultiCity) {
@@ -648,6 +678,9 @@ export const useStylingChat = () => {
       // If we have a specific venue or event, do normal flow
       if (resolvedVenueName || detectedEvent) {
         const extraContext: Record<string, any> = {};
+        if (conversationCtx.dress_code) {
+          extraContext.known_dress_code = conversationCtx.dress_code;
+        }
         if (selectedEmotionalTone) {
           extraContext.emotional_tone = selectedEmotionalTone;
         }
@@ -666,6 +699,9 @@ export const useStylingChat = () => {
         } else {
           // Either explicit tone, previously selected tone, or non-venue request
           const extraContext: Record<string, any> = {};
+          if (conversationCtx.dress_code) {
+            extraContext.known_dress_code = conversationCtx.dress_code;
+          }
           if (vagueVenue) {
             extraContext.inferred_venue_formality = vagueVenue.inferredFormality;
             extraContext.inferred_meal_type = vagueVenue.mealType;
