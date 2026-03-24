@@ -28,11 +28,21 @@ Deno.serve(async (req) => {
 
     const pinterestApiKey = Deno.env.get('PINTEREST_ACCESS_TOKEN');
     if (!pinterestApiKey) {
-      console.log('Pinterest API key not configured, using enhanced mock data');
-      return await generateEnhancedMockData(supabaseClient);
+      console.log('Pinterest API key not configured — skipping integration');
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'PINTEREST_ACCESS_TOKEN not configured. No data was stored.',
+          trends_processed: 0,
+          source: 'Pinterest Business API'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
     }
 
-    // Fashion-related keywords to track on Pinterest
     const fashionKeywords = [
       'dark academia fashion',
       'cottagecore aesthetic',
@@ -48,10 +58,8 @@ Deno.serve(async (req) => {
 
     const trendsData: PinterestTrendData[] = [];
 
-    // Fetch trends from Pinterest Business API
     for (const keyword of fashionKeywords) {
       try {
-        // Pinterest Trends API endpoint
         const response = await fetch(`https://api.pinterest.com/v5/ad_accounts/trends/keywords?keywords=${encodeURIComponent(keyword)}`, {
           headers: {
             'Authorization': `Bearer ${pinterestApiKey}`,
@@ -61,33 +69,40 @@ Deno.serve(async (req) => {
 
         if (response.ok) {
           const data = await response.json();
-          
-          // Process Pinterest API response
           if (data.items && data.items.length > 0) {
             const trendItem = data.items[0];
-            const trendData: PinterestTrendData = {
+            trendsData.push({
               term: keyword,
               growth_rate: `+${Math.floor((trendItem.growth_rate || 1) * 100)}%`,
               category: getCategoryForKeyword(keyword),
-              interest_level: trendItem.monthly_searches || Math.floor(Math.random() * 1000000),
-              monthly_searches: trendItem.monthly_searches || Math.floor(Math.random() * 500000),
+              interest_level: trendItem.monthly_searches || 0,
+              monthly_searches: trendItem.monthly_searches || 0,
               related_terms: await getRelatedTerms(keyword, pinterestApiKey)
-            };
-            trendsData.push(trendData);
+            });
           }
         } else {
           console.error(`Pinterest API error for ${keyword}:`, response.status, response.statusText);
-          // Fallback to enhanced mock data for this keyword
-          trendsData.push(generateMockTrendForKeyword(keyword));
         }
       } catch (error) {
         console.error(`Error fetching Pinterest trends for ${keyword}:`, error);
-        // Fallback to enhanced mock data for this keyword
-        trendsData.push(generateMockTrendForKeyword(keyword));
       }
     }
 
-    // Process and store the trends data
+    if (trendsData.length === 0) {
+      return new Response(
+        JSON.stringify({ 
+          success: false, 
+          message: 'Pinterest API returned no data for any keyword.',
+          trends_processed: 0,
+          source: 'Pinterest Business API'
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 200 
+        }
+      );
+    }
+
     await processPinterestTrends(trendsData, supabaseClient);
 
     return new Response(
@@ -95,7 +110,7 @@ Deno.serve(async (req) => {
         success: true, 
         message: 'Pinterest trends data integrated successfully',
         trends_processed: trendsData.length,
-        source: pinterestApiKey ? 'Pinterest Business API' : 'Enhanced Mock Data'
+        source: 'Pinterest Business API'
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -131,14 +146,7 @@ async function getRelatedTerms(keyword: string, apiKey: string): Promise<string[
   } catch (error) {
     console.error('Error fetching related terms:', error);
   }
-  
-  // Fallback related terms
-  return [
-    `${keyword} outfit`,
-    `${keyword} style`,
-    `${keyword} inspiration`,
-    `${keyword} aesthetic`
-  ];
+  return [];
 }
 
 async function processPinterestTrends(trendsData: PinterestTrendData[], supabaseClient: any): Promise<void> {
@@ -168,84 +176,11 @@ async function processPinterestTrends(trendsData: PinterestTrendData[], supabase
   }
 }
 
-async function generateEnhancedMockData(supabaseClient: any): Promise<Response> {
-  const enhancedMockTrends: PinterestTrendData[] = [
-    {
-      term: 'Dark Academia Fashion',
-      growth_rate: '+145%',
-      category: 'Aesthetic',
-      monthly_searches: 2100000,
-      related_terms: ['Tweed blazers', 'Plaid skirts', 'Oxford shoes', 'Vintage books aesthetic']
-    },
-    {
-      term: 'Cottagecore Aesthetic',
-      growth_rate: '+128%',
-      category: 'Lifestyle',
-      monthly_searches: 1850000,
-      related_terms: ['Prairie dresses', 'Floral patterns', 'Vintage aprons', 'Country style']
-    },
-    {
-      term: 'Y2K Revival Fashion',
-      growth_rate: '+97%',
-      category: 'Vintage',
-      monthly_searches: 1200000,
-      related_terms: ['Low-rise jeans', 'Butterfly clips', 'Platform shoes', 'Metallic fabrics']
-    },
-    {
-      term: 'Dopamine Dressing',
-      growth_rate: '+78%',
-      category: 'Color Trends',
-      monthly_searches: 950000,
-      related_terms: ['Bright colors', 'Bold patterns', 'Statement pieces', 'Happy fashion']
-    },
-    {
-      term: 'Sustainable Fashion',
-      growth_rate: '+156%',
-      category: 'Conscious',
-      monthly_searches: 3200000,
-      related_terms: ['Eco-friendly clothing', 'Thrift fashion', 'Ethical brands', 'Slow fashion']
-    }
-  ];
-
-  await processPinterestTrends(enhancedMockTrends, supabaseClient);
-
-  return new Response(
-    JSON.stringify({ 
-      success: true, 
-      message: 'Enhanced mock Pinterest trends data integrated successfully',
-      trends_processed: enhancedMockTrends.length,
-      source: 'Enhanced Mock Data',
-      note: 'Configure PINTEREST_ACCESS_TOKEN for real API data'
-    }),
-    { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200 
-    }
-  );
-}
-
-function generateMockTrendForKeyword(keyword: string): PinterestTrendData {
-  return {
-    term: keyword,
-    growth_rate: `+${Math.floor(Math.random() * 100 + 20)}%`,
-    category: getCategoryForKeyword(keyword),
-    monthly_searches: Math.floor(Math.random() * 1000000 + 100000),
-    related_terms: [
-      `${keyword} outfit`,
-      `${keyword} style`,
-      `${keyword} inspiration`
-    ]
-  };
-}
-
 function calculateTrendScore(trend: PinterestTrendData): number {
   const growthRate = parseInt(trend.growth_rate.replace('+', '').replace('%', ''));
   const searchVolume = trend.monthly_searches || 0;
-  
-  // Calculate score based on growth rate and search volume
   const growthScore = Math.min(growthRate, 100);
   const volumeScore = Math.min((searchVolume / 10000), 100);
-  
   return Math.floor((growthScore + volumeScore) / 2);
 }
 

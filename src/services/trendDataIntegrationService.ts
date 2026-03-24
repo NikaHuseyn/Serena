@@ -1,53 +1,23 @@
 import { supabase } from '@/integrations/supabase/client';
 
-interface GoogleTrendsData {
-  keyword: string;
-  trend_score: number;
-  category: string;
-  region?: string;
-  timeframe?: string;
-  interest_over_time?: any[];
-  related_topics?: any[];
-  related_queries?: any[];
-}
-
-interface PinterestTrendData {
-  term: string;
-  growth_rate: string;
-  category: string;
-  demographics?: any;
-  related_terms?: string[];
-}
-
-interface InstagramTrendData {
-  hashtag: string;
-  post_count: number;
-  engagement_rate: number;
-  category: string;
-  recent_posts?: any[];
-}
-
 class TrendDataIntegrationService {
   async fetchAndIntegrateTrendData(): Promise<void> {
     console.log('Starting trend data integration...');
     
     try {
-      // Call edge functions for real data
-      const googleTrendsPromise = this.fetchGoogleTrendsViaEdgeFunction();
-      const pinterestTrendsPromise = this.fetchPinterestTrendsViaEdgeFunction();
-      const instagramTrendsPromise = this.fetchInstagramTrendsViaEdgeFunction();
-      const wgsnTrendsPromise = this.fetchWGSNTrendsViaEdgeFunction();
-      
-      const [googleTrendsResult, pinterestTrendsResult, instagramTrendsResult, wgsnTrendsResult] = await Promise.allSettled([
-        googleTrendsPromise,
-        pinterestTrendsPromise,
-        instagramTrendsPromise,
-        wgsnTrendsPromise
+      const [googleTrendsResult, editorialResult, pinterestTrendsResult, instagramTrendsResult] = await Promise.allSettled([
+        this.fetchGoogleTrendsViaEdgeFunction(),
+        this.fetchEditorialTrendsViaEdgeFunction(),
+        this.fetchPinterestTrendsViaEdgeFunction(),
+        this.fetchInstagramTrendsViaEdgeFunction(),
       ]);
 
-      // Both Google Trends and Pinterest edge functions handle data storage internally
       if (googleTrendsResult.status === 'rejected') {
         console.error('Google Trends integration failed:', googleTrendsResult.reason);
+      }
+
+      if (editorialResult.status === 'rejected') {
+        console.error('Editorial trends integration failed:', editorialResult.reason);
       }
 
       if (pinterestTrendsResult.status === 'rejected') {
@@ -58,11 +28,6 @@ class TrendDataIntegrationService {
         console.error('Instagram Trends integration failed:', instagramTrendsResult.reason);
       }
 
-      if (wgsnTrendsResult.status === 'rejected') {
-        console.error('WGSN Trends integration failed:', wgsnTrendsResult.reason);
-      }
-
-      // Generate seasonal forecasts and predictions
       await this.generateSeasonalForecasts();
       await this.generateTrendPredictions();
 
@@ -99,30 +64,17 @@ class TrendDataIntegrationService {
     console.log('Pinterest Trends integration result:', data);
   }
 
-  private async fetchPinterestTrends(): Promise<PinterestTrendData[]> {
-    // Simulate Pinterest API call
-    const mockPinterestTrends: PinterestTrendData[] = [
-      {
-        term: 'Dark Academia',
-        growth_rate: '+125%',
-        category: 'Aesthetic',
-        related_terms: ['Tweed blazers', 'Plaid skirts', 'Oxford shoes']
-      },
-      {
-        term: 'Y2K Revival',
-        growth_rate: '+89%',
-        category: 'Vintage',
-        related_terms: ['Low-rise jeans', 'Butterfly clips', 'Platform shoes']
-      },
-      {
-        term: 'Dopamine Dressing',
-        growth_rate: '+67%',
-        category: 'Color Trends',
-        related_terms: ['Bright colors', 'Bold patterns', 'Statement pieces']
-      }
-    ];
+  private async fetchEditorialTrendsViaEdgeFunction(): Promise<void> {
+    const { data, error } = await supabase.functions.invoke('scrape-fashion-editorial', {
+      body: {}
+    });
 
-    return mockPinterestTrends;
+    if (error) {
+      console.error('Error calling Editorial Trends edge function:', error);
+      throw error;
+    }
+
+    console.log('Editorial Trends integration result:', data);
   }
 
   private async fetchInstagramTrendsViaEdgeFunction(): Promise<void> {
@@ -138,97 +90,6 @@ class TrendDataIntegrationService {
     console.log('Instagram Trends integration result:', data);
   }
 
-  private async fetchWGSNTrendsViaEdgeFunction(): Promise<void> {
-    const { data, error } = await supabase.functions.invoke('wgsn-trends-integration', {
-      body: {}
-    });
-
-    if (error) {
-      console.error('Error calling WGSN Trends edge function:', error);
-      throw error;
-    }
-
-    console.log('WGSN Trends integration result:', data);
-  }
-
-  private async fetchInstagramTrends(): Promise<InstagramTrendData[]> {
-    // Simulate Instagram API call
-    const mockInstagramTrends: InstagramTrendData[] = [
-      {
-        hashtag: '#cottagecore',
-        post_count: 2500000,
-        engagement_rate: 8.5,
-        category: 'Aesthetic'
-      },
-      {
-        hashtag: '#sustainablefashion',
-        post_count: 5600000,
-        engagement_rate: 12.3,
-        category: 'Sustainable'
-      },
-      {
-        hashtag: '#oversizedblazer',
-        post_count: 890000,
-        engagement_rate: 6.7,
-        category: 'Outerwear'
-      }
-    ];
-
-    return mockInstagramTrends;
-  }
-
-  private async processPinterestTrends(pinterestTrends: PinterestTrendData[]): Promise<void> {
-    const fashionTrendsData = pinterestTrends.map(trend => ({
-      name: trend.term,
-      category: trend.category,
-      trend_score: this.parseGrowthRate(trend.growth_rate),
-      growth_rate: trend.growth_rate,
-      popularity_rank: Math.floor(Math.random() * 50 + 1),
-      season: this.getCurrentSeason(),
-      occasions: this.getOccasionsForCategory(trend.category),
-      colors: this.getColorsForTrend(trend.term),
-      description: `${trend.term} showing ${trend.growth_rate} growth on Pinterest`,
-      source: 'Pinterest',
-      external_id: `pinterest_${trend.term.toLowerCase().replace(/\s+/g, '_')}`
-    }));
-
-    for (const trendData of fashionTrendsData) {
-      const { error } = await supabase
-        .from('fashion_trends')
-        .upsert(trendData, { onConflict: 'external_id' });
-
-      if (error) {
-        console.error('Error inserting Pinterest trend:', error);
-      }
-    }
-  }
-
-  private async processInstagramTrends(instagramTrends: InstagramTrendData[]): Promise<void> {
-    const fashionTrendsData = instagramTrends.map(trend => ({
-      name: trend.hashtag.replace('#', ''),
-      category: trend.category,
-      trend_score: Math.min(trend.engagement_rate * 8, 100),
-      growth_rate: `+${Math.floor(trend.engagement_rate * 5)}%`,
-      popularity_rank: Math.floor(Math.random() * 30 + 1),
-      season: this.getCurrentSeason(),
-      occasions: this.getOccasionsForCategory(trend.category),
-      colors: this.getColorsForTrend(trend.hashtag),
-      description: `Popular on Instagram with ${trend.post_count.toLocaleString()} posts and ${trend.engagement_rate}% engagement`,
-      source: 'Instagram',
-      external_id: `instagram_${trend.hashtag.replace('#', '').toLowerCase()}`
-    }));
-
-    for (const trendData of fashionTrendsData) {
-      const { error } = await supabase
-        .from('fashion_trends')
-        .upsert(trendData, { onConflict: 'external_id' });
-
-      if (error) {
-        console.error('Error inserting Instagram trend:', error);
-      }
-    }
-  }
-
   private async generateSeasonalForecasts(): Promise<void> {
     const currentYear = new Date().getFullYear();
     const seasons = ['Spring', 'Summer', 'Fall', 'Winter'];
@@ -242,7 +103,7 @@ class TrendDataIntegrationService {
         color_palette: this.getSeasonalColors(season),
         must_have_items: this.getSeasonalMustHaves(season),
         description: `AI-generated forecast for ${season} ${currentYear} based on Google Trends and social media analysis`,
-        influencing_factors: this.getInfluencingFactors(season)
+        influencing_factors: this.getInfluencingFactors()
       };
 
       const { error } = await supabase
@@ -297,51 +158,6 @@ class TrendDataIntegrationService {
     }
   }
 
-  private parseGrowthRate(growthRate: string): number {
-    const match = growthRate.match(/\+?(\d+)%/);
-    return match ? parseInt(match[1]) : 50;
-  }
-
-  private getCurrentSeason(): string {
-    const month = new Date().getMonth();
-    if (month >= 2 && month <= 4) return 'Spring';
-    if (month >= 5 && month <= 7) return 'Summer';
-    if (month >= 8 && month <= 10) return 'Fall';
-    return 'Winter';
-  }
-
-  private getOccasionsForCategory(category: string): string[] {
-    const occasionMap: Record<string, string[]> = {
-      'Outerwear': ['Business', 'Casual', 'Evening'],
-      'Dresses': ['Formal', 'Casual', 'Party'],
-      'Shoes': ['Daily', 'Sports', 'Formal'],
-      'Accessories': ['Daily', 'Evening', 'Special Events'],
-      'General': ['Versatile', 'Daily', 'Casual'],
-      'Aesthetic': ['Creative', 'Social', 'Photography'],
-      'Vintage': ['Themed Events', 'Creative', 'Casual'],
-      'Color Trends': ['Social Events', 'Creative', 'Daily'],
-      'Sustainable': ['Conscious Living', 'Daily', 'Professional'],
-      'Technology': ['Modern', 'Professional', 'Innovation'],
-      'Social': ['Progressive', 'Daily', 'Professional']
-    };
-
-    return occasionMap[category] || ['General', 'Casual'];
-  }
-
-  private getColorsForTrend(trendName: string): string[] {
-    const colorMap: Record<string, string[]> = {
-      'Oversized Blazers': ['Navy', 'Black', 'Camel', 'Gray'],
-      'Cottagecore Aesthetic': ['Sage', 'Cream', 'Dusty Pink', 'Lavender'],
-      'Chunky Sneakers': ['White', 'Black', 'Neon', 'Pastels'],
-      'Minimalist Jewelry': ['Gold', 'Silver', 'Rose Gold'],
-      'Dark Academia': ['Burgundy', 'Forest Green', 'Navy', 'Brown'],
-      'Y2K Revival': ['Hot Pink', 'Electric Blue', 'Silver', 'Neon Green'],
-      'Dopamine Dressing': ['Bright Yellow', 'Hot Pink', 'Electric Blue', 'Orange']
-    };
-
-    return colorMap[trendName] || ['Black', 'White', 'Gray'];
-  }
-
   private getSeasonalTrends(season: string): string[] {
     const seasonalTrends: Record<string, string[]> = {
       'Spring': ['Floral patterns', 'Pastel colors', 'Light fabrics', 'Transition pieces'],
@@ -349,7 +165,6 @@ class TrendDataIntegrationService {
       'Fall': ['Earth tones', 'Layering pieces', 'Textured fabrics', 'Warm accessories'],
       'Winter': ['Dark colors', 'Heavy fabrics', 'Cozy textures', 'Statement coats']
     };
-
     return seasonalTrends[season] || [];
   }
 
@@ -380,7 +195,6 @@ class TrendDataIntegrationService {
         { name: 'Silver Gray', hex: '#C0C0C0' }
       ]
     };
-
     return seasonalColors[season] || [];
   }
 
@@ -391,11 +205,10 @@ class TrendDataIntegrationService {
       'Fall': ['Sweater', 'Ankle boots', 'Wool coat', 'Scarf'],
       'Winter': ['Heavy coat', 'Warm boots', 'Knit hat', 'Gloves']
     };
-
     return mustHaves[season] || [];
   }
 
-  private getInfluencingFactors(season: string): string[] {
+  private getInfluencingFactors(): string[] {
     return [
       'Google Trends data',
       'Social media trends',
