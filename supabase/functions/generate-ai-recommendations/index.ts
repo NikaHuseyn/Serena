@@ -1168,7 +1168,7 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
           return [
             { platform: 'HURR', product_name: 'Search HURR', price: null, product_url: `https://www.hurr.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
             { platform: 'By Rotation', product_name: 'Search By Rotation', price: null, product_url: `https://www.byrotation.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
-            { platform: 'My Wardrobe HQ', product_name: 'Search My Wardrobe HQ', price: null, product_url: `https://www.mywardrobehq.com` }},
+            { platform: 'My Wardrobe HQ', product_name: 'Search My Wardrobe HQ', price: null, product_url: `https://www.mywardrobehq.com`, image_url: null, type: 'rental', source: 'search_url' },
           ];
         };
 

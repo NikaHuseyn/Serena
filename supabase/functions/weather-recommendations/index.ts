@@ -68,13 +68,17 @@ serve(async (req) => {
 
       const geoData = await geoResponse.json();
       if (!geoData || geoData.length === 0) {
-        throw new Error(`Could not find location: ${location}`);
+        // Location string is not a real place (e.g. "Black tie") — fall back to London
+        console.warn(`Could not geocode "${location}", falling back to London defaults`);
+        resolvedLat = 51.5074;
+        resolvedLon = -0.1278;
+        resolvedLocationName = 'London, GB';
+      } else {
+        resolvedLat = geoData[0].lat;
+        resolvedLon = geoData[0].lon;
+        resolvedLocationName = geoData[0].name + (geoData[0].country ? `, ${geoData[0].country}` : '');
+        console.log(`Geocoded "${location}" → ${resolvedLat}, ${resolvedLon} (${resolvedLocationName})`);
       }
-
-      resolvedLat = geoData[0].lat;
-      resolvedLon = geoData[0].lon;
-      resolvedLocationName = geoData[0].name + (geoData[0].country ? `, ${geoData[0].country}` : '');
-      console.log(`Geocoded "${location}" → ${resolvedLat}, ${resolvedLon} (${resolvedLocationName})`);
     }
 
     if (resolvedLat == null || resolvedLon == null) {
