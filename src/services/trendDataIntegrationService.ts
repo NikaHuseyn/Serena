@@ -5,14 +5,19 @@ class TrendDataIntegrationService {
     console.log('Starting trend data integration...');
     
     try {
-      const [googleTrendsResult, pinterestTrendsResult, instagramTrendsResult] = await Promise.allSettled([
+      const [googleTrendsResult, editorialResult, pinterestTrendsResult, instagramTrendsResult] = await Promise.allSettled([
         this.fetchGoogleTrendsViaEdgeFunction(),
+        this.fetchEditorialTrendsViaEdgeFunction(),
         this.fetchPinterestTrendsViaEdgeFunction(),
         this.fetchInstagramTrendsViaEdgeFunction(),
       ]);
 
       if (googleTrendsResult.status === 'rejected') {
         console.error('Google Trends integration failed:', googleTrendsResult.reason);
+      }
+
+      if (editorialResult.status === 'rejected') {
+        console.error('Editorial trends integration failed:', editorialResult.reason);
       }
 
       if (pinterestTrendsResult.status === 'rejected') {
@@ -57,6 +62,19 @@ class TrendDataIntegrationService {
     }
 
     console.log('Pinterest Trends integration result:', data);
+  }
+
+  private async fetchEditorialTrendsViaEdgeFunction(): Promise<void> {
+    const { data, error } = await supabase.functions.invoke('scrape-fashion-editorial', {
+      body: {}
+    });
+
+    if (error) {
+      console.error('Error calling Editorial Trends edge function:', error);
+      throw error;
+    }
+
+    console.log('Editorial Trends integration result:', data);
   }
 
   private async fetchInstagramTrendsViaEdgeFunction(): Promise<void> {
