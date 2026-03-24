@@ -5,14 +5,19 @@ class TrendDataIntegrationService {
     console.log('Starting trend data integration...');
     
     try {
-      const [googleTrendsResult, pinterestTrendsResult, instagramTrendsResult] = await Promise.allSettled([
+      const [googleTrendsResult, editorialResult, pinterestTrendsResult, instagramTrendsResult] = await Promise.allSettled([
         this.fetchGoogleTrendsViaEdgeFunction(),
+        this.fetchEditorialTrendsViaEdgeFunction(),
         this.fetchPinterestTrendsViaEdgeFunction(),
         this.fetchInstagramTrendsViaEdgeFunction(),
       ]);
 
       if (googleTrendsResult.status === 'rejected') {
         console.error('Google Trends integration failed:', googleTrendsResult.reason);
+      }
+
+      if (editorialResult.status === 'rejected') {
+        console.error('Editorial trends integration failed:', editorialResult.reason);
       }
 
       if (pinterestTrendsResult.status === 'rejected') {
