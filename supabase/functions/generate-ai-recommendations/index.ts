@@ -203,43 +203,41 @@ serve(async (req) => {
     if (exchangeCount < 3) {
       const userMsg = (user_message || occasion || '').toLowerCase();
       
-      // Priority 1: Location/venue/dress code
-      if (!knownLocation && !knownVenue && !knownDressCode && !venueContext && !eventContext) {
-        // Check if the user already mentioned a location in this message
-        const mentionsLocation = Object.keys(cityToCountry).some(city => userMsg.includes(city.toLowerCase()));
-        if (!mentionsLocation) {
-          followUpQuestion = "Where are you headed? Any idea what kind of place — or is there a dress code?";
+      // PRIORITY 1: Dress code (ask this first always)
+      if (!knownDressCode) {
+        const mentionsDressCode = /\b(dress code|formal|black tie|white tie|smart casual|casual|cocktail|black-?tie|semiformal|semi-?formal)\b/i.test(userMsg);
+        if (!mentionsDressCode) {
+          followUpQuestion = "Is there a dress code?";
         }
       }
-      // Priority 2: Date (for weather)
-      else if (!knownDate && !weatherData?.forecastDate) {
-        const mentionsDate = /\b(today|tonight|tomorrow|this weekend|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}(?:st|nd|rd|th))\b/i.test(userMsg);
-        if (!mentionsDate && knownLocation) {
-          followUpQuestion = "When is it — so I can check the forecast for you?";
+      // PRIORITY 2: Location and date together (never ask as two separate questions)
+      else if (!knownLocation || !knownDate) {
+        const mentionsLocation = Object.keys(cityToCountry).some(city => userMsg.includes(city.toLowerCase())) || !!venueContext || !!eventContext;
+        const mentionsDate = /\b(today|tonight|tomorrow|this weekend|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}(?:st|nd|rd|th)|spring|summer|autumn|fall|winter)\b/i.test(userMsg);
+        
+        if (!mentionsLocation || !mentionsDate) {
+          followUpQuestion = "Where is it and when — so I can get a feel for the vibe and weather?";
         }
       }
-      // Priority 3: Budget (only when shopping)
+      // PRIORITY 3: Who they are with
+      else if (!knownCompany) {
+        const mentionsCompany = /\b(date|romantic|partner|boyfriend|girlfriend|husband|wife|friends?|mates?|girls?|guys?|lads?|colleagues?|boss|client|family|parents?|mum|dad|solo|alone|spouse|partner)\b/i.test(userMsg);
+        if (!mentionsCompany) {
+          followUpQuestion = "Is this with a partner, friends or colleagues?";
+        }
+      }
+      // PRIORITY 4: Budget (only when showing shopping results)
       else if (!knownBudget) {
         const mentionsBudget = /budget|£|£?\d+|\$|under|spend|afford|price/i.test(userMsg);
-        if (!mentionsBudget) {
-          // Only ask about budget when we have enough other context
-          if (knownLocation && (knownVenue || knownDressCode)) {
-            followUpQuestion = "Do you have a budget in mind?";
-          }
+        if (!mentionsBudget && shoppingMatches.length > 0) {
+          followUpQuestion = "Do you have a budget in mind?";
         }
       }
-      // Priority 4: Who they're with
-      else if (!knownCompany) {
-        const mentionsCompany = /\b(date|romantic|partner|boyfriend|girlfriend|husband|wife|friends?|mates?|girls?|guys?|lads?|colleagues?|boss|client|family|parents?|mum|dad|solo|alone)\b/i.test(userMsg);
-        if (!mentionsCompany) {
-          followUpQuestion = "Is this a date night, friends thing, or something else?";
-        }
-      }
-      // Priority 5: Emotional goal (last resort)
+      // PRIORITY 5: Emotional goal (LAST - only after dress code, location/date are all known)
       else if (!knownEmotionalGoal) {
         const mentionsTone = /\b(romantic|sexy|confident|powerful|bold|cool|edgy|relaxed|casual|fun|playful|elegant|chic|warm|friendly|professional|polished)\b/i.test(userMsg);
         if (!mentionsTone) {
-          followUpQuestion = "How do you want to feel — romantic, confident, bold, relaxed, something else?";
+          followUpQuestion = "How do you want to feel — romantic, elegant, relaxed?";
         }
       }
     }
@@ -470,7 +468,17 @@ EVENT DETAILS:
 ` : ''}
 
 WEATHER CONTEXT:
-${weatherData ? `Temperature: ${weatherData.temperature}°C, Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}` : 'Weather not specified'}
+${weatherData ? `Temperature: ${weatherData.temperature}°C, Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}, Source: ${weatherData.source}
+
+⚠️ WEATHER REFERENCE RULES (CRITICAL):
+- If source is "current_location" (device GPS): NEVER mention specific temperature in the opening recommendation line
+- For outdoor events (keywords: beach, outdoor, garden, rooftop, destination, abroad, island, coast): Do NOT state specific temperature until BOTH location AND date are confirmed
+- Only mention specific temperature in the opening line if: weatherData.source is "event_location" AND date is known
+- You may always use weather condition (rain, sunny, etc.) without mentioning temperature` : `Weather not specified
+
+⚠️ WEATHER REFERENCE RULES (CRITICAL):
+- Build recommendations assuming mild/temperate weather if no specific data provided
+- Never assume specific temperature without confirmed location and date data`}
 
 ${venueContext?.source === 'scraped' ? `
 🏢 VENUE INTELLIGENCE (scraped from venue website - USE THIS):
@@ -576,6 +584,12 @@ CRITICAL FINAL INSTRUCTIONS:
 3. VALUE OPTIMIZATION: Help users maximize their existing wardrobe
 4. Price transparency: Always include price ranges in GBP (£)
 5. MISSING ITEMS: For every item with source "needs_purchase" or "needs_rental", include a corresponding entry in "missing_items_search"
+6. OUTFIT FIRST RULE:
+   - On FIRST response (exchange_count = 0): NEVER include shoes, accessories, jewellery, bags, or earrings in missing_items_search. Only include the main clothing item (top/bottom/dresses/outerwear).
+   - After user confirms/responds (exchange_count ≥ 1): You may now include shoes and accessories.
+   - AFTER exchange_count becomes 1 and main item confirmed, proactively ask: "Love it — do you want me to find shoes and accessories to complete the look?"
+   - If user says YES: Run searches for shoes and accessories, show them.
+   - If user says NO: Don't show accessories until user explicitly requests them.
 
 Remember: The goal is to create perfect, achievable outfits using what the user owns + targeted shopping/rental recommendations.`;
 
@@ -583,7 +597,7 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
     const occ = (occasion || '').toLowerCase();
     const desc = (eventDetails?.description || '').toLowerCase();
     const isHistorical = /(1920|1930|1940|victorian|edwardian|regency|vintage|period)/.test(`${occ} ${desc}`);
-    const model = 'google/gemini-3-flash-preview';
+    const model = 'gpt-4o';
 
     // Define tool for structured output
     const outfitTool = {
@@ -1029,6 +1043,29 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
           return styleProfile?.budget_max || 500;
         };
 
+        // FIX 6: Helper function to validate product URLs
+        const isValidProductUrl = (url: string | null | undefined): boolean => {
+          if (!url || typeof url !== 'string' || !url.startsWith('http')) return false;
+          const blocked = [
+            'google.com/shopping',
+            'google.co.uk/shopping',
+            'google.com/search',
+            'googleapis.com',
+            'javascript:'
+          ];
+          return !blocked.some(b => url.includes(b));
+        };
+
+        const extractRetailerUrl = (result: any): string | null => {
+          // Priority 1: result.product_link
+          if (isValidProductUrl(result.product_link)) return result.product_link;
+          // Priority 2: result.merchant?.link
+          if (isValidProductUrl(result.merchant?.link)) return result.merchant.link;
+          // Priority 3: result.link only if it doesn't contain google
+          if (result.link && isValidProductUrl(result.link)) return result.link;
+          return null;
+        };
+
         const shopStyleApiKey = Deno.env.get('SHOPSTYLE_API_KEY');
         const serperApiKey = Deno.env.get('SERPER_API_KEY');
         const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
@@ -1042,14 +1079,19 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
             const response = await fetch(url);
             if (!response.ok) { console.warn('[ShopStyle] API error:', response.status); return []; }
             const data = await response.json();
-            const products = (data.products || []).map((p: any) => ({
-              retailer: p.retailer?.name || p.brand?.name || 'Retailer',
-              product_name: p.name || p.brandedName || 'Product',
-              price: p.priceLabel || (p.price ? `£${p.price}` : null),
-              product_url: p.clickUrl || p.url || '',
-              image_url: p.image?.sizes?.Best?.url || p.image?.sizes?.Large?.url || p.image?.sizes?.Medium?.url || null,
-              source: 'shopstyle',
-            }));
+            const products = (data.products || [])
+              .map((p: any) => {
+                const productUrl = extractRetailerUrl(p);
+                return {
+                  retailer: p.retailer?.name || p.brand?.name || 'Retailer',
+                  product_name: p.name || p.brandedName || 'Product',
+                  price: p.priceLabel || (p.price ? `£${p.price}` : null),
+                  product_url: productUrl,
+                  image_url: p.image?.sizes?.Best?.url || p.image?.sizes?.Large?.url || p.image?.sizes?.Medium?.url || null,
+                  source: 'shopstyle',
+                };
+              })
+              .filter((p: any) => p.product_url);
             console.log(`[ShopStyle] Found ${products.length} products for "${query}"`);
             return products;
           } catch (err) { console.warn('[ShopStyle] Error:', err); return []; }
@@ -1071,17 +1113,18 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
                 const priceStr = r.price || '';
                 const cleaned = priceStr.replace(/[^0-9.,]/g, '').replace(',', '.');
                 const numericPrice = parseFloat(cleaned);
+                const productUrl = extractRetailerUrl(r);
                 return {
                   retailer: r.source || 'Retailer',
                   product_name: r.title || 'Product',
                   price: !isNaN(numericPrice) ? `£${numericPrice.toFixed(2)}` : (priceStr || null),
                   numericPrice: !isNaN(numericPrice) ? numericPrice : null,
-                  product_url: r.link || '',
+                  product_url: productUrl,
                   image_url: r.imageUrl || null,
                   source: 'google_shopping',
                 };
               })
-              .filter((r: any) => r.numericPrice === null || r.numericPrice <= maxPrice)
+              .filter((r: any) => r.product_url && (r.numericPrice === null || r.numericPrice <= maxPrice))
               .slice(0, 5)
               .map(({ numericPrice, ...rest }: any) => rest);
             console.log(`[Serper] Found ${results.length} products for "${query}"`);
@@ -1123,17 +1166,18 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
         const buildRentalSearchUrls = (query: string): any[] => {
           const encoded = encodeURIComponent(query);
           return [
-            { platform: 'HURR', product_name: `Rent on HURR: "${query}"`, price: null, product_url: `https://www.hurr.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
-            { platform: 'By Rotation', product_name: `Rent on By Rotation: "${query}"`, price: null, product_url: `https://www.byrotation.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
+            { platform: 'HURR', product_name: 'Search HURR', price: null, product_url: `https://www.hurr.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
+            { platform: 'By Rotation', product_name: 'Search By Rotation', price: null, product_url: `https://www.byrotation.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
+            { platform: 'My Wardrobe HQ', product_name: 'Search My Wardrobe HQ', price: null, product_url: `https://www.mywardrobehq.com` }},
           ];
         };
 
         const buildSecondhandSearchUrls = (query: string): any[] => {
           const encoded = encodeURIComponent(query);
           return [
-            { platform: 'Vestiaire Collective', product_name: `Shop pre-owned: "${query}"`, price: null, product_url: `https://www.vestiairecollective.com/search/?q=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
-            { platform: 'Vinted', product_name: `Find on Vinted: "${query}"`, price: null, product_url: `https://www.vinted.co.uk/catalog?search_text=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
-            { platform: 'Depop', product_name: `Find on Depop: "${query}"`, price: null, product_url: `https://www.depop.com/search/?q=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
+            { platform: 'Vestiaire Collective', product_name: 'Search Vestiaire', price: null, product_url: `https://www.vestiairecollective.com/search/?q=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
+            { platform: 'Vinted', product_name: 'Search Vinted', price: null, product_url: `https://www.vinted.co.uk/catalog?search_text=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
+            { platform: 'Depop', product_name: 'Search Depop', price: null, product_url: `https://www.depop.com/search/?q=${encoded}`, image_url: null, condition: null, type: 'secondhand', source: 'search_url' },
           ];
         };
 
@@ -1171,6 +1215,61 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
           return itemName;
         };
 
+        // FIX 8: Fashion retailers to prioritize
+        const PRIORITY_FASHION_RETAILERS = [
+          'ASOS', 'Zara', 'H&M', 'Net-a-Porter', 'Reiss', 'Mango', 
+          'Other Stories', 'Whistles', 'Phase Eight', 'Ghost', 'Monsoon', 
+          'John Lewis', 'Marks and Spencer', 'COS', 'Selfridges', 'Matches Fashion'
+        ];
+
+        const prioritizeRetailers = (results: any[]): any[] => {
+          const fashion = results.filter((r: any) => 
+            PRIORITY_FASHION_RETAILERS.some(retailer => 
+              r.retailer?.toLowerCase().includes(retailer.toLowerCase())
+            )
+          );
+          const other = results.filter((r: any) =>
+            !PRIORITY_FASHION_RETAILERS.some(retailer =>
+              r.retailer?.toLowerCase().includes(retailer.toLowerCase())
+            )
+          );
+          return [...fashion, ...other];
+        };
+
+        // FIX 8: Enhanced search with fallback strategy
+        const enhancedSearch = async (query: string, maxPrice: number, itemName: string): Promise<any[]> => {
+          // Search 1: Full query
+          let results = await searchGoogleShopping(query, maxPrice);
+          console.log(`[Enhanced Search] Query 1 (full): "${query}" → ${results.length} results`);
+
+          // Search 2: If < 4 results, try without style descriptors
+          if (results.length < 4) {
+            const words = query.trim().split(/\s+/);
+            if (words.length > 2) {
+              const broaderQuery = words.slice(0, -1).join(' ');
+              const results2 = await searchGoogleShopping(broaderQuery, maxPrice);
+              console.log(`[Enhanced Search] Query 2 (broader): "${broaderQuery}" → ${results2.length} results`);
+              results = [...results, ...results2];
+            }
+          }
+
+          // Search 3: If still < 4, try just item type + occasion
+          if (results.length < 4 && occasion) {
+            const simpleQuery = `${itemName} ${occasion}`.slice(0, 80);
+            const results3 = await searchGoogleShopping(simpleQuery, maxPrice);
+            console.log(`[Enhanced Search] Query 3 (simple): "${simpleQuery}" → ${results3.length} results`);
+            results = [...results, ...results3];
+          }
+
+          // Deduplicate by product_url
+          const uniqueResults = Array.from(new Map(
+            results.map((r: any) => [r.product_url, r])
+          ).values());
+
+          // Prioritize fashion retailers and return up to 6
+          return prioritizeRetailers(uniqueResults).slice(0, 6);
+        };
+
         const searchPromises = itemsToSearch.map(async (item: any) => {
           const keywords = item.search_keywords || [];
           const category = item.category || '';
@@ -1194,11 +1293,9 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
 
           const { data: matches } = await dbQuery.order('price', { ascending: true }).limit(3);
 
-          let retailer_results = await searchShopStyle(searchQuery, maxPrice);
-          if (retailer_results.length < 2) {
-            const serperResults = await searchGoogleShopping(searchQuery, maxPrice);
-            retailer_results = [...retailer_results, ...serperResults];
-          }
+          // FIX 8: Use enhanced search with fallback strategy
+          let retailer_results = await enhancedSearch(searchQuery, maxPrice, item.item_type);
+          
           if (retailer_results.length === 0) {
             retailer_results = buildSearchUrls(searchQuery, tier);
           }

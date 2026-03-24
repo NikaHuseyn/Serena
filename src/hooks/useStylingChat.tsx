@@ -446,6 +446,12 @@ export const useStylingChat = () => {
         responseContent += "I've put together some styling suggestions based on your request.";
       }
 
+      // FIX 5: Append follow-up question only if not already in responseContent
+      const followUp = data?.follow_up_question;
+      if (followUp && !responseContent.trim().endsWith(followUp.trim())) {
+        responseContent += '\n\n' + followUp;
+      }
+
       const shoppingTitle = data?.shopping_section_title || undefined;
 
       const assistantMsg: ChatMessage = {
