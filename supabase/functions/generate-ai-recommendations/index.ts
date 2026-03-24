@@ -63,6 +63,7 @@ serve(async (req) => {
       user_message = null,
       // Accumulated conversation context
       accumulated_context = null,
+      known_dress_code = null,
     } = await req.json();
 
     // Helper to parse AI JSON safely
@@ -134,7 +135,25 @@ serve(async (req) => {
 
     // Fetch cultural dress norms if a country is mentioned
     let culturalNorms: any[] = [];
-    const countryDetectionText = [occasion, venueContext?.venue_name, eventContext?.event_name, weatherData?.location].filter(Boolean).join(' ');
+    const DRESS_CODE_PHRASES = [
+      'black tie', 'white tie', 'cocktail',
+      'smart casual', 'business casual',
+      'formal', 'semi-formal', 'casual',
+      'lounge suit', 'morning dress',
+      'beach casual', 'garden party'
+    ];
+
+    const isDressCode = (text: string) => 
+      DRESS_CODE_PHRASES.some(dc => 
+        text?.toLowerCase().includes(dc));
+
+    const countryDetectionText = [
+      occasion, 
+      !isDressCode(venueContext?.venue_name || '') 
+        ? venueContext?.venue_name : null,
+      eventContext?.event_name, 
+      weatherData?.location
+    ].filter(Boolean).join(' ');
     const knownCountries = ['France', 'Spain', 'United States', 'China', 'Italy', 'Turkey', 'Mexico', 'Thailand', 'Germany', 'United Kingdom', 'Austria', 'Malaysia', 'Greece', 'Japan', 'Portugal', 'Canada', 'Poland', 'Netherlands', 'United Arab Emirates', 'India', 'Croatia', 'Saudi Arabia', 'South Korea', 'Hungary', 'Czech Republic', 'Morocco', 'Indonesia', 'Egypt', 'Singapore', 'Vietnam'];
     const cityToCountry: Record<string, string> = {
       'London': 'United Kingdom', 'Paris': 'France', 'Madrid': 'Spain', 'Barcelona': 'Spain',
@@ -192,7 +211,14 @@ serve(async (req) => {
     const knownEmotionalGoal = ctx.emotional_goal || emotional_tone_label || emotional_tone || null;
     const knownCompany = ctx.who_with || null;
     const knownBudget = ctx.budget || null;
-    const knownDressCode = ctx.dress_code || (venueContext?.dress_code && venueContext.dress_code !== 'none_specified' ? venueContext.dress_code : null) || (eventContext?.dress_code && eventContext.dress_code !== 'none_specified' ? eventContext.dress_code : null);
+    const knownDressCode = known_dress_code 
+      || ctx.dress_code 
+      || (venueContext?.dress_code && 
+        venueContext.dress_code !== 'none_specified' 
+        ? venueContext.dress_code : null)
+      || (eventContext?.dress_code && 
+        eventContext.dress_code !== 'none_specified' 
+        ? eventContext.dress_code : null);
     const knownDate = ctx.date || null;
     const userPreferences = ctx.style_preferences || [];
     const likedItems = ctx.liked_items || [];
@@ -229,7 +255,7 @@ serve(async (req) => {
       // PRIORITY 4: Budget (only when showing shopping results)
       else if (!knownBudget) {
         const mentionsBudget = /budget|£|£?\d+|\$|under|spend|afford|price/i.test(userMsg);
-        if (!mentionsBudget && shoppingMatches.length > 0) {
+        if (!mentionsBudget && exchangeCount > 0) {
           followUpQuestion = "Do you have a budget in mind?";
         }
       }
@@ -1211,7 +1237,14 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
 
         const enrichQuery = (itemName: string): string => {
           const wordCount = itemName.trim().split(/\s+/).length;
-          if (wordCount <= 2 && occasion) return `${itemName} ${occasion}`.slice(0, 80);
+          if (wordCount <= 2 && occasion) {
+            const cleanOccasion = occasion
+              .replace(/this (saturday|sunday|weekend|monday|tuesday|wednesday|thursday|friday)/gi, '')
+              .replace(/\b(today|tonight|tomorrow|next week)\b/gi, '')
+              .trim()
+              .slice(0, 40);
+            return `${itemName} ${cleanOccasion}`.trim();
+          }
           return itemName;
         };
 
