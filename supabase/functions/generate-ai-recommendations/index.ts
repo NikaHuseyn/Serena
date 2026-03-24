@@ -625,7 +625,7 @@ Remember: The goal is to create perfect, achievable outfits using what the user 
     const occ = (occasion || '').toLowerCase();
     const desc = (eventDetails?.description || '').toLowerCase();
     const isHistorical = /(1920|1930|1940|victorian|edwardian|regency|vintage|period)/.test(`${occ} ${desc}`);
-    const model = 'gpt-4o';
+    const model = 'google/gemini-3-flash-preview';
 
     // Define tool for structured output
     const outfitTool = {

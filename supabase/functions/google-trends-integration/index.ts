@@ -1,5 +1,5 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import googleTrends from 'npm:google-trends-api@4.9.2'
+import googleTrends from 'https://esm.sh/google-trends-api@4.9.2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
