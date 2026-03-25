@@ -63,12 +63,6 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
               Already in your wardrobe ✓
             </Badge>
           )}
-          {!isFromWardrobe && item.source === 'needs_purchase' && (
-            <Badge variant="outline" className="text-[10px] h-5 gap-1 text-muted-foreground">
-              <ShoppingBag className="h-3 w-3" />
-              Complete your look
-            </Badge>
-          )}
         </div>
         {item.reasoning && (
           <p className="text-sm text-muted-foreground mt-1">{item.reasoning}</p>

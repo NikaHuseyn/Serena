@@ -422,11 +422,14 @@ export const useStylingChat = () => {
     try {
       const { weatherData, mentionedLocation, mentionedDate } = await fetchWeather(userMessage);
 
+      const shouldBlockWeather = weatherData?.source === 'current_location' || weatherData?.source === 'gps';
+      const weatherDataForApi = shouldBlockWeather ? null : weatherData;
+
       const { data, venueContext, eventContext } = await callRecommendation(
-        userMessage, resolvedVenueName, detectedEventName, weatherData, extraContext,
+        userMessage, resolvedVenueName, detectedEventName, weatherDataForApi, extraContext,
       );
 
-      const weatherNote = buildWeatherNote(weatherData, mentionedLocation, mentionedDate);
+      let weatherNote = shouldBlockWeather ? null : buildWeatherNote(weatherData, mentionedLocation, mentionedDate);
 
       let responseContent = '';
 
@@ -520,16 +523,20 @@ export const useStylingChat = () => {
   ) => {
     try {
       const { weatherData, mentionedLocation, mentionedDate } = await fetchWeather(userMessage);
-      const weatherNote = buildWeatherNote(weatherData, mentionedLocation, mentionedDate);
-
+      
       // Single call — Oracle picks a sensible default tone
+      const shouldBlockWeather = weatherData?.source === 'current_location' || weatherData?.source === 'gps';
+      const weatherDataForApi = shouldBlockWeather ? null : weatherData;
+
       const { data, venueContext, eventContext } = await callRecommendation(
-        userMessage, null, null, weatherData, {
+        userMessage, null, null, weatherDataForApi, {
           inferred_venue_formality: vagueVenue.inferredFormality,
           inferred_meal_type: vagueVenue.mealType,
           inferred_occasion_type: vagueVenue.occasionType,
         },
       );
+
+      const weatherNote = shouldBlockWeather ? null : buildWeatherNote(weatherData, mentionedLocation, mentionedDate);
 
       let responseContent = data?.recommendation?.reasoning
         || "Here's what I'd suggest for this occasion:";

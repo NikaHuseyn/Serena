@@ -1294,7 +1294,7 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
         'earring', 'necklace', 'bracelet',
         'ring', 'watch', 'bag', 'clutch',
         'belt', 'scarf', 'hat', 'glove',
-        'jewellery', 'jewelry', 'accessory'
+        'jewellery', 'jewelry', 'accessory', 'accessories'
       ];
       if (exchangeCount === 0) {
         itemsToSearch = itemsToSearch.filter(
