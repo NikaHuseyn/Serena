@@ -226,6 +226,9 @@ serve(async (req) => {
 
     // Determine what's still missing and pick the ONE most important follow-up question
     let followUpQuestion: string | null = null;
+    const hasStyleKeywords = /\b(classic|statement|elegant|bold|dramatic|understated|minimalist|edgy|tailored|romantic|glamorous|colour|color)\b/i.test((user_message || occasion || '').toLowerCase());
+    const knownStyleDirection = !!(ctx.style_direction || (userPreferences?.length > 0) || hasStyleKeywords);
+
     if (exchangeCount < 3) {
       const userMsg = (user_message || occasion || '').toLowerCase();
       
@@ -236,30 +239,47 @@ serve(async (req) => {
           followUpQuestion = "Is there a dress code?";
         }
       }
-      // PRIORITY 2: Location and date together (never ask as two separate questions)
+      // PRIORITY 2: Location, venue and date together (always first for formal events, and before style direction)
       else if (!knownLocation || !knownDate) {
         const mentionsLocation = Object.keys(cityToCountry).some(city => userMsg.includes(city.toLowerCase())) || !!venueContext || !!eventContext;
         const mentionsDate = /\b(today|tonight|tomorrow|this weekend|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}(?:st|nd|rd|th)|spring|summer|autumn|fall|winter)\b/i.test(userMsg);
-        
+
         if (!mentionsLocation || !mentionsDate) {
-          followUpQuestion = "Where is it and when — so I can get a feel for the vibe and weather?";
+          const formalCodes = ['black tie', 'white tie', 'cocktail', 'formal'];
+          const isFormalCode = formalCodes.some(code => (knownDressCode || '').toLowerCase().includes(code));
+          if (isFormalCode) {
+            followUpQuestion = "Where is it and when — knowing the venue and time of year helps me nail the vibe and factor in weather for layers and outerwear.";
+          } else {
+            followUpQuestion = "Where is it and when — so I can get a feel for the vibe and weather?";
+          }
         }
       }
-      // PRIORITY 3: Who they are with
+      // PRIORITY 3: Style direction and colour (only after location and date known)
+      else if (!knownStyleDirection) {
+        const season = knownDate ? knownDate : 'this season';
+        const locationPhrase = knownLocation ? `${knownLocation}` : 'your event location';
+        const weatherHintParts = [];
+        if (weatherData?.condition) weatherHintParts.push(weatherData.condition);
+        if (eventContext?.indoor_outdoor && /outdoor/i.test(eventContext.indoor_outdoor)) weatherHintParts.push('outdoor');
+        if (venueContext?.venue_type && /outdoor/i.test(venueContext.venue_type)) weatherHintParts.push('outdoor');
+        const weatherPhrase = weatherHintParts.length ? `, especially with ${weatherHintParts.join(' and ')}` : '';
+        followUpQuestion = `For ${season} in ${locationPhrase}${weatherPhrase} — do you tend to go classic and elegant or do you like making more of a statement? And is there a colour direction you have in mind?`;
+      }
+      // PRIORITY 4: Who they are with
       else if (!knownCompany) {
         const mentionsCompany = /\b(date|romantic|partner|boyfriend|girlfriend|husband|wife|friends?|mates?|girls?|guys?|lads?|colleagues?|boss|client|family|parents?|mum|dad|solo|alone|spouse|partner)\b/i.test(userMsg);
         if (!mentionsCompany) {
           followUpQuestion = "Is this with a partner, friends or colleagues?";
         }
       }
-      // PRIORITY 4: Budget (only when showing shopping results)
+      // PRIORITY 5: Budget (only when showing shopping results)
       else if (!knownBudget) {
         const mentionsBudget = /budget|£|£?\d+|\$|under|spend|afford|price/i.test(userMsg);
         if (!mentionsBudget && exchangeCount > 0) {
           followUpQuestion = "Do you have a budget in mind?";
         }
       }
-      // PRIORITY 5: Emotional goal (LAST - only after dress code, location/date are all known)
+      // PRIORITY 6: Emotional goal (LAST)
       else if (!knownEmotionalGoal) {
         const mentionsTone = /\b(romantic|sexy|confident|powerful|bold|cool|edgy|relaxed|casual|fun|playful|elegant|chic|warm|friendly|professional|polished)\b/i.test(userMsg);
         if (!mentionsTone) {
