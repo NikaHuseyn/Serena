@@ -280,6 +280,36 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
           </div>
         )}
         {renderRecommendation()}
+        {/* Quick refinement buttons - shown after recommendations */}
+        {!isUser && recommendation && !emotionalToneCards && (
+          <div className="flex flex-wrap gap-2 mt-4">
+            <button
+              onClick={() => onCitySelect?.("Make it more formal")}
+              className="px-3 py-1.5 text-xs border border-border rounded-full text-foreground hover:bg-primary/10 hover:border-primary/30 transition-colors"
+            >
+              More formal
+            </button>
+            <button
+              onClick={() => onCitySelect?.("Different colors")}
+              className="px-3 py-1.5 text-xs border border-border rounded-full text-foreground hover:bg-primary/10 hover:border-primary/30 transition-colors"
+            >
+              Different colors
+            </button>
+            <button
+              onClick={() => onCitySelect?.("More affordable")}
+              className="px-3 py-1.5 text-xs border border-border rounded-full text-foreground hover:bg-primary/10 hover:border-primary/30 transition-colors"
+            >
+              More affordable
+            </button>
+            <button
+              onClick={() => onCitySelect?.("Try something edgier")}
+              className="px-3 py-1.5 text-xs border border-border rounded-full text-foreground hover:bg-primary/10 hover:border-primary/30 transition-colors"
+            >
+              Edgier
+            </button>
+          </div>
+        )}
+        {renderRecommendation()}
         {/* Guest sign-up nudge */}
         {!isUser && isFirstGuestResponse && !wardrobeStatus?.is_authenticated && (
           <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-start justify-between gap-3">
