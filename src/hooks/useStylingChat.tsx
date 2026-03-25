@@ -402,7 +402,6 @@ export const useStylingChat = () => {
           return `${guestId}@guest.temp`;
         })(),
         user_message: userMessage,
-        accumulated_context: conversationCtx,
         ...extraContext,
       },
       headers
@@ -411,7 +410,7 @@ export const useStylingChat = () => {
     if (error) throw new Error(error.message || 'Failed to get recommendation');
 
     return { data, venueContext, eventContext };
-  }, [messages, conversationCtx, scrapeVenue, scrapeEvent]);
+  }, [messages, scrapeVenue, scrapeEvent]);
 
   const executeRecommendation = useCallback(async (
     userMessage: string,
