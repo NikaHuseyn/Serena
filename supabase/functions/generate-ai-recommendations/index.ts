@@ -243,14 +243,15 @@ serve(async (req) => {
       else if (!knownLocation || !knownDate) {
         const mentionsLocation = Object.keys(cityToCountry).some(city => userMsg.includes(city.toLowerCase())) || !!venueContext || !!eventContext;
         const mentionsDate = /\b(today|tonight|tomorrow|this weekend|next week|monday|tuesday|wednesday|thursday|friday|saturday|sunday|january|february|march|april|may|june|july|august|september|october|november|december|\d{1,2}(?:st|nd|rd|th)|spring|summer|autumn|fall|winter)\b/i.test(userMsg);
+        const isGpsWeather = weatherData?.source === 'current_location' || weatherData?.source === 'gps';
 
-        if (!mentionsLocation || !mentionsDate) {
+        if (!mentionsLocation || !mentionsDate || (isGpsWeather && !knownLocation)) {
           const formalCodes = ['black tie', 'white tie', 'cocktail', 'formal'];
           const isFormalCode = formalCodes.some(code => (knownDressCode || '').toLowerCase().includes(code));
           if (isFormalCode) {
             followUpQuestion = "Where is it and when — knowing the venue and time of year helps me nail the vibe and factor in weather for layers and outerwear.";
           } else {
-            followUpQuestion = "Where is it and when — so I can get a feel for the vibe and weather?";
+            followUpQuestion = "Where is it and when — I want to get the vibe right and check the weather for you.";
           }
         }
       }
@@ -519,10 +520,10 @@ ${weatherData ? `${weatherData.source !== 'current_location'
   : `Temperature: [use your knowledge of typical weather for this location/season], Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}, Source: ${weatherData.source}`}
 
 ⚠️ WEATHER REFERENCE RULES (CRITICAL):
-- If source is "current_location" (device GPS): NEVER mention specific temperature in the opening recommendation line
+- If source is "current_location" or "gps" (device GPS): NEVER mention specific temperature, weather conditions, or location name in the opening recommendation line. Do NOT name the city, mention temperature, or mention rain/sunny/etc.
 - For outdoor events (keywords: beach, outdoor, garden, rooftop, destination, abroad, island, coast): Do NOT state specific temperature until BOTH location AND date are confirmed
-- Only mention specific temperature in the opening line if: weatherData.source is "event_location" AND date is known
-- You may always use weather condition (rain, sunny, etc.) without mentioning temperature` : `Weather not specified
+- Only mention specific temperature in the opening line if: weatherData.source is "event_location" AND date is known AND location is explicitly confirmed by user
+- You may always use weather condition (rain, sunny, etc.) without mentioning temperature ONLY when location AND date are both explicitly confirmed by user` : `Weather not specified
 
 ⚠️ WEATHER REFERENCE RULES (CRITICAL):
 - Build recommendations assuming mild/temperate weather if no specific data provided
@@ -1076,13 +1077,21 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
           }
         }
         if (exchangeCount === 0) {
-          const clothing = itemsToSearch.filter(i => !isAccessoryItem(i.item_type));
-          const accessories = itemsToSearch.filter(i => isAccessoryItem(i.item_type));
-          itemsToSearch = [...clothing, ...accessories.slice(0, 0)];
+          const mainClothing = itemsToSearch.filter(i => ['top', 'bottom', 'dresses', 'outerwear'].includes(i.category) || i.category === 'dress');
+          itemsToSearch = mainClothing.slice(0, 1); // Only the main clothing item
         }
       } else {
         itemsToSearch = missingItemsFromAI;
       }
+
+      itemsToSearch = itemsToSearch.filter(item => {
+        const name = item.item_type.toLowerCase();
+        const isHallucinated = [
+          'integrated', 'cohesive',
+          'silhouette', 'gown skirt'
+        ].some(phrase => name.includes(phrase));
+        return !isHallucinated;
+      });
 
       itemsToSearch = itemsToSearch.slice(0, 5);
 

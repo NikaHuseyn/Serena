@@ -750,6 +750,7 @@ export const useStylingChat = () => {
     });
     sessionStorage.removeItem('guest_chat_messages');
     sessionStorage.removeItem('guest_chat_context');
+    sessionStorage.removeItem('guest_session_id');
   }, []);
 
   return {
