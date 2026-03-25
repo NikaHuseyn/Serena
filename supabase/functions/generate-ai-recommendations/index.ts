@@ -515,15 +515,14 @@ EVENT DETAILS:
 ` : ''}
 
 WEATHER CONTEXT:
-${weatherData ? `${weatherData.source !== 'current_location'
-  ? `Temperature: ${weatherData.temperature}°C, Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}, Source: ${weatherData.source}`
-  : `Temperature: [use your knowledge of typical weather for this location/season], Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}, Source: ${weatherData.source}`}
+${weatherData ? (weatherData.source === 'current_location' || weatherData.source === 'gps')
+  ? `No confirmed weather data yet — location not confirmed by user.
+Do not mention any city, temperature, or weather conditions.`
+  : `Temperature: ${weatherData.temperature}°C, Condition: ${weatherData.condition}, Humidity: ${weatherData.humidity}%, Location: ${weatherData.location}, Source: ${weatherData.source}
 
 ⚠️ WEATHER REFERENCE RULES (CRITICAL):
-- If source is "current_location" or "gps" (device GPS): NEVER mention specific temperature, weather conditions, or location name in the opening recommendation line. Do NOT name the city, mention temperature, or mention rain/sunny/etc.
 - For outdoor events (keywords: beach, outdoor, garden, rooftop, destination, abroad, island, coast): Do NOT state specific temperature until BOTH location AND date are confirmed
-- Only mention specific temperature in the opening line if: weatherData.source is "event_location" AND date is known AND location is explicitly confirmed by user
-- You may always use weather condition (rain, sunny, etc.) without mentioning temperature ONLY when location AND date are both explicitly confirmed by user` : `Weather not specified
+- Only mention specific temperature in the opening line if: weatherData.source is "event_location" AND date is known AND location is explicitly confirmed by user` : `Weather not specified
 
 ⚠️ WEATHER REFERENCE RULES (CRITICAL):
 - Build recommendations assuming mild/temperate weather if no specific data provided
@@ -1218,7 +1217,7 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
               if (v && typeof v === 'object' && 'name' in v) {
                 itemsToSearch.push({
                   item_type: v.name,
-                  style_descriptor: v.reasoning || '',
+                  style_descriptor: v.name.split(/\s+/).slice(0, 5).join(' '),
                   occasion_suitability: occasion || '',
                   price_tier: missingItemsFromAI.find((m: any) => m.item_type === v.name)?.price_tier || 'mid_range',
                   category: key,
@@ -1230,7 +1229,7 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
             const v = val as any;
             itemsToSearch.push({
               item_type: v.name,
-              style_descriptor: v.reasoning || '',
+              style_descriptor: v.name.split(/\s+/).slice(0, 5).join(' '),
               occasion_suitability: occasion || '',
               price_tier: missingItemsFromAI.find((m: any) => m.item_type === v.name)?.price_tier || 'mid_range',
               category: key,
@@ -1250,7 +1249,7 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
               if (v && typeof v === 'object' && 'name' in v) {
                 itemsToSearch.push({
                   item_type: v.name,
-                  style_descriptor: v.reasoning || '',
+                  style_descriptor: v.name.split(/\s+/).slice(0, 5).join(' '),
                   occasion_suitability: occasion || '',
                   price_tier: missingItemsFromAI.find((m: any) => m.item_type === v.name)?.price_tier || 'mid_range',
                   category: key,
@@ -1262,7 +1261,7 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
             const v = val as any;
             itemsToSearch.push({
               item_type: v.name,
-              style_descriptor: v.reasoning || '',
+              style_descriptor: v.name.split(/\s+/).slice(0, 5).join(' '),
               occasion_suitability: occasion || '',
               price_tier: missingItemsFromAI.find((m: any) => m.item_type === v.name)?.price_tier || 'mid_range',
               category: key,
@@ -1282,10 +1281,28 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
         const name = item.item_type.toLowerCase();
         const isHallucinated = [
           'integrated', 'cohesive',
-          'silhouette', 'gown skirt'
+          'silhouette', 'gown skirt', 'dress skirt',
+          'attached', 'built-in'
         ].some(phrase => name.includes(phrase));
         return !isHallucinated;
       });
+
+      const SHOE_ACCESSORY_KEYWORDS = [
+        'shoe', 'shoes', 'pump', 'pumps',
+        'heel', 'heels', 'boot', 'boots',
+        'sandal', 'sandals', 'loafer',
+        'earring', 'necklace', 'bracelet',
+        'ring', 'watch', 'bag', 'clutch',
+        'belt', 'scarf', 'hat', 'glove',
+        'jewellery', 'jewelry', 'accessory'
+      ];
+      if (exchangeCount === 0) {
+        itemsToSearch = itemsToSearch.filter(
+          item => !SHOE_ACCESSORY_KEYWORDS.some(
+            kw => item.item_type.toLowerCase().includes(kw)
+          )
+        );
+      }
 
       itemsToSearch = itemsToSearch.slice(0, 5);
 
