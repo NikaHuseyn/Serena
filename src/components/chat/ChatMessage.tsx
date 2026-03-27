@@ -114,6 +114,21 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
   const renderRecommendation = () => {
     if (!recommendation) return null;
 
+    const hasRealProducts = recommendation?.missing_items?.some((item: any) =>
+      item.retailer_results?.length > 0 ||
+      item.rental_results?.some(
+        (r: any) => !r.product_name?.startsWith('Search')
+      )
+    );
+
+    const hasWardrobeItemsUsed = recommendation?.ai_insights?.wardrobe_analysis?.items_used?.length > 0;
+
+    // No outfit items / styling tips / shop-this-look if we have no real products yet
+    // (first response with empty or search-only placeholders should not show these sections)
+    if (!hasRealProducts && !hasWardrobeItemsUsed) {
+      return null;
+    }
+
     const items = recommendation.recommended_items;
     if (!items) return null;
 
@@ -279,7 +294,6 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
             </p>
           </div>
         )}
-        {renderRecommendation()}
         {/* Quick refinement buttons - shown after recommendations */}
         {!isUser && recommendation && !emotionalToneCards && (
           <div className="flex flex-wrap gap-2 mt-4">
