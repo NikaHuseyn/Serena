@@ -335,6 +335,7 @@ CORE BEHAVIOUR:
 - NEVER ask about something the user already stated.
 - Questions should sound natural and friendly, like a friend talking — never like a form field.
 - Maximum 3 follow-up exchanges, then stop asking and just respond.
+- NEVER create items named 'To be decided', 'Integrated gown skirt', 'Focusing on the main garment', or any placeholder text. Every item in recommended_items and missing_items_search must be a real, specific, searchable product.
 
 ${followUpQuestion ? `
 FOLLOW-UP QUESTION TO ASK (ask this at the END of your response, after the recommendation):
@@ -1305,8 +1306,12 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
     if (wardrobeState === 'full_match') {
       console.log('[Search] Skipping — full wardrobe match');
     } else {
-      let itemsToSearch: any[] = [];
-      const missingItemsFromAI = recommendationData.missing_items_search || [];
+      if (exchangeCount === 0) {
+        shoppingMatches = [];
+        console.log('[Shopping] Skipped - first response');
+      } else {
+        let itemsToSearch: any[] = [];
+        const missingItemsFromAI = recommendationData.missing_items_search || [];
 
       if (wardrobeState === 'no_wardrobe') {
         const items = recommendationData.recommended_items || {};
@@ -1377,14 +1382,24 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
         itemsToSearch = missingItemsFromAI;
       }
 
+      const BLOCKED_ITEM_PHRASES = [
+        'integrated',
+        'cohesive',
+        'silhouette',
+        'gown skirt',
+        'floor-length skirt',
+        'floor length skirt',
+        'to be decided',
+        'tbd',
+        'undecided',
+        'focusing on',
+        'part of',
+        'architecture'
+      ];
+
       itemsToSearch = itemsToSearch.filter(item => {
-        const name = item.item_type.toLowerCase();
-        const isHallucinated = [
-          'integrated', 'cohesive',
-          'silhouette', 'gown skirt', 'dress skirt',
-          'attached', 'built-in'
-        ].some(phrase => name.includes(phrase));
-        return !isHallucinated;
+        const name = (item.item_type || '').toLowerCase();
+        return !BLOCKED_ITEM_PHRASES.some(phrase => name.includes(phrase));
       });
 
       const SHOE_ACCESSORY_KEYWORDS = [
@@ -1725,6 +1740,7 @@ CRITICAL: The user is refining their original request. Keep ALL details from the
         shoppingMatches = await Promise.all(searchPromises);
         console.log('[Search Complete]', shoppingMatches.map(m => `${m.item_type}: ${m.retailer_results?.length || 0} retailer`).join(', '));
       }
+    }
     }
 
     // Save recommendation to database only if user is authenticated
