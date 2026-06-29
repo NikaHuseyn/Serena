@@ -152,7 +152,7 @@ export const useSocialPosts = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
-        window.location.href = '/auth';
+        setError('Sign in to like posts');
         return;
       }
 
