@@ -192,14 +192,8 @@ const CommunityFeed = () => {
           )}
         </div>
 
-        {posts.length > 0 && (
-          <div className="text-center py-8">
-            <Button variant="outline">
-              Load More Posts
-            </Button>
-          </div>
-        )}
       </div>
+
 
       {/* Sidebar */}
       <div className="space-y-6">
