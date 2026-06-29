@@ -100,7 +100,8 @@ const CommunityFeed = () => {
     poll_question?: string;
   }): Promise<void> => {
     if (!currentUserId) {
-      window.location.href = '/auth';
+      toast({ title: 'Sign in required', description: 'Create a free account to share outfits.' });
+      navigate('/auth');
       return;
     }
     await createPost(postData);
@@ -109,7 +110,8 @@ const CommunityFeed = () => {
 
   const handleShowPostForm = () => {
     if (!currentUserId) {
-      window.location.href = '/auth';
+      toast({ title: 'Sign in required', description: 'Create a free account to share outfits.' });
+      navigate('/auth');
       return;
     }
     setShowPostForm(!showPostForm);
