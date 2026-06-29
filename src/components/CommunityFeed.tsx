@@ -19,6 +19,7 @@ import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
 const CommunityFeed = () => {
   const { posts, loading, error, createPost, toggleLike, deletePost } = useSocialPosts();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { markAsRead } = useCommunityNotifications();
   const [showPostForm, setShowPostForm] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
