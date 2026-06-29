@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Camera, Users } from 'lucide-react';
 import { useSocialPosts } from '@/hooks/useSocialPosts';
