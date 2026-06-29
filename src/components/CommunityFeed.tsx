@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Camera, Users } from 'lucide-react';
 import { useSocialPosts } from '@/hooks/useSocialPosts';
@@ -18,6 +19,7 @@ import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
 const CommunityFeed = () => {
   const { posts, loading, error, createPost, toggleLike, deletePost } = useSocialPosts();
   const { toast } = useToast();
+  const navigate = useNavigate();
   const { markAsRead } = useCommunityNotifications();
   const [showPostForm, setShowPostForm] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
@@ -98,7 +100,8 @@ const CommunityFeed = () => {
     poll_question?: string;
   }): Promise<void> => {
     if (!currentUserId) {
-      window.location.href = '/auth';
+      toast({ title: 'Sign in required', description: 'Create a free account to share outfits.' });
+      navigate('/auth');
       return;
     }
     await createPost(postData);
@@ -107,7 +110,8 @@ const CommunityFeed = () => {
 
   const handleShowPostForm = () => {
     if (!currentUserId) {
-      window.location.href = '/auth';
+      toast({ title: 'Sign in required', description: 'Create a free account to share outfits.' });
+      navigate('/auth');
       return;
     }
     setShowPostForm(!showPostForm);
@@ -188,14 +192,8 @@ const CommunityFeed = () => {
           )}
         </div>
 
-        {posts.length > 0 && (
-          <div className="text-center py-8">
-            <Button variant="outline">
-              Load More Posts
-            </Button>
-          </div>
-        )}
       </div>
+
 
       {/* Sidebar */}
       <div className="space-y-6">

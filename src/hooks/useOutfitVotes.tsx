@@ -72,7 +72,8 @@ export const useOutfitVotes = (postId: string, optionCount: number) => {
   const castVote = async (optionIndex: number) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      window.location.href = '/auth';
+      // Surface via console; UI shows toast/redirect from the calling component if needed
+      console.warn('Sign in required to vote');
       return;
     }
 
