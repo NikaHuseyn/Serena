@@ -74,6 +74,12 @@ const BrandPicker = ({ value, onChange }: BrandPickerProps) => {
     if (!name) return;
     const slug = slugify(name);
     if (!slug) return;
+    // Add to local brand list immediately so chip shows the proper name
+    setBrands((prev) =>
+      prev.some((b) => b.slug === slug)
+        ? prev
+        : [...prev, { id: `local-${slug}`, name, slug }].sort((a, b) => a.name.localeCompare(b.name))
+    );
     // Tag locally first so it always works (guests, RLS failures, offline)
     add(slug);
     // Best-effort persist for autocomplete reuse; silently ignore failures
