@@ -133,7 +133,7 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png,image/webp"
+            accept="image/*"
             multiple
             className="hidden"
             onChange={handleFileSelect}
