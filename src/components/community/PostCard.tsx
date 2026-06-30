@@ -38,11 +38,13 @@ interface PostCardProps {
   onToggleLike: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
+  onUpdate?: (postId: string, updates: { caption: string; image_urls: string[] }) => Promise<void>;
 }
 
-const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: PostCardProps) => {
+const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpdate }: PostCardProps) => {
   const { badges } = useBadges(post.user_id);
   const isOwnPost = currentUserId === post.user_id;
+  const [editOpen, setEditOpen] = useState(false);
 
   const formattedDate = useMemo(() => 
     new Date(post.created_at).toLocaleDateString('en-US', {
