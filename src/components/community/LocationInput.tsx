@@ -15,38 +15,8 @@ interface Suggestion {
   short: string;
 }
 
-interface PhotonFeature {
-  properties?: {
-    name?: string;
-    street?: string;
-    city?: string;
-    town?: string;
-    village?: string;
-    locality?: string;
-    county?: string;
-    state?: string;
-    country?: string;
-    osm_id?: string | number;
-  };
-}
-
 const MIN_QUERY_LENGTH = 2;
 const SEARCH_DEBOUNCE_MS = 250;
-
-const formatPhotonSuggestion = (feature: PhotonFeature): Suggestion | null => {
-  const p = feature.properties || {};
-  const venue = p.name || p.street;
-  const city = p.city || p.town || p.village || p.locality || p.county;
-  const region = p.state;
-  const country = p.country;
-  const unique = Array.from(new Set([venue, city, region, country].filter(Boolean)));
-
-  const short = unique.slice(0, 3).join(', ');
-  const display = unique.join(', ');
-
-  if (!short && !display) return null;
-  return { short: short || display, display: display || short };
-};
 
 const LocationInput = ({ value, onChange }: LocationInputProps) => {
   const [query, setQuery] = useState(value);
