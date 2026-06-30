@@ -137,6 +137,9 @@ export const useSocialPosts = (filter?: PostFilter) => {
         caption: postData.caption,
         tags: postData.tags || [],
         image_urls: postData.image_urls,
+        mentioned_user_ids: postData.mentioned_user_ids || [],
+        brand_tags: postData.brand_tags || [],
+        location: postData.location || null,
       };
 
       if (postData.post_type) insertData.post_type = postData.post_type;
