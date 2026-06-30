@@ -263,12 +263,20 @@ const EditPostDialog = ({ open, onOpenChange, post, onSave }: EditPostDialogProp
             </button>
           )}
 
-          <Textarea
+          <RichCaptionInput
             value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            placeholder="Update your caption..."
+            onChange={(v, m) => {
+              setCaption(v);
+              setMentionMap(m);
+            }}
+            mentionMap={mentionMap}
+            placeholder="Update your caption — try @username, #ootd…"
             rows={4}
           />
+
+          <LocationInput value={location} onChange={setLocation} />
+
+          <BrandPicker value={brandSlugs} onChange={setBrandSlugs} />
         </div>
 
         <DialogFooter>
