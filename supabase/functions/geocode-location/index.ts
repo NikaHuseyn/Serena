@@ -169,22 +169,50 @@ async function fetchNominatim(q: string): Promise<Suggestion[]> {
   return results.map(formatNominatim).filter((s): s is Suggestion => Boolean(s?.short));
 }
 
+async function callSerper(endpoint: string, q: string, num: number): Promise<SerperPlace[]> {
+  const apiKey = Deno.env.get("SERPER_API_KEY");
+  if (!apiKey) return [];
+  const res = await fetch(`https://google.serper.dev/${endpoint}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-API-KEY": apiKey },
+    body: JSON.stringify({ q, num }),
+  });
+  if (!res.ok) throw new Error(`Serper ${endpoint} ${res.status}`);
+  const json = await res.json();
+  // /places returns `places`, /maps returns `places` too, /search returns organic etc.
+  const places: SerperPlace[] = [];
+  if (Array.isArray(json.places)) places.push(...json.places);
+  if (Array.isArray(json.localResults)) places.push(...json.localResults);
+  return places;
+}
+
 async function fetchSerperPlaces(q: string): Promise<Suggestion[]> {
   const apiKey = Deno.env.get("SERPER_API_KEY");
   if (!apiKey) return [];
 
-  const res = await fetch("https://google.serper.dev/places", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-KEY": apiKey,
-    },
-    body: JSON.stringify({ q, num: 8 }),
+  // Hit both /places (Google Places) and /maps (Google Maps) in parallel,
+  // plus a broader query variant to surface niche venues (salons, gyms, cafés).
+  const results = await Promise.allSettled([
+    callSerper("places", q, 20),
+    callSerper("maps", q, 20),
+    callSerper("places", `${q} venue`, 10),
+  ]);
+
+  const all: SerperPlace[] = [];
+  for (const r of results) {
+    if (r.status === "fulfilled") all.push(...r.value);
+  }
+
+  // Dedupe by title+address before formatting
+  const seen = new Set<string>();
+  const unique = all.filter((p) => {
+    const key = normalise(`${p.title ?? ""} ${p.address ?? ""}`);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
-  if (!res.ok) throw new Error(`Serper places ${res.status}`);
-  const json = await res.json();
-  const places: SerperPlace[] = Array.isArray(json.places) ? json.places : [];
-  return places.map(formatSerper).filter((s): s is Suggestion => Boolean(s?.short));
+
+  return unique.map(formatSerper).filter((s): s is Suggestion => Boolean(s?.short));
 }
 
 function dedupeAndRank(q: string, suggestions: Suggestion[]): Suggestion[] {
@@ -198,7 +226,7 @@ function dedupeAndRank(q: string, suggestions: Suggestion[]): Suggestion[] {
       seen.add(key);
       return true;
     })
-    .slice(0, 8)
+    .slice(0, 12)
     .map(({ score: _score, ...suggestion }) => suggestion);
 }
 
