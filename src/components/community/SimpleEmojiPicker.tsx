@@ -89,7 +89,10 @@ const SimpleEmojiPicker = ({ onSelect }: SimpleEmojiPickerProps) => {
   return (
     <div className="w-[280px] bg-popover text-popover-foreground">
       {/* Category tabs */}
-      <div className="flex items-center gap-0.5 px-1.5 pt-1.5 pb-1 border-b border-border overflow-x-auto no-scrollbar">
+      <div
+        className="flex items-center gap-0.5 px-1.5 pt-1.5 pb-1 border-b border-border overflow-x-auto"
+        style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'thin' }}
+      >
         {CATEGORIES.map((cat, i) => (
           <button
             key={cat.name}
@@ -112,7 +115,10 @@ const SimpleEmojiPicker = ({ onSelect }: SimpleEmojiPickerProps) => {
       </div>
 
       {/* Emoji grid */}
-      <div className="max-h-[220px] overflow-y-auto p-1.5">
+      <div
+        className="overflow-y-auto p-1.5"
+        style={{ maxHeight: 260, WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
+      >
         <div className="grid grid-cols-8 gap-0.5">
           {visible.map((emoji, i) => (
             <button
