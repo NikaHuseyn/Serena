@@ -1,12 +1,7 @@
 // Location/venue search proxy. It combines geographical results with POI
 // providers so restaurants, clubs, hotels and entertainment venues appear too.
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-};
+import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
 
 interface PhotonFeature {
   properties?: Record<string, unknown>;
