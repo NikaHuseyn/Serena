@@ -157,10 +157,7 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
         {/* Post Content */}
         {post.caption && (
           <div className="mb-4">
-            <CaptionRenderer
-              text={post.caption}
-              onTagClick={onTagClick}
-            />
+            <CaptionRenderer caption={post.caption} />
           </div>
         )}
 
