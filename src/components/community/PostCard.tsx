@@ -16,6 +16,8 @@ import FollowButton from './FollowButton';
 import BadgeDisplay from './BadgeDisplay';
 import ReportPostDialog from './ReportPostDialog';
 import EditPostDialog from './EditPostDialog';
+import CaptionRenderer from './CaptionRenderer';
+import { MapPin, Tag as TagIcon } from 'lucide-react';
 import { useBadges } from '@/hooks/useBadges';
 
 interface PostCardProps {
@@ -25,6 +27,9 @@ interface PostCardProps {
     image_urls: string[];
     caption: string | null;
     tags: string[] | null;
+    brand_tags?: string[] | null;
+    mentioned_user_ids?: string[] | null;
+    location?: string | null;
     likes_count: number;
     comments_count: number;
     created_at: string;
@@ -38,7 +43,19 @@ interface PostCardProps {
   onToggleLike: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
-  onUpdate?: (postId: string, updates: { caption: string; image_urls: string[] }) => Promise<void>;
+  onUpdate?: (
+    postId: string,
+    updates: {
+      caption: string;
+      image_urls: string[];
+      tags: string[];
+      mentioned_user_ids: string[];
+      brand_tags: string[];
+      location: string | null;
+    }
+  ) => Promise<void>;
+  onTagClick?: (tag: string) => void;
+  onBrandClick?: (brand: string) => void;
 }
 
 const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpdate }: PostCardProps) => {
