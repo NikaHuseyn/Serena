@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { MapPin, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LocationInputProps {
   value: string;
@@ -97,27 +98,20 @@ const LocationInput = ({ value, onChange }: LocationInputProps) => {
       setLoading(true);
       setOpen(true);
       try {
-        // Photon (Komoot) — CORS-friendly, no preflight, no API key
-        const url = new URL('https://photon.komoot.io/api/');
-        url.searchParams.set('lang', 'en');
-        url.searchParams.set('limit', '6');
-        url.searchParams.set('q', q);
-
-        const res = await fetch(url.toString(), {
-          signal: ctrl.signal,
-          mode: 'cors',
-          credentials: 'omit',
+        // Server-side proxy to Photon (Komoot) — bypasses any client CSP/CORS quirks.
+        const { data, error } = await supabase.functions.invoke('geocode-location', {
+          body: { q },
         });
-        if (!res.ok) throw new Error(`Photon search failed: ${res.status}`);
-        const json = await res.json();
+        if (ctrl.signal.aborted) return;
         if (requestId !== requestIdRef.current) return;
-
-        const features: PhotonFeature[] = Array.isArray(json.features) ? json.features : [];
-        const items = features
-          .map(formatPhotonSuggestion)
-          .filter((item): item is Suggestion => Boolean(item?.short));
+        if (error) throw error;
+        const incoming: Suggestion[] = Array.isArray(data?.suggestions)
+          ? data!.suggestions
+          : [];
         const seen = new Set<string>();
-        const deduped = items.filter((i) => (seen.has(i.short) ? false : (seen.add(i.short), true)));
+        const deduped = incoming.filter((i) =>
+          seen.has(i.short) ? false : (seen.add(i.short), true),
+        );
         setSuggestions(deduped);
         setOpen(true);
       } catch (err) {
