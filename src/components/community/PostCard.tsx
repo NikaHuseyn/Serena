@@ -15,6 +15,7 @@ import CommentSection from './CommentSection';
 import FollowButton from './FollowButton';
 import BadgeDisplay from './BadgeDisplay';
 import ReportPostDialog from './ReportPostDialog';
+import EditPostDialog from './EditPostDialog';
 import { useBadges } from '@/hooks/useBadges';
 
 interface PostCardProps {
