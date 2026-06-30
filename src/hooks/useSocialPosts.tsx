@@ -243,7 +243,14 @@ export const useSocialPosts = (filter?: PostFilter) => {
 
   const updatePost = async (
     postId: string,
-    updates: { caption?: string; image_urls?: string[] }
+    updates: {
+      caption?: string;
+      image_urls?: string[];
+      tags?: string[];
+      mentioned_user_ids?: string[];
+      brand_tags?: string[];
+      location?: string | null;
+    }
   ) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -252,6 +259,10 @@ export const useSocialPosts = (filter?: PostFilter) => {
       const patch: Record<string, unknown> = {};
       if (updates.caption !== undefined) patch.caption = updates.caption;
       if (updates.image_urls !== undefined) patch.image_urls = updates.image_urls;
+      if (updates.tags !== undefined) patch.tags = updates.tags;
+      if (updates.mentioned_user_ids !== undefined) patch.mentioned_user_ids = updates.mentioned_user_ids;
+      if (updates.brand_tags !== undefined) patch.brand_tags = updates.brand_tags;
+      if (updates.location !== undefined) patch.location = updates.location;
 
       const { error } = await supabase
         .from('posts')
@@ -268,6 +279,10 @@ export const useSocialPosts = (filter?: PostFilter) => {
                 ...p,
                 caption: updates.caption !== undefined ? updates.caption : p.caption,
                 image_urls: updates.image_urls !== undefined ? updates.image_urls : p.image_urls,
+                tags: updates.tags !== undefined ? updates.tags : p.tags,
+                mentioned_user_ids: updates.mentioned_user_ids !== undefined ? updates.mentioned_user_ids : p.mentioned_user_ids,
+                brand_tags: updates.brand_tags !== undefined ? updates.brand_tags : p.brand_tags,
+                location: updates.location !== undefined ? updates.location : p.location,
               }
             : p
         )
@@ -289,7 +304,7 @@ export const useSocialPosts = (filter?: PostFilter) => {
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [fetchPosts]);
 
   return {
     posts,
