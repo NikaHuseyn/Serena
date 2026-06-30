@@ -30,11 +30,22 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
+    const tooLarge = files.filter(f => f.size > 5 * 1024 * 1024).length;
     const validFiles = files.filter(f => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024);
+
+    // Reset input so the same file(s) can be reselected later
+    e.target.value = '';
+
+    if (tooLarge > 0) {
+      toast.error(`${tooLarge} photo${tooLarge > 1 ? 's' : ''} skipped (max 5MB each)`);
+    }
     if (validFiles.length === 0) return;
 
     const remaining = MAX_PHOTOS - selectedFiles.length;
     const toAdd = validFiles.slice(0, remaining);
+    if (validFiles.length > remaining) {
+      toast.error(`Only ${MAX_PHOTOS} photos allowed per post`);
+    }
 
     setSelectedFiles(prev => [...prev, ...toAdd]);
     const urls = toAdd.map(f => URL.createObjectURL(f));
