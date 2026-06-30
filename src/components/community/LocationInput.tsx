@@ -3,6 +3,7 @@ import { Input } from '@/components/ui/input';
 import { MapPin, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
+import { supabase } from '@/integrations/supabase/client';
 
 interface LocationInputProps {
   value: string;
@@ -14,38 +15,8 @@ interface Suggestion {
   short: string;
 }
 
-interface PhotonFeature {
-  properties?: {
-    name?: string;
-    street?: string;
-    city?: string;
-    town?: string;
-    village?: string;
-    locality?: string;
-    county?: string;
-    state?: string;
-    country?: string;
-    osm_id?: string | number;
-  };
-}
-
 const MIN_QUERY_LENGTH = 2;
 const SEARCH_DEBOUNCE_MS = 250;
-
-const formatPhotonSuggestion = (feature: PhotonFeature): Suggestion | null => {
-  const p = feature.properties || {};
-  const venue = p.name || p.street;
-  const city = p.city || p.town || p.village || p.locality || p.county;
-  const region = p.state;
-  const country = p.country;
-  const unique = Array.from(new Set([venue, city, region, country].filter(Boolean)));
-
-  const short = unique.slice(0, 3).join(', ');
-  const display = unique.join(', ');
-
-  if (!short && !display) return null;
-  return { short: short || display, display: display || short };
-};
 
 const LocationInput = ({ value, onChange }: LocationInputProps) => {
   const [query, setQuery] = useState(value);
@@ -97,27 +68,20 @@ const LocationInput = ({ value, onChange }: LocationInputProps) => {
       setLoading(true);
       setOpen(true);
       try {
-        // Photon (Komoot) — CORS-friendly, no preflight, no API key
-        const url = new URL('https://photon.komoot.io/api/');
-        url.searchParams.set('lang', 'en');
-        url.searchParams.set('limit', '6');
-        url.searchParams.set('q', q);
-
-        const res = await fetch(url.toString(), {
-          signal: ctrl.signal,
-          mode: 'cors',
-          credentials: 'omit',
+        // Server-side proxy to Photon (Komoot) — bypasses any client CSP/CORS quirks.
+        const { data, error } = await supabase.functions.invoke('geocode-location', {
+          body: { q },
         });
-        if (!res.ok) throw new Error(`Photon search failed: ${res.status}`);
-        const json = await res.json();
+        if (ctrl.signal.aborted) return;
         if (requestId !== requestIdRef.current) return;
-
-        const features: PhotonFeature[] = Array.isArray(json.features) ? json.features : [];
-        const items = features
-          .map(formatPhotonSuggestion)
-          .filter((item): item is Suggestion => Boolean(item?.short));
+        if (error) throw error;
+        const incoming: Suggestion[] = Array.isArray(data?.suggestions)
+          ? data!.suggestions
+          : [];
         const seen = new Set<string>();
-        const deduped = items.filter((i) => (seen.has(i.short) ? false : (seen.add(i.short), true)));
+        const deduped = incoming.filter((i) =>
+          seen.has(i.short) ? false : (seen.add(i.short), true),
+        );
         setSuggestions(deduped);
         setOpen(true);
       } catch (err) {
