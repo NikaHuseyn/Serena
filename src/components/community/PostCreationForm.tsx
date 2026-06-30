@@ -1,12 +1,15 @@
 
 import React, { useState, useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
 import { Camera, Send, X, Loader2, ImagePlus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import SafeImage from '@/components/SafeImage';
+import RichCaptionInput from './RichCaptionInput';
+import BrandPicker from './BrandPicker';
+import LocationInput from './LocationInput';
+import { extractHashtags, extractMentionedUserIds, type MentionMap } from '@/lib/captionParsing';
 
 interface PostCreationFormProps {
   onCreatePost: (postData: {
@@ -16,6 +19,9 @@ interface PostCreationFormProps {
     post_type?: string;
     occasion_context?: string;
     poll_question?: string;
+    mentioned_user_ids?: string[];
+    brand_tags?: string[];
+    location?: string | null;
   }) => Promise<void>;
   onClose: () => void;
 }
@@ -24,6 +30,9 @@ const MAX_PHOTOS = 10;
 
 const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
   const [caption, setCaption] = useState('');
+  const [mentionMap, setMentionMap] = useState<MentionMap>({});
+  const [brandSlugs, setBrandSlugs] = useState<string[]>([]);
+  const [location, setLocation] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [previewUrls, setPreviewUrls] = useState<string[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -120,14 +129,23 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
         imageUrls = await uploadFiles(user.id);
       }
 
+      const tags = extractHashtags(caption);
+      const mentioned = extractMentionedUserIds(caption, mentionMap);
+
       await onCreatePost({
         caption: caption.trim(),
-        tags: [],
+        tags,
         image_urls: imageUrls,
         post_type: 'single',
+        mentioned_user_ids: mentioned,
+        brand_tags: brandSlugs,
+        location: location.trim() || null,
       });
 
       setCaption('');
+      setMentionMap({});
+      setBrandSlugs([]);
+      setLocation('');
       previewUrls.forEach(url => URL.revokeObjectURL(url));
       setPreviewUrls([]);
       setSelectedFiles([]);
@@ -151,7 +169,7 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
             <div>
               <p className="font-medium text-foreground">Share with the community</p>
               <p className="text-sm text-muted-foreground">
-                Post your look, ask for opinions, or just tell us about your day
+                Tag people with @, topics with #, brands and your location
               </p>
             </div>
           </div>
@@ -237,12 +255,20 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
             </button>
           )}
 
-          <Textarea
+          <RichCaptionInput
             value={caption}
-            onChange={(e) => setCaption(e.target.value)}
-            placeholder="What's the occasion? Ask for opinions, share your look, or just say hi..."
+            onChange={(v, m) => {
+              setCaption(v);
+              setMentionMap(m);
+            }}
+            mentionMap={mentionMap}
+            placeholder="What's the occasion? Try @username, #ootd, tag brands…"
             rows={3}
           />
+
+          <LocationInput value={location} onChange={setLocation} />
+
+          <BrandPicker value={brandSlugs} onChange={setBrandSlugs} />
 
           <div className="flex justify-end space-x-2">
             <Button variant="outline" onClick={onClose} disabled={submitting}>
