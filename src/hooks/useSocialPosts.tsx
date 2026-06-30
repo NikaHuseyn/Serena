@@ -277,6 +277,7 @@ export const useSocialPosts = () => {
     createPost,
     toggleLike,
     deletePost,
+    updatePost,
     refetch: fetchPosts
   };
 };
