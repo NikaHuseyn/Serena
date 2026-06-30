@@ -154,7 +154,19 @@ const EditPostDialog = ({ open, onOpenChange, post, onSave }: EditPostDialogProp
         }
       }
 
-      await onSave(post.id, { caption: caption.trim(), image_urls: finalUrls });
+      const tags = extractHashtags(caption);
+      const mentioned = extractMentionedUserIds(caption, mentionMap);
+      const existingMentions = post.mentioned_user_ids || [];
+      const mergedMentions = Array.from(new Set([...mentioned, ...existingMentions.filter((id) => caption.includes(id))]));
+
+      await onSave(post.id, {
+        caption: caption.trim(),
+        image_urls: finalUrls,
+        tags,
+        mentioned_user_ids: mentioned.length > 0 ? mergedMentions : mentioned,
+        brand_tags: brandSlugs,
+        location: location.trim() || null,
+      });
       toast.success('Post updated');
       onOpenChange(false);
     } catch (err) {
