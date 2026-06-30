@@ -226,7 +226,7 @@ function dedupeAndRank(q: string, suggestions: Suggestion[]): Suggestion[] {
       seen.add(key);
       return true;
     })
-    .slice(0, 8)
+    .slice(0, 12)
     .map(({ score: _score, ...suggestion }) => suggestion);
 }
 
