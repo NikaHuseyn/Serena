@@ -189,6 +189,9 @@ const CommunityFeed = () => {
                       toast({ title: "Error", description: "Failed to delete post.", variant: "destructive" });
                     }
                   }}
+                  onUpdate={async (postId, updates) => {
+                    await updatePost(postId, updates);
+                  }}
                 />
               );
             })
