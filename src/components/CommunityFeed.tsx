@@ -19,7 +19,7 @@ import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
 import { useGuestNudge } from '@/hooks/useGuestNudge';
 
 const CommunityFeed = () => {
-  const { posts, loading, error, createPost, toggleLike, deletePost } = useSocialPosts();
+  const { posts, loading, error, createPost, toggleLike, deletePost, updatePost } = useSocialPosts();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { markAsRead } = useCommunityNotifications();
@@ -188,6 +188,9 @@ const CommunityFeed = () => {
                     } catch {
                       toast({ title: "Error", description: "Failed to delete post.", variant: "destructive" });
                     }
+                  }}
+                  onUpdate={async (postId, updates) => {
+                    await updatePost(postId, updates);
                   }}
                 />
               );

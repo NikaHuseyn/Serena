@@ -1,9 +1,9 @@
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,6 +15,7 @@ import CommentSection from './CommentSection';
 import FollowButton from './FollowButton';
 import BadgeDisplay from './BadgeDisplay';
 import ReportPostDialog from './ReportPostDialog';
+import EditPostDialog from './EditPostDialog';
 import { useBadges } from '@/hooks/useBadges';
 
 interface PostCardProps {
@@ -37,11 +38,13 @@ interface PostCardProps {
   onToggleLike: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
+  onUpdate?: (postId: string, updates: { caption: string; image_urls: string[] }) => Promise<void>;
 }
 
-const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: PostCardProps) => {
+const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpdate }: PostCardProps) => {
   const { badges } = useBadges(post.user_id);
   const isOwnPost = currentUserId === post.user_id;
+  const [editOpen, setEditOpen] = useState(false);
 
   const formattedDate = useMemo(() => 
     new Date(post.created_at).toLocaleDateString('en-US', {
@@ -81,6 +84,12 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: Post
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {isOwnPost && onUpdate && (
+                <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Post
+                </DropdownMenuItem>
+              )}
               {isOwnPost && onDelete && (
                 <DropdownMenuItem
                   onClick={() => onDelete(post.id)}
@@ -166,6 +175,14 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: Post
           {formattedDate}
         </div>
       </CardContent>
+      {isOwnPost && onUpdate && (
+        <EditPostDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          post={{ id: post.id, user_id: post.user_id, caption: post.caption, image_urls: post.image_urls }}
+          onSave={onUpdate}
+        />
+      )}
     </Card>
   );
 };
