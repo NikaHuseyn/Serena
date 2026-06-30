@@ -102,6 +102,9 @@ export const useSocialPosts = (filter?: PostFilter) => {
           image_urls: post.image_urls || [],
           caption: post.caption,
           tags: post.tags,
+          brand_tags: (post as any).brand_tags || [],
+          mentioned_user_ids: (post as any).mentioned_user_ids || [],
+          location: (post as any).location || null,
           likes_count: post.likes_count || 0,
           comments_count: post.comments_count || 0,
           created_at: post.created_at || new Date().toISOString(),
@@ -122,7 +125,7 @@ export const useSocialPosts = (filter?: PostFilter) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter?.tag, filter?.brand]);
 
   const createPost = async (postData: CreatePostData): Promise<void> => {
     try {
