@@ -141,29 +141,63 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
           />
 
           {previewUrls.length > 0 ? (
-            <div className="flex gap-2 overflow-x-auto pb-2">
-              {previewUrls.map((url, i) => (
-                <div key={i} className="relative flex-shrink-0 w-28 rounded-lg overflow-hidden border border-border">
-                  <img src={url} alt={`Photo ${i + 1}`} className="w-28 h-28 object-cover" />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-medium text-foreground">
+                  {selectedFiles.length} of {MAX_PHOTOS} photos selected
+                </p>
+                {selectedFiles.length < MAX_PHOTOS && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-8 px-2 text-primary"
+                  >
+                    <ImagePlus className="h-4 w-4 mr-1" />
+                    Add more
+                  </Button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                {previewUrls.map((url, i) => (
+                  <div
+                    key={`${url}-${i}`}
+                    className="relative aspect-square rounded-xl overflow-hidden border border-border bg-muted group"
+                  >
+                    <SafeImage
+                      src={url}
+                      alt={`Selected photo ${i + 1}`}
+                      className="w-full h-full object-cover"
+                      showFallback
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeImage(i)}
+                      aria-label={`Remove photo ${i + 1}`}
+                      className="absolute top-2 right-2 bg-background/90 text-foreground rounded-full p-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:bg-destructive hover:text-destructive-foreground shadow-sm"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    {i === 0 && (
+                      <span className="absolute bottom-2 left-2 bg-primary text-primary-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                        Main
+                      </span>
+                    )}
+                  </div>
+                ))}
+                {selectedFiles.length < MAX_PHOTOS && (
                   <button
                     type="button"
-                    onClick={() => removeImage(i)}
-                    className="absolute top-1 right-1 bg-background/80 rounded-full p-1 hover:bg-destructive hover:text-destructive-foreground transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="aspect-square rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors flex flex-col items-center justify-center bg-muted/50 cursor-pointer"
                   >
-                    <X className="h-3 w-3" />
+                    <Camera className="h-6 w-6 text-muted-foreground mb-1" />
+                    <span className="text-xs text-muted-foreground">Add photo</span>
                   </button>
-                </div>
-              ))}
-              {selectedFiles.length < MAX_PHOTOS && (
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="flex-shrink-0 flex flex-col items-center justify-center w-28 h-28 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors cursor-pointer"
-                >
-                  <Camera className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-[10px] text-muted-foreground mt-1">Add more</span>
-                </button>
-              )}
+                )}
+              </div>
             </div>
           ) : (
             <button
