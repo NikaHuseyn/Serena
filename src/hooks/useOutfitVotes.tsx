@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useGuestNudge } from './useGuestNudge';
 
 interface VoteCounts {
   [optionIndex: number]: number;
