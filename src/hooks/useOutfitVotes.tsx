@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useGuestNudge } from './useGuestNudge';
 
 interface VoteCounts {
   [optionIndex: number]: number;
@@ -11,6 +12,7 @@ export const useOutfitVotes = (postId: string, optionCount: number) => {
   const [userVote, setUserVote] = useState<number | null>(null);
   const [totalVotes, setTotalVotes] = useState(0);
   const [loading, setLoading] = useState(true);
+  const { requireAuth } = useGuestNudge();
 
   const fetchVotes = useCallback(async () => {
     try {
@@ -70,12 +72,10 @@ export const useOutfitVotes = (postId: string, optionCount: number) => {
   }, [postId, fetchVotes]);
 
   const castVote = async (optionIndex: number) => {
+    const ok = await requireAuth('vote on outfits');
+    if (!ok) return;
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      // Surface via console; UI shows toast/redirect from the calling component if needed
-      console.warn('Sign in required to vote');
-      return;
-    }
+    if (!user) return;
 
     // Optimistic update
     const prevCounts = { ...voteCounts };

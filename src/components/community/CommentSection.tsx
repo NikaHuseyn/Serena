@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useGuestNudge } from '@/hooks/useGuestNudge';
 
 interface Comment {
   id: string;
@@ -29,6 +30,7 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const { requireAuth } = useGuestNudge();
 
   const fetchComments = async () => {
     setLoading(true);
@@ -69,13 +71,12 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
 
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
+    const ok = await requireAuth('post comments');
+    if (!ok) return;
     setSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('Please sign in to comment');
-        return;
-      }
+      if (!user) return;
 
       const { data, error } = await supabase
         .from('comments')

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useBehaviorAnalytics } from './useBehaviorAnalytics';
+import { useGuestNudge } from './useGuestNudge';
 
 export interface SocialPost {
   id: string;
@@ -38,6 +39,7 @@ export const useSocialPosts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { trackEvent } = useBehaviorAnalytics();
+  const { requireAuth } = useGuestNudge();
 
   const fetchPosts = async () => {
     try {
@@ -150,11 +152,10 @@ export const useSocialPosts = () => {
 
   const toggleLike = async (postId: string) => {
     try {
+      const ok = await requireAuth('like posts');
+      if (!ok) return;
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        setError('Sign in to like posts');
-        return;
-      }
+      if (!user) return;
 
       const post = posts.find(p => p.id === postId);
       if (!post) return;
