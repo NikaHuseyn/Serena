@@ -175,6 +175,14 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
           {formattedDate}
         </div>
       </CardContent>
+      {isOwnPost && onUpdate && (
+        <EditPostDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          post={{ id: post.id, user_id: post.user_id, caption: post.caption, image_urls: post.image_urls }}
+          onSave={onUpdate}
+        />
+      )}
     </Card>
   );
 };
