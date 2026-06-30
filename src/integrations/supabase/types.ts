@@ -74,6 +74,30 @@ export type Database = {
         }
         Relationships: []
       }
+      brands: {
+        Row: {
+          created_at: string
+          id: string
+          logo_url: string | null
+          name: string
+          slug: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name: string
+          slug: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logo_url?: string | null
+          name?: string
+          slug?: string
+        }
+        Relationships: []
+      }
       capsule_wardrobes: {
         Row: {
           color_scheme: Json | null
@@ -514,6 +538,7 @@ export type Database = {
       }
       posts: {
         Row: {
+          brand_tags: string[]
           caption: string | null
           comments_count: number | null
           created_at: string | null
@@ -522,6 +547,8 @@ export type Database = {
           image_urls: string[] | null
           is_flagged: boolean | null
           likes_count: number | null
+          location: string | null
+          mentioned_user_ids: string[]
           occasion_context: string | null
           oracle_summary: string | null
           oracle_summary_public: boolean
@@ -532,6 +559,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          brand_tags?: string[]
           caption?: string | null
           comments_count?: number | null
           created_at?: string | null
@@ -540,6 +568,8 @@ export type Database = {
           image_urls?: string[] | null
           is_flagged?: boolean | null
           likes_count?: number | null
+          location?: string | null
+          mentioned_user_ids?: string[]
           occasion_context?: string | null
           oracle_summary?: string | null
           oracle_summary_public?: boolean
@@ -550,6 +580,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          brand_tags?: string[]
           caption?: string | null
           comments_count?: number | null
           created_at?: string | null
@@ -558,6 +589,8 @@ export type Database = {
           image_urls?: string[] | null
           is_flagged?: boolean | null
           likes_count?: number | null
+          location?: string | null
+          mentioned_user_ids?: string[]
           occasion_context?: string | null
           oracle_summary?: string | null
           oracle_summary_public?: boolean

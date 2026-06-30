@@ -1,0 +1,1 @@
+COMMENT ON TABLE public.brands IS E'@graphql({"skip": true})';

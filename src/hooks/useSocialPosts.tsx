@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useBehaviorAnalytics } from './useBehaviorAnalytics';
 import { useGuestNudge } from './useGuestNudge';
@@ -10,6 +10,9 @@ export interface SocialPost {
   image_urls: string[];
   caption: string | null;
   tags: string[] | null;
+  brand_tags: string[] | null;
+  mentioned_user_ids: string[] | null;
+  location: string | null;
   likes_count: number;
   comments_count: number;
   created_at: string;
@@ -32,24 +35,36 @@ export interface CreatePostData {
   post_type?: string;
   occasion_context?: string;
   poll_question?: string;
+  mentioned_user_ids?: string[];
+  brand_tags?: string[];
+  location?: string | null;
 }
 
-export const useSocialPosts = () => {
+export interface PostFilter {
+  tag?: string;
+  brand?: string;
+}
+
+export const useSocialPosts = (filter?: PostFilter) => {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { trackEvent } = useBehaviorAnalytics();
   const { requireAuth } = useGuestNudge();
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data: postsData, error: fetchError } = await supabase
+
+      let query = supabase
         .from('posts')
         .select('*')
         .order('created_at', { ascending: false });
+      if (filter?.tag) query = query.contains('tags', [filter.tag]);
+      if (filter?.brand) query = query.contains('brand_tags', [filter.brand]);
+
+      const { data: postsData, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
 
@@ -87,6 +102,9 @@ export const useSocialPosts = () => {
           image_urls: post.image_urls || [],
           caption: post.caption,
           tags: post.tags,
+          brand_tags: (post as any).brand_tags || [],
+          mentioned_user_ids: (post as any).mentioned_user_ids || [],
+          location: (post as any).location || null,
           likes_count: post.likes_count || 0,
           comments_count: post.comments_count || 0,
           created_at: post.created_at || new Date().toISOString(),
@@ -107,7 +125,7 @@ export const useSocialPosts = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filter?.tag, filter?.brand]);
 
   const createPost = async (postData: CreatePostData): Promise<void> => {
     try {
@@ -119,6 +137,9 @@ export const useSocialPosts = () => {
         caption: postData.caption,
         tags: postData.tags || [],
         image_urls: postData.image_urls,
+        mentioned_user_ids: postData.mentioned_user_ids || [],
+        brand_tags: postData.brand_tags || [],
+        location: postData.location || null,
       };
 
       if (postData.post_type) insertData.post_type = postData.post_type;
@@ -222,7 +243,14 @@ export const useSocialPosts = () => {
 
   const updatePost = async (
     postId: string,
-    updates: { caption?: string; image_urls?: string[] }
+    updates: {
+      caption?: string;
+      image_urls?: string[];
+      tags?: string[];
+      mentioned_user_ids?: string[];
+      brand_tags?: string[];
+      location?: string | null;
+    }
   ) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -231,6 +259,10 @@ export const useSocialPosts = () => {
       const patch: Record<string, unknown> = {};
       if (updates.caption !== undefined) patch.caption = updates.caption;
       if (updates.image_urls !== undefined) patch.image_urls = updates.image_urls;
+      if (updates.tags !== undefined) patch.tags = updates.tags;
+      if (updates.mentioned_user_ids !== undefined) patch.mentioned_user_ids = updates.mentioned_user_ids;
+      if (updates.brand_tags !== undefined) patch.brand_tags = updates.brand_tags;
+      if (updates.location !== undefined) patch.location = updates.location;
 
       const { error } = await supabase
         .from('posts')
@@ -247,6 +279,10 @@ export const useSocialPosts = () => {
                 ...p,
                 caption: updates.caption !== undefined ? updates.caption : p.caption,
                 image_urls: updates.image_urls !== undefined ? updates.image_urls : p.image_urls,
+                tags: updates.tags !== undefined ? updates.tags : p.tags,
+                mentioned_user_ids: updates.mentioned_user_ids !== undefined ? updates.mentioned_user_ids : p.mentioned_user_ids,
+                brand_tags: updates.brand_tags !== undefined ? updates.brand_tags : p.brand_tags,
+                location: updates.location !== undefined ? updates.location : p.location,
               }
             : p
         )
@@ -268,7 +304,7 @@ export const useSocialPosts = () => {
 
   useEffect(() => {
     fetchPosts();
-  }, []);
+  }, [fetchPosts]);
 
   return {
     posts,

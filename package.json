@@ -54,6 +54,7 @@
     "colorthief": "^2.6.0",
     "date-fns": "^3.6.0",
     "embla-carousel-react": "^8.3.0",
+    "emoji-picker-react": "^4.19.1",
     "fabric": "^6.7.1",
     "input-otp": "^1.2.4",
     "lucide-react": "^0.462.0",
