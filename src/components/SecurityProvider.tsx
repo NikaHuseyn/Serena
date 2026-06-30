@@ -17,7 +17,7 @@ const SecurityProvider = ({ children }: SecurityProviderProps) => {
         style-src 'self' https://fonts.googleapis.com;
         font-src 'self' https://fonts.gstatic.com;
         img-src 'self' data: https: blob:;
-        connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openweathermap.org;
+        connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openweathermap.org https://photon.komoot.io;
         frame-src 'none';
         object-src 'none';
         base-uri 'self';

@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { MapPin, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover';
 
 interface LocationInputProps {
   value: string;
@@ -13,6 +14,39 @@ interface Suggestion {
   short: string;
 }
 
+interface PhotonFeature {
+  properties?: {
+    name?: string;
+    street?: string;
+    city?: string;
+    town?: string;
+    village?: string;
+    locality?: string;
+    county?: string;
+    state?: string;
+    country?: string;
+    osm_id?: string | number;
+  };
+}
+
+const MIN_QUERY_LENGTH = 2;
+const SEARCH_DEBOUNCE_MS = 250;
+
+const formatPhotonSuggestion = (feature: PhotonFeature): Suggestion | null => {
+  const p = feature.properties || {};
+  const venue = p.name || p.street;
+  const city = p.city || p.town || p.village || p.locality || p.county;
+  const region = p.state;
+  const country = p.country;
+  const unique = Array.from(new Set([venue, city, region, country].filter(Boolean)));
+
+  const short = unique.slice(0, 3).join(', ');
+  const display = unique.join(', ');
+
+  if (!short && !display) return null;
+  return { short: short || display, display: display || short };
+};
+
 const LocationInput = ({ value, onChange }: LocationInputProps) => {
   const [query, setQuery] = useState(value);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -21,68 +55,87 @@ const LocationInput = ({ value, onChange }: LocationInputProps) => {
   const [picked, setPicked] = useState(!!value);
   const boxRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const requestIdRef = useRef(0);
+  const [dropdownWidth, setDropdownWidth] = useState<number>();
+
+  const syncDropdownWidth = useCallback(() => {
+    setDropdownWidth(boxRef.current?.getBoundingClientRect().width);
+  }, []);
 
   useEffect(() => {
     setQuery(value);
   }, [value]);
 
   useEffect(() => {
-    const onDocClick = (e: MouseEvent) => {
-      if (!boxRef.current?.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', onDocClick);
-    return () => document.removeEventListener('mousedown', onDocClick);
-  }, []);
+    syncDropdownWidth();
+    window.addEventListener('resize', syncDropdownWidth);
+    return () => window.removeEventListener('resize', syncDropdownWidth);
+  }, [syncDropdownWidth]);
 
   useEffect(() => {
-    if (picked) return;
-    const q = query.trim();
-    if (q.length < 2) {
-      setSuggestions([]);
+    if (picked) {
       setLoading(false);
       return;
     }
-    const handle = setTimeout(async () => {
+
+    const q = query.trim();
+    if (q.length < MIN_QUERY_LENGTH) {
       abortRef.current?.abort();
+      setSuggestions([]);
+      setLoading(false);
+      setOpen(false);
+      return;
+    }
+
+    syncDropdownWidth();
+    const requestId = ++requestIdRef.current;
+    abortRef.current?.abort();
+
+    const handle = setTimeout(async () => {
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       setLoading(true);
+      setOpen(true);
       try {
         // Photon (Komoot) — CORS-friendly, no preflight, no API key
-        const res = await fetch(
-          `https://photon.komoot.io/api/?lang=en&limit=6&q=${encodeURIComponent(q)}`,
-          { signal: ctrl.signal }
-        );
-        if (!res.ok) throw new Error('search failed');
+        const url = new URL('https://photon.komoot.io/api/');
+        url.searchParams.set('lang', 'en');
+        url.searchParams.set('limit', '6');
+        url.searchParams.set('q', q);
+
+        const res = await fetch(url.toString(), {
+          signal: ctrl.signal,
+          mode: 'cors',
+          credentials: 'omit',
+        });
+        if (!res.ok) throw new Error(`Photon search failed: ${res.status}`);
         const json = await res.json();
-        const features: Array<{ properties: Record<string, string> }> = json.features || [];
-        const items: Suggestion[] = features.map((f) => {
-          const p = f.properties || {};
-          const venue = p.name;
-          const city = p.city || p.town || p.village || p.locality || p.county;
-          const region = p.state;
-          const country = p.country;
-          const parts = [venue, city, region, country].filter(Boolean);
-          const unique = Array.from(new Set(parts));
-          const short = unique.slice(0, 3).join(', ') || (venue ?? '');
-          const display = unique.join(', ');
-          return { display: display || short, short: short || display };
-        }).filter((i) => i.short);
+        if (requestId !== requestIdRef.current) return;
+
+        const features: PhotonFeature[] = Array.isArray(json.features) ? json.features : [];
+        const items = features
+          .map(formatPhotonSuggestion)
+          .filter((item): item is Suggestion => Boolean(item?.short));
         const seen = new Set<string>();
         const deduped = items.filter((i) => (seen.has(i.short) ? false : (seen.add(i.short), true)));
         setSuggestions(deduped);
-        setOpen(deduped.length > 0);
+        setOpen(true);
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error('Location search failed:', err);
           setSuggestions([]);
+          setOpen(true);
         }
       } finally {
-        setLoading(false);
+        if (requestId === requestIdRef.current) setLoading(false);
       }
-    }, 300);
-    return () => clearTimeout(handle);
-  }, [query, picked]);
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      clearTimeout(handle);
+      abortRef.current?.abort();
+    };
+  }, [query, picked, syncDropdownWidth]);
 
   const select = (s: Suggestion) => {
     onChange(s.short);
@@ -96,42 +149,71 @@ const LocationInput = ({ value, onChange }: LocationInputProps) => {
     setQuery('');
     setPicked(false);
     setSuggestions([]);
+    setOpen(false);
   };
 
+  const trimmedQuery = query.trim();
+  const showDropdown = open && !picked && trimmedQuery.length >= MIN_QUERY_LENGTH;
+
   return (
-    <div ref={boxRef} className="relative">
-      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-      <Input
-        value={query}
-        onChange={(e) => {
-          const v = e.target.value.slice(0, 100);
-          setQuery(v);
-          setPicked(false);
-          onChange(v);
-          if (v.trim().length >= 2) setOpen(true);
-        }}
-        onFocus={() => suggestions.length > 0 && setOpen(true)}
-        placeholder="Add location (start typing…)"
-        className="pl-9 pr-9"
-        maxLength={100}
-      />
-      {loading && (
-        <Loader2 className="absolute right-9 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
-      )}
-      {query && (
-        <Button
-          type="button"
-          size="icon"
-          variant="ghost"
-          aria-label="Clear location"
-          onClick={clear}
-          className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      )}
-      {open && suggestions.length > 0 && (
-        <div className="absolute z-50 left-0 right-0 mt-1 bg-popover border border-border rounded-md shadow-md max-h-64 overflow-y-auto">
+    <Popover open={showDropdown} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <div ref={boxRef} className="relative">
+          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+          <Input
+            value={query}
+            onChange={(e) => {
+              const v = e.target.value.slice(0, 100);
+              setQuery(v);
+              setPicked(false);
+              onChange(v);
+              syncDropdownWidth();
+              setOpen(v.trim().length >= MIN_QUERY_LENGTH);
+            }}
+            onFocus={() => {
+              syncDropdownWidth();
+              if (trimmedQuery.length >= MIN_QUERY_LENGTH && !picked) setOpen(true);
+            }}
+            placeholder="Add location (start typing…)"
+            className="pl-9 pr-9"
+            maxLength={100}
+            autoComplete="off"
+          />
+          {loading && (
+            <Loader2 className="absolute right-9 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground animate-spin" />
+          )}
+          {query && (
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label="Clear location"
+              onClick={clear}
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+            >
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </PopoverAnchor>
+
+      <PopoverContent
+        align="start"
+        side="bottom"
+        sideOffset={4}
+        collisionPadding={12}
+        onOpenAutoFocus={(e) => e.preventDefault()}
+        className="z-[80] p-0 overflow-hidden shadow-lg"
+        style={{ width: dropdownWidth }}
+      >
+        <div className="max-h-64 overflow-y-auto py-1">
+          {loading && suggestions.length === 0 && (
+            <div className="flex items-center gap-2 px-3 py-3 text-sm text-muted-foreground">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Searching locations…
+            </div>
+          )}
+
           {suggestions.map((s, i) => (
             <button
               key={s.display + i}
@@ -149,9 +231,13 @@ const LocationInput = ({ value, onChange }: LocationInputProps) => {
               </div>
             </button>
           ))}
+
+          {!loading && suggestions.length === 0 && (
+            <div className="px-3 py-3 text-sm text-muted-foreground">No locations found</div>
+          )}
         </div>
-      )}
-    </div>
+      </PopoverContent>
+    </Popover>
   );
 };
 
