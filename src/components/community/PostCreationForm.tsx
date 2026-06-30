@@ -29,27 +29,52 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const tooLarge = files.filter(f => f.size > 5 * 1024 * 1024).length;
-    const validFiles = files.filter(f => f.type.startsWith('image/') && f.size <= 5 * 1024 * 1024);
+    const images = files.filter(f => f.type.startsWith('image/'));
 
     // Reset input so the same file(s) can be reselected later
     e.target.value = '';
 
-    if (tooLarge > 0) {
-      toast.error(`${tooLarge} photo${tooLarge > 1 ? 's' : ''} skipped (max 5MB each)`);
-    }
-    if (validFiles.length === 0) return;
+    if (images.length === 0) return;
 
     const remaining = MAX_PHOTOS - selectedFiles.length;
-    const toAdd = validFiles.slice(0, remaining);
-    if (validFiles.length > remaining) {
+    const toProcess = images.slice(0, remaining);
+    if (images.length > remaining) {
       toast.error(`Only ${MAX_PHOTOS} photos allowed per post`);
     }
 
-    setSelectedFiles(prev => [...prev, ...toAdd]);
-    const urls = toAdd.map(f => URL.createObjectURL(f));
+    const MAX_SIZE = 5 * 1024 * 1024;
+    const oversized = toProcess.filter(f => f.size > MAX_SIZE).length;
+    let compressingToast: string | number | undefined;
+    if (oversized > 0) {
+      compressingToast = toast.loading(`Compressing ${oversized} large photo${oversized > 1 ? 's' : ''}…`);
+    }
+
+    const { ImageProcessor } = await import('@/utils/imageProcessing');
+    const processed: File[] = [];
+    let failed = 0;
+
+    for (const file of toProcess) {
+      if (file.size <= MAX_SIZE) {
+        processed.push(file);
+        continue;
+      }
+      try {
+        const blob = await ImageProcessor.compressImage(file, { maxSizeMB: 4.5, maxWidthOrHeight: 1920 });
+        const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+        processed.push(new File([blob], file.name.replace(/\.[^.]+$/, '') + `.${ext}`, { type: blob.type || file.type }));
+      } catch {
+        failed++;
+      }
+    }
+
+    if (compressingToast !== undefined) toast.dismiss(compressingToast);
+    if (failed > 0) toast.error(`${failed} photo${failed > 1 ? 's' : ''} couldn't be compressed`);
+    if (processed.length === 0) return;
+
+    setSelectedFiles(prev => [...prev, ...processed]);
+    const urls = processed.map(f => URL.createObjectURL(f));
     setPreviewUrls(prev => [...prev, ...urls]);
   };
 
