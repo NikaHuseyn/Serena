@@ -157,21 +157,53 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
         {/* Post Content */}
         {post.caption && (
           <div className="mb-4">
-            <p className="text-foreground whitespace-pre-wrap">{post.caption}</p>
+            <CaptionRenderer
+              text={post.caption}
+              onTagClick={onTagClick}
+            />
+          </div>
+        )}
+
+        {/* Location */}
+        {post.location && (
+          <div className="mb-3 flex items-center gap-1 text-sm text-muted-foreground">
+            <MapPin className="h-3.5 w-3.5" />
+            <span>{post.location}</span>
           </div>
         )}
 
         {/* Tags */}
         {post.tags && post.tags.length > 0 && (
-          <div className="mb-4">
+          <div className="mb-3">
             <div className="flex flex-wrap gap-2">
               {post.tags.map((tag, index) => (
-                <span
-                  key={index}
-                  className="inline-block bg-accent text-accent-foreground text-xs px-2 py-1 rounded-full"
+                <button
+                  type="button"
+                  key={`tag-${index}`}
+                  onClick={() => onTagClick?.(tag)}
+                  className="inline-block bg-accent text-accent-foreground text-xs px-2 py-1 rounded-full hover:bg-accent/80 transition-colors"
                 >
                   #{tag}
-                </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Brand tags */}
+        {post.brand_tags && post.brand_tags.length > 0 && (
+          <div className="mb-4">
+            <div className="flex flex-wrap gap-2">
+              {post.brand_tags.map((brand, index) => (
+                <button
+                  type="button"
+                  key={`brand-${index}`}
+                  onClick={() => onBrandClick?.(brand)}
+                  className="inline-flex items-center gap-1 bg-secondary text-secondary-foreground text-xs px-2 py-1 rounded-full hover:bg-secondary/80 transition-colors"
+                >
+                  <TagIcon className="h-3 w-3" />
+                  {brand.replace(/-/g, ' ')}
+                </button>
               ))}
             </div>
           </div>
@@ -196,7 +228,15 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
         <EditPostDialog
           open={editOpen}
           onOpenChange={setEditOpen}
-          post={{ id: post.id, user_id: post.user_id, caption: post.caption, image_urls: post.image_urls }}
+          post={{
+            id: post.id,
+            user_id: post.user_id,
+            caption: post.caption,
+            image_urls: post.image_urls,
+            brand_tags: post.brand_tags,
+            location: post.location,
+            mentioned_user_ids: post.mentioned_user_ids,
+          }}
           onSave={onUpdate}
         />
       )}
