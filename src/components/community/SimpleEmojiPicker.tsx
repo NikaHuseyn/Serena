@@ -119,6 +119,7 @@ const SimpleEmojiPicker = ({ onSelect }: SimpleEmojiPickerProps) => {
         className="overflow-y-auto p-1.5"
         style={{ maxHeight: 260, WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}
       >
+        <div className="grid grid-cols-8 gap-0.5">
           {visible.map((emoji, i) => (
             <button
               key={emoji + i}
