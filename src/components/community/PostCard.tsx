@@ -58,7 +58,7 @@ interface PostCardProps {
   onBrandClick?: (brand: string) => void;
 }
 
-const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpdate }: PostCardProps) => {
+const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpdate, onTagClick, onBrandClick }: PostCardProps) => {
   const { badges } = useBadges(post.user_id);
   const isOwnPost = currentUserId === post.user_id;
   const [editOpen, setEditOpen] = useState(false);
