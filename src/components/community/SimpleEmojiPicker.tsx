@@ -89,7 +89,10 @@ const SimpleEmojiPicker = ({ onSelect }: SimpleEmojiPickerProps) => {
   return (
     <div className="w-[280px] bg-popover text-popover-foreground">
       {/* Category tabs */}
-      <div className="flex items-center gap-0.5 px-1.5 pt-1.5 pb-1 border-b border-border overflow-x-auto no-scrollbar">
+      <div
+        className="flex items-center gap-0.5 px-1.5 pt-1.5 pb-1 border-b border-border overflow-x-auto"
+        style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'thin' }}
+      >
         {CATEGORIES.map((cat, i) => (
           <button
             key={cat.name}
