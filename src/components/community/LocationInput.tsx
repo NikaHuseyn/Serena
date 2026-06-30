@@ -48,29 +48,35 @@ const LocationInput = ({ value, onChange }: LocationInputProps) => {
       abortRef.current = ctrl;
       setLoading(true);
       try {
+        // Photon (Komoot) — CORS-friendly, no preflight, no API key
         const res = await fetch(
-          `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=${encodeURIComponent(q)}`,
-          { signal: ctrl.signal, headers: { 'Accept-Language': 'en' } }
+          `https://photon.komoot.io/api/?lang=en&limit=6&q=${encodeURIComponent(q)}`,
+          { signal: ctrl.signal }
         );
         if (!res.ok) throw new Error('search failed');
-        const data: Array<{ display_name: string; address?: Record<string, string> }> = await res.json();
-        const items: Suggestion[] = data.map((d) => {
-          const a = d.address || {};
-          const city = a.city || a.town || a.village || a.hamlet || a.suburb || a.county;
-          const region = a.state || a.region;
-          const country = a.country;
-          const venue = a.attraction || a.tourism || a.amenity || a.shop || a.building;
+        const json = await res.json();
+        const features: Array<{ properties: Record<string, string> }> = json.features || [];
+        const items: Suggestion[] = features.map((f) => {
+          const p = f.properties || {};
+          const venue = p.name;
+          const city = p.city || p.town || p.village || p.locality || p.county;
+          const region = p.state;
+          const country = p.country;
           const parts = [venue, city, region, country].filter(Boolean);
-          const short = parts.length ? Array.from(new Set(parts)).slice(0, 3).join(', ') : d.display_name;
-          return { display: d.display_name, short };
-        });
-        // dedupe by short
+          const unique = Array.from(new Set(parts));
+          const short = unique.slice(0, 3).join(', ') || (venue ?? '');
+          const display = unique.join(', ');
+          return { display: display || short, short: short || display };
+        }).filter((i) => i.short);
         const seen = new Set<string>();
         const deduped = items.filter((i) => (seen.has(i.short) ? false : (seen.add(i.short), true)));
         setSuggestions(deduped);
         setOpen(deduped.length > 0);
       } catch (err) {
-        if ((err as Error).name !== 'AbortError') setSuggestions([]);
+        if ((err as Error).name !== 'AbortError') {
+          console.error('Location search failed:', err);
+          setSuggestions([]);
+        }
       } finally {
         setLoading(false);
       }

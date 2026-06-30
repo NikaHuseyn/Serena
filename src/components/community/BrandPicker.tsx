@@ -74,16 +74,25 @@ const BrandPicker = ({ value, onChange }: BrandPickerProps) => {
     if (!name) return;
     const slug = slugify(name);
     if (!slug) return;
-    // Try to persist; ignore failures (e.g. guests) and still tag locally
-    const { data } = await supabase
-      .from('brands')
-      .upsert({ name, slug }, { onConflict: 'slug' })
-      .select('id, name, slug')
-      .maybeSingle();
-    if (data) {
-      setBrands((prev) => (prev.some((b) => b.slug === data.slug) ? prev : [...prev, data].sort((a, b) => a.name.localeCompare(b.name))));
-    }
+    // Tag locally first so it always works (guests, RLS failures, offline)
     add(slug);
+    // Best-effort persist for autocomplete reuse; silently ignore failures
+    try {
+      const { data } = await supabase
+        .from('brands')
+        .upsert({ name, slug }, { onConflict: 'slug' })
+        .select('id, name, slug')
+        .maybeSingle();
+      if (data) {
+        setBrands((prev) =>
+          prev.some((b) => b.slug === data.slug)
+            ? prev
+            : [...prev, data].sort((a, b) => a.name.localeCompare(b.name))
+        );
+      }
+    } catch {
+      // ignore — local tag already applied
+    }
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
