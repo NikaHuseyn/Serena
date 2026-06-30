@@ -84,6 +84,12 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              {isOwnPost && onUpdate && (
+                <DropdownMenuItem onClick={() => setEditOpen(true)}>
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Edit Post
+                </DropdownMenuItem>
+              )}
               {isOwnPost && onDelete && (
                 <DropdownMenuItem
                   onClick={() => onDelete(post.id)}
