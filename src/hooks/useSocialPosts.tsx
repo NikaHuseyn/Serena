@@ -220,6 +220,52 @@ export const useSocialPosts = () => {
     }
   };
 
+  const updatePost = async (
+    postId: string,
+    updates: { caption?: string; image_urls?: string[] }
+  ) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const patch: Record<string, unknown> = {};
+      if (updates.caption !== undefined) patch.caption = updates.caption;
+      if (updates.image_urls !== undefined) patch.image_urls = updates.image_urls;
+
+      const { error } = await supabase
+        .from('posts')
+        .update(patch)
+        .eq('id', postId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+
+      setPosts(prev =>
+        prev.map(p =>
+          p.id === postId
+            ? {
+                ...p,
+                caption: updates.caption !== undefined ? updates.caption : p.caption,
+                image_urls: updates.image_urls !== undefined ? updates.image_urls : p.image_urls,
+              }
+            : p
+        )
+      );
+
+      trackEvent({
+        event_type: 'community_post_edit',
+        event_data: {
+          post_id: postId,
+          caption_changed: updates.caption !== undefined,
+          images_changed: updates.image_urls !== undefined,
+        },
+      });
+    } catch (err) {
+      console.error('Error updating post:', err);
+      throw err;
+    }
+  };
+
   useEffect(() => {
     fetchPosts();
   }, []);
