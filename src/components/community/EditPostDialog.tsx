@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
 import { Camera, ImagePlus, Loader2, Save, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import SafeImage from '@/components/SafeImage';
+import RichCaptionInput from './RichCaptionInput';
+import BrandPicker from './BrandPicker';
+import LocationInput from './LocationInput';
+import { extractHashtags, extractMentionedUserIds, type MentionMap } from '@/lib/captionParsing';
 
 const MAX_PHOTOS = 10;
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -29,12 +32,28 @@ interface EditPostDialogProps {
     user_id: string;
     caption: string | null;
     image_urls: string[];
+    brand_tags?: string[] | null;
+    location?: string | null;
+    mentioned_user_ids?: string[] | null;
   };
-  onSave: (postId: string, updates: { caption: string; image_urls: string[] }) => Promise<void>;
+  onSave: (
+    postId: string,
+    updates: {
+      caption: string;
+      image_urls: string[];
+      tags: string[];
+      mentioned_user_ids: string[];
+      brand_tags: string[];
+      location: string | null;
+    }
+  ) => Promise<void>;
 }
 
 const EditPostDialog = ({ open, onOpenChange, post, onSave }: EditPostDialogProps) => {
   const [caption, setCaption] = useState(post.caption || '');
+  const [mentionMap, setMentionMap] = useState<MentionMap>({});
+  const [brandSlugs, setBrandSlugs] = useState<string[]>(post.brand_tags || []);
+  const [location, setLocation] = useState(post.location || '');
   const [slots, setSlots] = useState<Slot[]>([]);
   const [saving, setSaving] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -42,9 +61,12 @@ const EditPostDialog = ({ open, onOpenChange, post, onSave }: EditPostDialogProp
   useEffect(() => {
     if (open) {
       setCaption(post.caption || '');
+      setBrandSlugs(post.brand_tags || []);
+      setLocation(post.location || '');
+      setMentionMap({});
       setSlots((post.image_urls || []).map((url) => ({ kind: 'existing', url })));
     }
-  }, [open, post.caption, post.image_urls]);
+  }, [open, post.caption, post.image_urls, post.brand_tags, post.location]);
 
   useEffect(() => {
     return () => {
