@@ -12,15 +12,18 @@ import LoadingState from './community/LoadingState';
 import ErrorState from './community/ErrorState';
 import CommunityStats from './community/CommunityStats';
 import Leaderboard from './community/Leaderboard';
+import GuestNudgeBanner from './community/GuestNudgeBanner';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
+import { useGuestNudge } from '@/hooks/useGuestNudge';
 
 const CommunityFeed = () => {
   const { posts, loading, error, createPost, toggleLike, deletePost } = useSocialPosts();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { markAsRead } = useCommunityNotifications();
+  const { requireAuth } = useGuestNudge();
   const [showPostForm, setShowPostForm] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [stats, setStats] = useState({
@@ -99,22 +102,20 @@ const CommunityFeed = () => {
     occasion_context?: string;
     poll_question?: string;
   }): Promise<void> => {
-    if (!currentUserId) {
-      toast({ title: 'Sign in required', description: 'Create a free account to share outfits.' });
-      navigate('/auth');
-      return;
-    }
+    const ok = await requireAuth('share outfits');
+    if (!ok) return;
     await createPost(postData);
     setShowPostForm(false);
   };
 
-  const handleShowPostForm = () => {
-    if (!currentUserId) {
-      toast({ title: 'Sign in required', description: 'Create a free account to share outfits.' });
-      navigate('/auth');
+  const handleShowPostForm = async () => {
+    if (showPostForm) {
+      setShowPostForm(false);
       return;
     }
-    setShowPostForm(!showPostForm);
+    const ok = await requireAuth('share outfits');
+    if (!ok) return;
+    setShowPostForm(true);
   };
 
   if (loading) return <LoadingState />;
@@ -137,6 +138,8 @@ const CommunityFeed = () => {
             Share Outfit
           </Button>
         </div>
+
+        {!currentUserId && <GuestNudgeBanner />}
 
         <CommunityStats stats={stats} />
 
