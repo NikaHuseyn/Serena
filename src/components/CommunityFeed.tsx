@@ -19,7 +19,7 @@ import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
 import { useGuestNudge } from '@/hooks/useGuestNudge';
 
 const CommunityFeed = () => {
-  const { posts, loading, error, createPost, toggleLike, deletePost } = useSocialPosts();
+  const { posts, loading, error, createPost, toggleLike, deletePost, updatePost } = useSocialPosts();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { markAsRead } = useCommunityNotifications();
