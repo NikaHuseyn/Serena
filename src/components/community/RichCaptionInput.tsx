@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState, Suspense, lazy } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -6,8 +6,7 @@ import { Smile } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { supabase } from '@/integrations/supabase/client';
 import { normaliseHandle, type MentionMap } from '@/lib/captionParsing';
-
-const EmojiPicker = lazy(() => import('emoji-picker-react'));
+import SimpleEmojiPicker from './SimpleEmojiPicker';
 
 interface Suggestion {
   id: string;
@@ -247,23 +246,13 @@ const RichCaptionInput = ({
             </Button>
           </PopoverTrigger>
           <PopoverContent
-            className="p-0 border-0 w-auto shadow-lg"
+            className="p-0 border w-auto shadow-lg"
             align="end"
             side="top"
             sideOffset={6}
             collisionPadding={12}
           >
-            <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading…</div>}>
-              <EmojiPicker
-                onEmojiClick={(d) => insertAtCaret(d.emoji)}
-                width={280}
-                height={320}
-                searchDisabled={false}
-                skinTonesDisabled
-                previewConfig={{ showPreview: false }}
-                lazyLoadEmojis
-              />
-            </Suspense>
+            <SimpleEmojiPicker onSelect={(emoji) => insertAtCaret(emoji)} />
           </PopoverContent>
         </Popover>
       </div>
