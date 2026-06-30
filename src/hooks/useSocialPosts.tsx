@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useBehaviorAnalytics } from './useBehaviorAnalytics';
 import { useGuestNudge } from './useGuestNudge';
@@ -10,6 +10,9 @@ export interface SocialPost {
   image_urls: string[];
   caption: string | null;
   tags: string[] | null;
+  brand_tags: string[] | null;
+  mentioned_user_ids: string[] | null;
+  location: string | null;
   likes_count: number;
   comments_count: number;
   created_at: string;
@@ -32,24 +35,36 @@ export interface CreatePostData {
   post_type?: string;
   occasion_context?: string;
   poll_question?: string;
+  mentioned_user_ids?: string[];
+  brand_tags?: string[];
+  location?: string | null;
 }
 
-export const useSocialPosts = () => {
+export interface PostFilter {
+  tag?: string;
+  brand?: string;
+}
+
+export const useSocialPosts = (filter?: PostFilter) => {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { trackEvent } = useBehaviorAnalytics();
   const { requireAuth } = useGuestNudge();
 
-  const fetchPosts = async () => {
+  const fetchPosts = useCallback(async () => {
     try {
       setLoading(true);
       const { data: { user } } = await supabase.auth.getUser();
-      
-      const { data: postsData, error: fetchError } = await supabase
+
+      let query = supabase
         .from('posts')
         .select('*')
         .order('created_at', { ascending: false });
+      if (filter?.tag) query = query.contains('tags', [filter.tag]);
+      if (filter?.brand) query = query.contains('brand_tags', [filter.brand]);
+
+      const { data: postsData, error: fetchError } = await query;
 
       if (fetchError) throw fetchError;
 
