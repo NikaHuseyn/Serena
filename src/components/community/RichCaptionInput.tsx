@@ -238,19 +238,30 @@ const RichCaptionInput = ({
         </PopoverContent>
       </Popover>
 
-      <div className="absolute bottom-2 right-2">
+      <div className="mt-1.5 flex justify-end">
         <Popover>
           <PopoverTrigger asChild>
-            <Button type="button" size="icon" variant="ghost" className="h-7 w-7" aria-label="Add emoji">
-              <Smile className="h-4 w-4" />
+            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-foreground" aria-label="Add emoji">
+              <Smile className="h-4 w-4 mr-1" />
+              <span className="text-xs">Emoji</span>
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="p-0 border-0 w-auto" align="end" side="top">
+          <PopoverContent
+            className="p-0 border-0 w-auto shadow-lg"
+            align="end"
+            side="top"
+            sideOffset={6}
+            collisionPadding={12}
+          >
             <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading…</div>}>
               <EmojiPicker
                 onEmojiClick={(d) => insertAtCaret(d.emoji)}
-                width={320}
-                height={380}
+                width={280}
+                height={320}
+                searchDisabled={false}
+                skinTonesDisabled
+                previewConfig={{ showPreview: false }}
+                lazyLoadEmojis
               />
             </Suspense>
           </PopoverContent>
