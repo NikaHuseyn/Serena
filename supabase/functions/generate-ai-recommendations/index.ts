@@ -510,8 +510,8 @@ CRITICAL INSTRUCTIONS FOR FOLLOW-UP:
 ${eventDetails ? `
 EVENT DETAILS:
 - Event: ${originalRequest || eventDetails.name}
-- Location: ${eventDetails.location || 'Not specified'}
-- Dress Code: ${eventDetails.dressCode || 'Smart Casual'}
+- Location: ${eventDetails.location || 'Not specified'}${eventDetails.dressCode ? `
+- Dress Code: ${eventDetails.dressCode}` : ''}
 - Event Type: ${eventDetails.type || 'General'}
 ` : ''}
 
