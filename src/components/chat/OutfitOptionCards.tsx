@@ -120,7 +120,12 @@ const ProductCard = ({
 const ItemProducts = ({ item }: { item: OutfitItem }) => {
   const buy = usableProducts(item.buy).slice(0, 4);
   const rent = usableProducts(item.rent).slice(0, 2);
-  if (buy.length === 0 && rent.length === 0) return null;
+  const showRentFallback =
+    item.rental_market_likely === true &&
+    rent.length === 0 &&
+    item.source !== 'from_wardrobe';
+  const rentalQuery = encodeURIComponent(item.name || '');
+  if (buy.length === 0 && rent.length === 0 && !showRentFallback) return null;
 
   return (
     <div className="mt-3 space-y-2">
@@ -146,6 +151,26 @@ const ItemProducts = ({ item }: { item: OutfitItem }) => {
               <ProductCard key={`rent-${i}`} product={p} label="Rent" />
             ))}
           </div>
+        </div>
+      )}
+      {showRentFallback && (
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <a
+            href={`https://www.hurr.com/search?query=${rentalQuery}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground underline underline-offset-2"
+          >
+            Search rentals on HURR →
+          </a>
+          <a
+            href={`https://byrotation.com/search?q=${rentalQuery}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-foreground underline underline-offset-2"
+          >
+            By Rotation →
+          </a>
         </div>
       )}
     </div>
