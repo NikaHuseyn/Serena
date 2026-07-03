@@ -336,9 +336,22 @@ const provideStylingResponseTool = {
           type: ["string", "null"],
           description:
             "Set when this response is building around a specific " +
-            "wardrobe item the user pinned (Phase 3 feature — schema " +
-            "supports it now even though the UI entry point ships later). " +
-            "When set, every option MUST include this exact item.",
+            "wardrobe item the user pinned via 'Style this'. When set, " +
+            "every option MUST include this exact wardrobe item (source " +
+            "from_wardrobe, matching wardrobe_item_id). Echo the same " +
+            "anchor_item_id that arrived in context unless you are " +
+            "releasing the anchor (see release_anchor).",
+        },
+        release_anchor: {
+          type: "boolean",
+          description:
+            "Default false. Set true ONLY when the user's latest message " +
+            "clearly signals she no longer wants to build around the " +
+            "current anchor item (e.g. she pivots to a different piece, " +
+            "asks for something totally unrelated, or says 'forget that " +
+            "one' / 'start fresh' in her own words). This is Oracle's " +
+            "judgment — not a keyword match. When true, the client will " +
+            "stop sending anchor_item_id on subsequent turns.",
         },
         rental_preference: {
           type: "string",
