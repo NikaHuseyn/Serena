@@ -807,7 +807,8 @@ async function runBuySearch(query: string, tier: string): Promise<any[]> {
     );
   }
 
-  return realResults.length > 0 ? realResults : cleanProductResults(buildSearchUrls(query, tier), 4);
+  // Only return real, specific products — no "Browse X for..." fallback cards.
+  return realResults;
 }
 
 // Rental lookups now use Serper web search restricted by site: (Firecrawl was
