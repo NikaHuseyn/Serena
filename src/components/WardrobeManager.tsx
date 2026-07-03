@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Shirt, Edit, Trash2, Tag, Sparkles, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Plus, Shirt, Edit, Trash2, Tag, Sparkles, Loader2, CheckCircle, AlertCircle, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBehaviorAnalytics } from '@/hooks/useBehaviorAnalytics';
 import { useAIItemCategorization } from '@/hooks/useAIItemCategorization';
