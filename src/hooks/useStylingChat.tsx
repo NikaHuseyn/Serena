@@ -443,7 +443,7 @@ export const useStylingChat = () => {
       const parsed = resp?.data ?? resp ?? {};
 
       // Oracle can release the anchor when the user has moved on.
-      if (parsed?.release_anchor === true && anchorItemId) {
+      if (parsed?.release_anchor === true && anchorItemIdRef.current) {
         setAnchorItemId(null);
       }
 
