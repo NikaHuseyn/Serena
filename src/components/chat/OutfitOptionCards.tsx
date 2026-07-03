@@ -9,6 +9,7 @@ import {
   ExternalLink,
   ShoppingBag,
   Sparkles,
+  Pin,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -48,6 +49,10 @@ interface OutfitOptionCardsProps {
   mode?: 'wardrobe_only' | 'shop_new';
   rentalPreference?: string;
   stylingCategory?: string;
+  /** Active "Style this" anchor (wardrobe item id). When set, the matching
+   *  wardrobe item in each option gets a distinct "Your piece" badge so
+   *  it's obvious which piece the look is built around. */
+  anchorItemId?: string | null;
   onSelect: (message: string) => void;
 }
 
@@ -177,9 +182,15 @@ const ItemProducts = ({ item }: { item: OutfitItem }) => {
   );
 };
 
-const OutfitItemRow = ({ item }: { item: OutfitItem }) => {
+const OutfitItemRow = ({ item, anchorItemId }: { item: OutfitItem; anchorItemId?: string | null }) => {
   const [expanded, setExpanded] = useState(false);
   const isFromWardrobe = item.source === 'from_wardrobe';
+  // An anchor item is always a from_wardrobe piece whose id matches the
+  // pinned anchor for this conversation.
+  const isAnchor =
+    isFromWardrobe &&
+    !!anchorItemId &&
+    String(item.wardrobe_item_id ?? '') === String(anchorItemId);
   const hasReasoning = !!item.reasoning?.trim();
 
   return (
@@ -189,7 +200,16 @@ const OutfitItemRow = ({ item }: { item: OutfitItem }) => {
         <div className="min-w-0 flex-1">
           <div className="flex items-center flex-wrap gap-2">
             <p className="text-sm font-medium text-foreground">{item.name}</p>
-            {isFromWardrobe && (
+            {isAnchor ? (
+              <Badge
+                variant="secondary"
+                className="text-[10px] h-5 gap-1 bg-primary/15 text-primary border-primary/30"
+                title="This is the piece the look is built around"
+              >
+                <Pin className="h-3 w-3" />
+                Your piece
+              </Badge>
+            ) : isFromWardrobe ? (
               <Badge
                 variant="secondary"
                 className="text-[10px] h-5 gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
@@ -197,7 +217,7 @@ const OutfitItemRow = ({ item }: { item: OutfitItem }) => {
                 <Shirt className="h-3 w-3" />
                 From your wardrobe
               </Badge>
-            )}
+            ) : null}
           </div>
           {item.versatility_note && (
             <p className="text-[11px] text-muted-foreground italic mt-0.5">
@@ -245,11 +265,13 @@ const OptionCard = ({
   option,
   rentalPreference,
   stylingCategory,
+  anchorItemId,
   onSelect,
 }: {
   option: OutfitOption;
   rentalPreference?: string;
   stylingCategory?: string;
+  anchorItemId?: string | null;
   onSelect: (message: string) => void;
 }) => {
   const [items, setItems] = useState<OutfitItem[]>(option.items || []);
@@ -335,7 +357,7 @@ const OptionCard = ({
 
       <div className="px-4">
         {items.map((item, idx) => (
-          <OutfitItemRow key={`${item.name}-${idx}`} item={item} />
+          <OutfitItemRow key={`${item.name}-${idx}`} item={item} anchorItemId={anchorItemId} />
         ))}
       </div>
 
@@ -382,6 +404,7 @@ const OutfitOptionCards: React.FC<OutfitOptionCardsProps> = ({
   mode,
   rentalPreference,
   stylingCategory,
+  anchorItemId,
   onSelect,
 }) => {
   if (!options || options.length === 0) return null;
@@ -399,6 +422,7 @@ const OutfitOptionCards: React.FC<OutfitOptionCardsProps> = ({
           option={opt}
           rentalPreference={rentalPreference}
           stylingCategory={stylingCategory}
+          anchorItemId={anchorItemId}
           onSelect={onSelect}
         />
       ))}
