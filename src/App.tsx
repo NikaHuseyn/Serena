@@ -29,6 +29,7 @@ const AppRoutes = () => (
   <Suspense fallback={<LoadingState message="Loading page..." />}>
     <Routes>
       <Route path="/" element={<Index />} />
+      <Route path="/app" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/wardrobe" element={<AuthGuard><Wardrobe /></AuthGuard>} />
       
