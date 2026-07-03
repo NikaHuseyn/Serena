@@ -373,6 +373,276 @@ function parseToolCall(gatewayJson: any): any {
 }
 
 // -----------------------------------------------------------------------
+// Product search helpers — ported UNCHANGED from generate-ai-recommendations
+// -----------------------------------------------------------------------
+const shopStyleApiKey = Deno.env.get('SHOPSTYLE_API_KEY');
+const serperApiKey = Deno.env.get('SERPER_API_KEY');
+const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+
+const isValidProductUrl = (url: string | null | undefined): boolean => {
+  if (!url || typeof url !== 'string' || !url.startsWith('http')) return false;
+  const blocked = [
+    'google.com/shopping',
+    'google.co.uk/shopping',
+    'google.com/search',
+    'googleapis.com',
+    'javascript:'
+  ];
+  return !blocked.some(b => url.includes(b));
+};
+
+const extractRetailerUrl = (result: any): string | null => {
+  if (isValidProductUrl(result.product_link)) return result.product_link;
+  if (isValidProductUrl(result.merchant?.link)) return result.merchant.link;
+  if (result.link && isValidProductUrl(result.link)) return result.link;
+  return null;
+};
+
+const searchShopStyle = async (query: string, maxPrice: number): Promise<any[]> => {
+  if (!shopStyleApiKey) return [];
+  try {
+    const encoded = encodeURIComponent(query);
+    const url = `https://api.shopstyle.com/api/v2/products?pid=${shopStyleApiKey}&fts=${encoded}&offset=0&limit=5&fl=p0:${maxPrice}&fl=d0:GB&fl=b0:GBP`;
+    console.log(`[ShopStyle] Searching: "${query}" (max £${maxPrice})`);
+    const response = await fetch(url);
+    if (!response.ok) { console.warn('[ShopStyle] API error:', response.status); return []; }
+    const data = await response.json();
+    const products = (data.products || [])
+      .map((p: any) => {
+        const productUrl = extractRetailerUrl(p);
+        return {
+          retailer: p.retailer?.name || p.brand?.name || 'Retailer',
+          product_name: p.name || p.brandedName || 'Product',
+          price: p.priceLabel || (p.price ? `£${p.price}` : null),
+          product_url: productUrl,
+          image_url: p.image?.sizes?.Best?.url || p.image?.sizes?.Large?.url || p.image?.sizes?.Medium?.url || null,
+          source: 'shopstyle',
+        };
+      })
+      .filter((p: any) => p.product_url);
+    console.log(`[ShopStyle] Found ${products.length} products for "${query}"`);
+    return products;
+  } catch (err) { console.warn('[ShopStyle] Error:', err); return []; }
+};
+
+const searchGoogleShopping = async (query: string, maxPrice: number): Promise<any[]> => {
+  if (!serperApiKey) return [];
+  try {
+    console.log(`[Serper] Searching Google Shopping: "${query}"`);
+    const response = await fetch('https://google.serper.dev/shopping', {
+      method: 'POST',
+      headers: { 'X-API-KEY': serperApiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: query, gl: 'gb', hl: 'en', num: 8 }),
+    });
+    if (!response.ok) { console.warn('[Serper] API error:', response.status); return []; }
+    const data = await response.json();
+    const results = (data.shopping || [])
+      .map((r: any) => {
+        const priceStr = r.price || '';
+        const cleaned = priceStr.replace(/[^0-9.,]/g, '').replace(',', '.');
+        const numericPrice = parseFloat(cleaned);
+        const productUrl = extractRetailerUrl(r);
+        return {
+          retailer: r.source || 'Retailer',
+          product_name: r.title || 'Product',
+          price: !isNaN(numericPrice) ? `£${numericPrice.toFixed(2)}` : (priceStr || null),
+          numericPrice: !isNaN(numericPrice) ? numericPrice : null,
+          product_url: productUrl,
+          image_url: r.imageUrl || null,
+          source: 'google_shopping',
+        };
+      })
+      .filter((r: any) => r.product_url && (r.numericPrice === null || r.numericPrice <= maxPrice))
+      .slice(0, 5)
+      .map(({ numericPrice, ...rest }: any) => rest);
+    console.log(`[Serper] Found ${results.length} products for "${query}"`);
+    return results;
+  } catch (err) { console.warn('[Serper] Error:', err); return []; }
+};
+
+const buildSearchUrls = (query: string, tier: string): any[] => {
+  const encoded = encodeURIComponent(query);
+  const retailersByTierUrls: Record<string, { name: string; url: string }[]> = {
+    budget: [
+      { name: 'ASOS', url: `https://www.asos.com/search/?q=${encoded}` },
+      { name: 'H&M', url: `https://www2.hm.com/en_gb/search-results.html?q=${encoded}` },
+      { name: 'Zara', url: `https://www.zara.com/uk/en/search?searchTerm=${encoded}` },
+    ],
+    mid_range: [
+      { name: '& Other Stories', url: `https://www.stories.com/en_gbp/search.html?q=${encoded}` },
+      { name: 'Reiss', url: `https://www.reiss.com/uk/search?q=${encoded}` },
+      { name: 'Mango', url: `https://shop.mango.com/gb/search?kw=${encoded}` },
+      { name: 'COS', url: `https://www.cos.com/en_gbp/search.html?q=${encoded}` },
+    ],
+    luxury: [
+      { name: 'Net-a-Porter', url: `https://www.net-a-porter.com/en-gb/shop/search/${encoded}` },
+      { name: 'Selfridges', url: `https://www.selfridges.com/GB/en/cat/?freeText=${encoded}` },
+      { name: 'Matches Fashion', url: `https://www.matchesfashion.com/search?q=${encoded}` },
+    ],
+  };
+  const retailers = retailersByTierUrls[tier] || retailersByTierUrls.mid_range;
+  return retailers.map(r => ({
+    retailer: r.name,
+    product_name: `Search ${r.name} for "${query}"`,
+    price: null,
+    product_url: r.url,
+    image_url: null,
+    source: 'search_url',
+  }));
+};
+
+const buildRentalSearchUrls = (query: string): any[] => {
+  const encoded = encodeURIComponent(query);
+  return [
+    { platform: 'HURR', product_name: 'Search HURR', price: null, product_url: `https://www.hurr.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
+    { platform: 'By Rotation', product_name: 'Search By Rotation', price: null, product_url: `https://www.byrotation.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
+    { platform: 'My Wardrobe HQ', product_name: 'Search My Wardrobe HQ', price: null, product_url: `https://www.mywardrobehq.com`, image_url: null, type: 'rental', source: 'search_url' },
+  ];
+};
+
+const searchFirecrawlPlatform = async (query: string, platform: { name: string; domain: string }, type: 'rental' | 'secondhand'): Promise<any> => {
+  if (!firecrawlApiKey) return null;
+  try {
+    const response = await fetch('https://api.firecrawl.dev/v1/search', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${firecrawlApiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: `${query} site:${platform.domain}`, limit: 1, scrapeOptions: { formats: ['markdown'] } }),
+    });
+    if (!response.ok) return null;
+    const searchData = await response.json();
+    const result = (searchData?.data || [])[0];
+    if (!result) return null;
+    const markdown = result.markdown || '';
+    const imageUrl = result.metadata?.ogImage || result.metadata?.image || null;
+    if (type === 'rental') {
+      const rentalPriceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?\s*(?:\/\s*day|per\s*day|per\s*occasion|to\s*rent)/i)
+        || markdown.match(/(?:rent|rental|from)\s*£[\d,]+(?:\.\d{2})?/i)
+        || markdown.match(/£[\d,]+(?:\.\d{2})?/);
+      return { platform: platform.name, product_name: result.title || result.metadata?.title || 'Unknown product', price: rentalPriceMatch ? rentalPriceMatch[0] : null, product_url: result.url || '', image_url: imageUrl, type: 'rental', source: 'firecrawl' };
+    } else {
+      const priceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?/);
+      const conditionMatch = markdown.match(/(?:condition|quality)[:\s]*(excellent|very good|good|fair|new with tags|like new|pristine)/i);
+      const condition = conditionMatch ? conditionMatch[1] : markdown.match(/\b(excellent|pristine|like new|new with tags)\b/i) ? 'excellent' : markdown.match(/\b(very good|great condition)\b/i) ? 'good' : null;
+      return { platform: platform.name, product_name: result.title || result.metadata?.title || 'Unknown product', price: priceMatch ? priceMatch[0] : null, product_url: result.url || '', image_url: imageUrl, condition: condition || 'good', type: 'secondhand', source: 'firecrawl' };
+    }
+  } catch (err) { return null; }
+};
+
+const PRIORITY_FASHION_RETAILERS = [
+  'ASOS', 'Zara', 'H&M', 'Net-a-Porter', 'Reiss', 'Mango',
+  'Other Stories', 'Whistles', 'Phase Eight', 'Ghost', 'Monsoon',
+  'John Lewis', 'Marks and Spencer', 'COS', 'Selfridges', 'Matches Fashion'
+];
+
+const prioritizeRetailers = (results: any[]): any[] => {
+  const fashion = results.filter((r: any) =>
+    PRIORITY_FASHION_RETAILERS.some(retailer =>
+      r.retailer?.toLowerCase().includes(retailer.toLowerCase())
+    )
+  );
+  const other = results.filter((r: any) =>
+    !PRIORITY_FASHION_RETAILERS.some(retailer =>
+      r.retailer?.toLowerCase().includes(retailer.toLowerCase())
+    )
+  );
+  return [...fashion, ...other];
+};
+
+// -----------------------------------------------------------------------
+// Search policy — buy always (unless rent_only), rent only when the item's
+// rental_market_likely is true AND rental_preference allows it. Every
+// external call passes through a 24h search_cache keyed by
+// lower(trim(query)) + '|' + price_tier + '|' + kind.
+// -----------------------------------------------------------------------
+const RENTAL_PLATFORMS = [
+  { name: 'HURR', domain: 'hurr.com' },
+  { name: 'By Rotation', domain: 'byrotation.com' },
+  { name: 'My Wardrobe HQ', domain: 'mywardrobehq.com' },
+];
+
+const priceTierMax = (tier: string): number =>
+  tier === 'budget' ? 100 : tier === 'luxury' ? 2000 : 300;
+
+async function cachedSearch(
+  supabase: any,
+  query: string,
+  tier: string,
+  kind: 'buy' | 'rent',
+  run: () => Promise<any[]>,
+): Promise<any[]> {
+  const key = `${query.trim().toLowerCase()}|${tier}|${kind}`;
+  try {
+    const { data } = await supabase
+      .from('search_cache')
+      .select('results, created_at')
+      .eq('query_key', key)
+      .maybeSingle();
+    if (data?.created_at && Array.isArray(data.results)) {
+      const ageMs = Date.now() - new Date(data.created_at).getTime();
+      if (ageMs < 24 * 3600 * 1000) return data.results as any[];
+    }
+  } catch (_) { /* cache miss on error */ }
+  const results = await run();
+  try {
+    await supabase
+      .from('search_cache')
+      .upsert(
+        { query_key: key, results, created_at: new Date().toISOString() },
+        { onConflict: 'query_key' },
+      );
+  } catch (_) { /* non-fatal */ }
+  return results;
+}
+
+async function runBuySearch(query: string, tier: string): Promise<any[]> {
+  const maxPrice = priceTierMax(tier);
+  const [g, s] = await Promise.all([
+    searchGoogleShopping(query, maxPrice),
+    searchShopStyle(query, maxPrice),
+  ]);
+  const merged = Array.from(
+    new Map([...g, ...s].map((r: any) => [r.product_url, r])).values(),
+  );
+  const prioritized = prioritizeRetailers(merged).slice(0, 4);
+  return prioritized.length > 0 ? prioritized : buildSearchUrls(query, tier).slice(0, 4);
+}
+
+async function runRentSearch(query: string): Promise<any[]> {
+  const settled = await Promise.all(
+    RENTAL_PLATFORMS.map((p) => searchFirecrawlPlatform(query, p, 'rental')),
+  );
+  const found = settled.filter((r) => r).slice(0, 2);
+  return found.length > 0 ? found : buildRentalSearchUrls(query).slice(0, 2);
+}
+
+async function searchItemsForOption(
+  supabase: any,
+  items: any[],
+  rentalPreference: string | undefined,
+  stylingCategory: string | undefined,
+): Promise<any[]> {
+  const prefix = stylingCategory === 'menswear' ? "men's " : '';
+  return await Promise.all(
+    items.map(async (item: any) => {
+      const baseQuery = `${prefix}${item?.name ?? ''}`.trim();
+      const tier = item?.price_tier || 'mid_range';
+      const wantBuy = rentalPreference !== 'rent_only';
+      const wantRent =
+        rentalPreference !== 'buy_only' && item?.rental_market_likely === true;
+      const [buy, rent] = await Promise.all([
+        wantBuy && baseQuery
+          ? cachedSearch(supabase, baseQuery, tier, 'buy', () => runBuySearch(baseQuery, tier))
+          : Promise.resolve([]),
+        wantRent && baseQuery
+          ? cachedSearch(supabase, baseQuery, tier, 'rent', () => runRentSearch(baseQuery))
+          : Promise.resolve([]),
+      ]);
+      return { ...item, buy, rent };
+    }),
+  );
+}
+
+// -----------------------------------------------------------------------
 // Handler
 // -----------------------------------------------------------------------
 serve(async (req) => {
