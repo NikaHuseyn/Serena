@@ -51,6 +51,12 @@ export interface ChatMessage {
   toneRecommendations?: any;
   /** Section title: "Shop This Look" or "Complete Your Look" */
   shoppingTitle?: string;
+  /** Oracle v2: which mode the model responded in */
+  mode?: 'wardrobe_only' | 'shop_new';
+  /** Oracle v2: sticky rental preference for the conversation */
+  rental_preference?: 'both' | 'buy_only' | 'rent_only';
+  /** Oracle v2: option cards rendered below the reply */
+  outfit_options?: any[];
   timestamp: Date;
 }
 
