@@ -2,7 +2,7 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Menu, X, Home, Shirt, BarChart3, Users, User, LogOut, TrendingUp } from 'lucide-react';
+import { Menu, X, Home, Shirt, Users, User, LogOut, TrendingUp } from 'lucide-react';
 
 interface MobileMenuProps {
   user: any;
@@ -20,7 +20,7 @@ const MobileMenu = ({ user, mobileMenuOpen, setMobileMenuOpen, onSignOut }: Mobi
   const navigationItems = [
     { path: '/', label: 'Home', icon: Home },
     { path: '/wardrobe', label: 'Wardrobe', icon: Shirt, requiresAuth: true },
-    { path: '/style-analysis', label: 'Style Analysis', icon: BarChart3 },
+    
     { path: '/fashion-trends', label: 'Fashion Trends', icon: TrendingUp },
     { path: '/community', label: 'Community', icon: Users },
   ];

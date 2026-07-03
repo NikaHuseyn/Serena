@@ -16,7 +16,7 @@ const ComingSoon = React.lazy(() => import("./pages/ComingSoon"));
 const Index = React.lazy(() => import("./pages/Index"));
 const Auth = React.lazy(() => import("./pages/Auth"));
 const Wardrobe = React.lazy(() => import("./pages/Wardrobe"));
-const StyleAnalysis = React.lazy(() => import("./pages/StyleAnalysis"));
+
 
 const Community = React.lazy(() => import("./pages/Community"));
 const Profile = React.lazy(() => import("./pages/Profile"));
@@ -31,7 +31,7 @@ const AppRoutes = () => (
       <Route path="/" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/wardrobe" element={<AuthGuard><Wardrobe /></AuthGuard>} />
-      <Route path="/style-analysis" element={<AuthGuard><StyleAnalysis /></AuthGuard>} />
+      
       
       <Route path="/community" element={<Community />} />
       <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
