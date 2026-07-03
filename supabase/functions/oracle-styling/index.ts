@@ -349,6 +349,8 @@ async function callGateway(messages: unknown[]): Promise<Response> {
         type: "function",
         function: { name: "provide_styling_response" },
       },
+      max_tokens: 4000,
+      temperature: 0.7,
     }),
   });
 }
@@ -484,7 +486,7 @@ serve(async (req) => {
 
     // Assemble the context block for the model
     const contextPayload = {
-      user: user ? { id: user.id, email: user.email } : { guest: true },
+      user: user ? { authenticated: true } : { guest: true },
       style_profile: styleProfile,
       wardrobe_items: wardrobeItems.map((w) => ({
         id: w.id,
@@ -507,7 +509,12 @@ serve(async (req) => {
 
     const historyMessages = Array.isArray(conversation_history)
       ? conversation_history
-          .filter((m: any) => m && typeof m.role === "string" && typeof m.content === "string")
+          .filter((m: any) =>
+            m &&
+            typeof m.role === "string" &&
+            typeof m.content === "string" &&
+            (m.role === "user" || m.role === "assistant")
+          )
           .slice(-20)
           .map((m: any) => ({ role: m.role, content: m.content }))
       : [];
