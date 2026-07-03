@@ -1106,6 +1106,34 @@ serve(async (req) => {
       recentSelections = selectionsRes.data ?? [];
     }
 
+    // Resolve the anchor item (Style this). Only honoured for authenticated
+    // users whose wardrobe actually contains the requested id — guests or
+    // stale ids fall back to a normal (non-anchored) run.
+    let anchorItem: {
+      id: string;
+      name: string;
+      category: string | null;
+      colour: string | null;
+      brand: string | null;
+    } | null = null;
+    if (user && typeof anchor_item_id === "string" && anchor_item_id) {
+      const match = wardrobeItems.find((w) => String(w.id) === String(anchor_item_id));
+      if (match) {
+        anchorItem = {
+          id: String(match.id),
+          name: match.name,
+          category: match.category ?? null,
+          colour: match.colour ?? match.color ?? null,
+          brand: match.brand ?? null,
+        };
+      } else {
+        console.warn(
+          `Anchor item ${anchor_item_id} not found for user ${user.id}; ignoring anchor`,
+        );
+      }
+    }
+    const effectiveAnchorId = anchorItem?.id ?? null;
+
     // Assemble the context block for the model
     const contextPayload = {
       user: user ? { authenticated: true } : { guest: true },
@@ -1123,7 +1151,8 @@ serve(async (req) => {
       recent_feedback: recentFeedback,
       recent_option_selections: recentSelections,
       accumulated_context,
-      anchor_item_id,
+      anchor_item_id: effectiveAnchorId,
+      anchor_item: anchorItem,
       weather_context,
       assumed_current_location_weather,
 
@@ -1242,6 +1271,99 @@ serve(async (req) => {
       }
     }
 
+    // Helper: run the same wardrobe-id validation on a parsed response.
+    const runWardrobeValidation = (p: any) => {
+      if (!Array.isArray(p?.outfit_options)) return;
+      for (const opt of p.outfit_options) {
+        if (!Array.isArray(opt?.items)) continue;
+        for (const item of opt.items) {
+          if (item?.source !== "from_wardrobe") continue;
+          const idValid =
+            item.wardrobe_item_id != null &&
+            validIds.has(String(item.wardrobe_item_id));
+          if (forceDowngrade || !idValid) {
+            item.source = "needs_purchase_or_rental";
+            item.wardrobe_item_id = null;
+          }
+        }
+      }
+    };
+
+    // Helper: does every outfit option include the anchor item?
+    const anchorSatisfied = (p: any, anchorId: string): boolean => {
+      if (!Array.isArray(p?.outfit_options) || p.outfit_options.length === 0) {
+        return false;
+      }
+      return p.outfit_options.every((opt: any) =>
+        Array.isArray(opt?.items) &&
+        opt.items.some(
+          (it: any) =>
+            it?.source === "from_wardrobe" &&
+            String(it?.wardrobe_item_id ?? "") === String(anchorId),
+        ),
+      );
+    };
+
+    // Anchor enforcement: when an anchor is active, every option MUST contain
+    // it. Retry generation once with an explicit reminder if not. If the retry
+    // still fails, ship the response with anchor_enforced=false so the client
+    // can hide misleading options — never fabricate the anchor into results.
+    let anchor_enforced: boolean | undefined;
+    if (effectiveAnchorId && anchorItem) {
+      if (!anchorSatisfied(parsed, effectiveAnchorId)) {
+        console.warn(
+          `Anchor not enforced on first generation (anchor_item_id=${effectiveAnchorId}); retrying once`,
+        );
+        const enforcementReminder = {
+          role: "system" as const,
+          content:
+            "ANCHOR ENFORCEMENT (hard rule): the user tapped 'Style this' " +
+            `on wardrobe item id=${anchorItem.id} (${anchorItem.name}). ` +
+            "EVERY outfit_options entry you return MUST include an item " +
+            "with source=\"from_wardrobe\" and wardrobe_item_id equal to " +
+            `"${anchorItem.id}". Build each option AROUND this piece. Do ` +
+            "not omit it from any option. Echo the same anchor_item_id in " +
+            "your response.",
+        };
+
+        try {
+          const retryResp = await callGateway([...messages, enforcementReminder]);
+          if (retryResp.ok) {
+            const retryJson = await retryResp.json().catch(() => null);
+            if (retryJson) {
+              try {
+                const retryParsed = parseToolCall(retryJson);
+                runWardrobeValidation(retryParsed);
+                if (anchorSatisfied(retryParsed, effectiveAnchorId)) {
+                  parsed = retryParsed;
+                  anchor_enforced = true;
+                } else {
+                  console.warn(
+                    `Anchor still not enforced after retry (anchor_item_id=${effectiveAnchorId})`,
+                  );
+                  anchor_enforced = false;
+                }
+              } catch (err) {
+                console.error("Anchor retry parse failed:", err);
+                anchor_enforced = false;
+              }
+            } else {
+              anchor_enforced = false;
+            }
+          } else {
+            console.error("Anchor retry gateway non-OK:", retryResp.status);
+            anchor_enforced = false;
+          }
+        } catch (err) {
+          console.error("Anchor retry failed:", err);
+          anchor_enforced = false;
+        }
+      } else {
+        anchor_enforced = true;
+      }
+    }
+
+
     // shop_new mode: auto-run product search for the primary option's
     // non-wardrobe items and attach { buy, rent } directly to each item.
     // Other options load on tap via the search_option action above.
@@ -1272,6 +1394,9 @@ serve(async (req) => {
       }
     }
 
+    if (typeof anchor_enforced === "boolean") {
+      parsed.anchor_enforced = anchor_enforced;
+    }
     return jsonResponse(req, { success: true, data: parsed });
   } catch (err) {
     console.error("Oracle-styling unexpected error:", err);
