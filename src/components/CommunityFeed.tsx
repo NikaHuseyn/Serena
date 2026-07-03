@@ -196,6 +196,18 @@ const CommunityFeed = () => {
               );
             })
           )}
+
+          {hasMore && posts.length > 0 && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? 'Loading…' : 'Load more'}
+              </Button>
+            </div>
+          )}
         </div>
 
       </div>
