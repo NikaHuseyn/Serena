@@ -87,11 +87,14 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const uploadFiles = async (userId: string): Promise<string[]> => {
+  const uploadFiles = async (userId: string): Promise<{ urls: string[]; paths: string[] }> => {
     const urls: string[] = [];
+    const paths: string[] = [];
     for (const file of selectedFiles) {
       const ext = file.name.split('.').pop() || 'jpg';
       const path = `${userId}/${crypto.randomUUID()}.${ext}`;
+      // Track the path up front so partial-upload failures can still be cleaned up.
+      paths.push(path);
       const { error } = await supabase.storage
         .from('community-photos')
         .upload(path, file, { contentType: file.type });
@@ -101,7 +104,7 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
         .getPublicUrl(path);
       urls.push(urlData.publicUrl);
     }
-    return urls;
+    return { urls, paths };
   };
 
   const handleCreatePost = async () => {
