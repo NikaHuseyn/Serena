@@ -3,8 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
-import { 
-  User, Palette, Calendar, Sparkles, CheckCircle, ArrowRight, ArrowLeft,
+import {
+  User, Palette, Sparkles, CheckCircle, ArrowRight, ArrowLeft,
   Heart, TrendingUp, Shirt, MapPin
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -47,7 +47,7 @@ const COLOR_HEX: Record<string, string> = {
 };
 
 // ── Welcome Step ───────────────────────────────────────
-const WelcomeStep: React.FC<{ onNext: () => void; onSkipToCalendar: () => void }> = ({ onNext, onSkipToCalendar }) => (
+const WelcomeStep: React.FC<{ onNext: () => void }> = ({ onNext }) => (
   <div className="text-center space-y-6 py-8">
     <div className="flex justify-center mb-6">
       <div className="p-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-full">
@@ -60,21 +60,16 @@ const WelcomeStep: React.FC<{ onNext: () => void; onSkipToCalendar: () => void }
         Your personal AI-powered fashion assistant that creates perfect outfits for every occasion
       </p>
     </div>
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12">
-      <button onClick={onSkipToCalendar} className="card-elegant p-6 text-center hover:shadow-lg transition-all duration-200 hover:scale-105 cursor-pointer">
-        <Calendar className="h-12 w-12 text-primary mx-auto mb-4" />
-        <h3 className="font-semibold mb-2">Smart Calendar Sync</h3>
-        <p className="text-sm text-muted-foreground">Get outfit recommendations based on your events</p>
-      </button>
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-12">
       <div className="card-elegant p-6 text-center">
         <TrendingUp className="h-12 w-12 text-primary mx-auto mb-4" />
         <h3 className="font-semibold mb-2">AI-Powered Trends</h3>
-        <p className="text-sm text-muted-foreground">Stay ahead with personalized fashion insights</p>
+        <p className="text-sm text-muted-foreground">Stay ahead with personalised fashion insights</p>
       </div>
       <div className="card-elegant p-6 text-center">
         <Shirt className="h-12 w-12 text-primary mx-auto mb-4" />
         <h3 className="font-semibold mb-2">Digital Wardrobe</h3>
-        <p className="text-sm text-muted-foreground">Organize and maximize your existing clothes</p>
+        <p className="text-sm text-muted-foreground">Organise and maximise your existing clothes</p>
       </div>
     </div>
     <Button onClick={onNext} className="btn-fashion text-lg px-8 py-4 mt-8">
@@ -290,53 +285,6 @@ const StyleStep: React.FC<{
   );
 };
 
-// ── Calendar Step (unchanged) ──────────────────────────
-const CalendarStep: React.FC<{ onNext: () => void }> = ({ onNext }) => {
-  const [isConnecting, setIsConnecting] = useState(false);
-  const [connected, setConnected] = useState(false);
-
-  const handleConnect = async () => {
-    setIsConnecting(true);
-    try {
-      const { googleCalendarService } = await import('@/services/googleCalendarService');
-      const success = await googleCalendarService.signInToGoogle();
-      if (success) { setConnected(true); setTimeout(onNext, 1000); }
-      else { setIsConnecting(false); }
-    } catch {
-      setIsConnecting(false);
-    }
-  };
-
-  return (
-    <div className="text-center space-y-6 max-w-md mx-auto">
-      <div className="p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-full w-fit mx-auto mb-4">
-        <Calendar className="h-12 w-12 text-primary" />
-      </div>
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold">Connect Your Calendar</h2>
-        <p className="text-muted-foreground">Get outfit recommendations tailored to your events and schedule</p>
-      </div>
-      <div className="card-elegant p-6 space-y-4">
-        <div className="flex items-center space-x-3"><CheckCircle className="h-5 w-5 text-success" /><span className="text-sm">Smart event analysis</span></div>
-        <div className="flex items-center space-x-3"><CheckCircle className="h-5 w-5 text-success" /><span className="text-sm">Weather-based recommendations</span></div>
-        <div className="flex items-center space-x-3"><CheckCircle className="h-5 w-5 text-success" /><span className="text-sm">Outfit planning in advance</span></div>
-      </div>
-      {!connected ? (
-        <div className="space-y-4">
-          <Button onClick={handleConnect} className="btn-fashion w-full" disabled={isConnecting}>
-            {isConnecting ? (<><div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />Connecting...</>) : (<>Connect Google Calendar<ArrowRight className="h-4 w-4 ml-2" /></>)}
-          </Button>
-          <Button onClick={onNext} variant="ghost" className="w-full text-muted-foreground">Skip for now</Button>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center justify-center space-x-2 text-success"><CheckCircle className="h-5 w-5" /><span className="font-medium">Calendar Connected!</span></div>
-          <p className="text-sm text-muted-foreground">You're all set to receive personalised outfit recommendations</p>
-        </div>
-      )}
-    </div>
-  );
-};
 
 // ── Completion Step ────────────────────────────────────
 const CompletionStep: React.FC<{
