@@ -3,8 +3,9 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+// TODO: Replace PRODUCTION_DOMAIN with your actual production origin (e.g. 'https://yourdomain.com')
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'PRODUCTION_DOMAIN',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
@@ -81,7 +82,28 @@ serve(async (req) => {
 
     // Determine identity for rate limiting — guests are allowed without email
     const isGuest = !user;
-    const rateLimitEmail = userEmail || guestEmail || `guest-anon`;
+
+    // Guest rate limiting by IP
+    if (!user) {
+      const forwarded = req.headers.get('x-forwarded-for') || '';
+      const guestIp = forwarded.split(',')[0]?.trim() || 'unknown';
+      const { data: guestLimit, error: guestLimitError } = await supabase.rpc('check_guest_rate_limit', {
+        ip_param: guestIp,
+        daily_limit: 5,
+      });
+      if (guestLimitError) {
+        console.error('Guest rate limit check error:', guestLimitError);
+      }
+      if (guestLimit && guestLimit.allowed === false) {
+        return new Response(JSON.stringify({
+          error: 'Rate limit exceeded',
+          message: "You've reached the daily limit for guests. Sign up to continue getting styling advice.",
+        }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+    }
 
     // Check rate limiting - only for authenticated users (RPC expects UUID)
     let rateLimitResult = null;

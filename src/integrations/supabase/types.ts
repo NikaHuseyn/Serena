@@ -318,6 +318,24 @@ export type Database = {
         }
         Relationships: []
       }
+      guest_rate_limits: {
+        Row: {
+          count: number
+          day: string
+          ip: string
+        }
+        Insert: {
+          count?: number
+          day?: string
+          ip: string
+        }
+        Update: {
+          count?: number
+          day?: string
+          ip?: string
+        }
+        Relationships: []
+      }
       likes: {
         Row: {
           created_at: string | null
@@ -1334,6 +1352,10 @@ export type Database = {
     }
     Functions: {
       check_ai_rate_limit: { Args: { user_id_param: string }; Returns: Json }
+      check_guest_rate_limit: {
+        Args: { daily_limit?: number; ip_param: string }
+        Returns: Json
+      }
       get_style_leaderboard: {
         Args: never
         Returns: {
