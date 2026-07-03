@@ -1,0 +1,574 @@
+import "https://deno.land/x/xhr@0.1.0/mod.ts";
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+// CORS — restricted to the production domain.
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "https://style-savvy-scheduler-she.lovable.app",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
+};
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
+
+const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const MODEL = "google/gemini-3-flash-preview";
+
+// -----------------------------------------------------------------------
+// SYSTEM PROMPT — complete, verbatim. Do not merge or append.
+// -----------------------------------------------------------------------
+const ORACLE_SYSTEM_PROMPT = `You are Oracle, OutfitOracle's expert personal stylist. You speak like a brilliant, warm, stylish friend — knowledgeable and opinionated, never
+lecturing, never form-like — but you are also the best stylist in the world: your taste is impeccable, your judgment is confident, and every
+recommendation carries that authority lightly. You are honest: you never invent wardrobe items, never pretend uncertainty away, and never pad
+answers to look thorough.
+
+You always respond via the provide_styling_response tool.
+
+## CONTEXT YOU RECEIVE
+The user's message, recent conversation history, an accumulated context object, and (when they exist): their wardrobe list WITH ITEM IDS, style
+profile, colour analysis, preference insights, recent feedback, and their past option selections. Also weather data and venue/event context when
+available. Treat all of these as real signals, not decoration.
+
+## MODE — decide it fresh every turn, by judgment, never keywords
+Read what the user actually means in her own words:
+
+**wardrobe_only** — she has a wardrobe and nothing indicates she wants new
+items. Look ONLY at what she owns. Surface every outfit that genuinely fits the occasion: one, several, or none — never pad to a target count, never
+force a weak match. If several dresses work, show them all as separate
+options. End reply_text by offering to find pieces to buy or rent as well.
+If NOTHING she owns fits, say so plainly and kindly, set wardrobe_check_result to no_matches, and switch to shop_new in this same
+response.
+
+**shop_new** — no wardrobe exists, or she has indicated (however she phrases
+it: "something new", "none of these", "what's out there", or anything with that meaning) that she wants new items. Present EXACTLY 3 options, each a
+genuinely different silhouette, colour story, or mood — never one outfit
+with a swapped accessory. Mark the strongest fit is_primary.
+- New user with no history: lead with a classic, safe primary; let her next
+  message steer bolder, brighter, or more distinctive.
+- Returning user: her past option selections and feedback tell you what she
+  gravitates toward — lead with that.
+
+She can switch modes at any point in the conversation, in either direction,
+in any wording. Re-read intent every turn.
+
+## OPTIONS AND ITEMS
+- A dress, gown, or jumpsuit is ONE item (category dress or full_look).
+  Never split it into an invented top and bottom. Never create placeholder items of any kind.
+- from_wardrobe items MUST carry the exact wardrobe_item_id from the list
+  you were given. If you cannot point to a real ID, the item is not from
+  the wardrobe.
+- Do not include gap-filling pieces (shoes, outerwear, accessories to
+  complete a look) in the FIRST presentation of options. Once she picks a
+  direction, then find only what's missing for that chosen look.
+- If anchor_item context is provided, every option MUST be built around
+  that exact item.
+
+## HARD CONSTRAINTS — every option must satisfy all that apply
+1. Dress code (stated, scraped, or clearly implied). Black tie means floor length and elevated fabric, no exceptions. Conservative cultural or religious settings mean the coverage they require.
+2. Confirmed weather (only when location AND date are user-confirmed —
+   never cite temperature or conditions from unconfirmed or GPS-derived data, and never name a city she didn't state).
+3. Genuine physical requirements (dancing all night means dance-able shoes;
+   standing outdoors in winter means real outerwear).
+
+## SOFT PREFERENCES — optimize, don't checkbox
+Vibe/emotional goal, colour analysis (prefer her best colours, avoid her colours-to-avoid, and SAY WHY in item reasoning), stated style preferences,
+fit preference and body type, budget, who she's with, venue atmosphere.
+Weave these into each item's reasoning with specifics ("emerald suits your cool undertone") — if you didn't use a signal, don't fake having used it.
+
+## STYLING CATEGORY
+Default to womenswear — this is a women-focused community. Override only if her profile indicates otherwise, she says so, or the request in any wording
+clearly means the outfit is for a man ("suit for my husband", "my son's graduation outfit", "dressing my boyfriend for the wedding" — the meaning,
+not the phrase, decides). Once established in a conversation, keep it.
+Never ask whether she is a man or a woman; if ambiguous, style the default and let her correct naturally.
+
+## BUY vs RENT — you inform, she decides
+Every non-wardrobe item may later be shown with both a buy and a rent price.
+Set rental_market_likely true only for formal, statement, or designer-tier
+pieces; false for basics and low-price items. Add a short versatility_note
+("versatile — you'd wear this again" / "one-off statement piece") as information, never as a decision made for her. If she indicates, in any wording, that she won't rent (or only wants to rent), set rental_preference accordingly and keep it for the whole conversation without asking again.
+
+## LEARNING — observe, never interrogate
+Her picks teach you. Never ask "what's your style personality" or similar.
+At most ONE follow_up_question per response, and only when genuinely needed to proceed well (an unstated dress code for a formal event; a missing
+location when weather truly matters). Ask nothing she has already answered.
+When enough is known, follow_up_question is null and reply_text ends with a natural next step instead.
+
+## REPLY_TEXT
+Open with one specific sentence tied to her occasion and its feel — never a generic "Here's what I'd suggest". Wardrobe_only: present her own pieces with warmth, then offer to look at buy/rent options too. Shop_new: introduce the three directions briefly; products for the leading option are being
+fetched — do not describe or invent specific retailer results in text.
+Prices and market are UK (£). Keep it concise; the option cards carry the detail.
+
+## NEVER
+Never invent wardrobe items or IDs. Never split one garment into several.
+Never mention unconfirmed weather or GPS locations. Never ask more than one
+question. Never re-ask anything. Never pad wardrobe results. Never choose
+rent-vs-buy for her. Never present placeholder or "to be decided" items.`;
+
+// -----------------------------------------------------------------------
+// TOOL SCHEMA — provide_styling_response (v2)
+// -----------------------------------------------------------------------
+const provideStylingResponseTool = {
+  type: "function",
+  function: {
+    name: "provide_styling_response",
+    description:
+      "Respond to the user with either wardrobe-only outfit options, or " +
+      "newly-directed outfit concepts, depending on which mode fits the " +
+      "conversation. Never include live product search results here — " +
+      "that happens in a separate step after the user confirms interest.",
+    parameters: {
+      type: "object",
+      required: ["mode", "outfit_options", "reply_text"],
+      properties: {
+        mode: {
+          type: "string",
+          enum: ["wardrobe_only", "shop_new"],
+          description:
+            "Which mode this response is in. wardrobe_only: user has a " +
+            "wardrobe and nothing signals she wants new items — surface " +
+            "genuinely fitting owned outfits only, no buy/rent. shop_new: " +
+            "no wardrobe, wardrobe checked and nothing fit, or the user " +
+            "indicated (in her own words, not a fixed phrase) that she " +
+            "wants something new — always present exactly 3 varied options.",
+        },
+        styling_category: {
+          type: "string",
+          enum: ["womenswear", "menswear", "mixed"],
+          description:
+            "Defaults to womenswear (OutfitOracle is a women-focused " +
+            "community). Override only when the user profile indicates " +
+            "otherwise, the user states it, or the request clearly implies " +
+            "it. Once set in a conversation, keep it — do not revert.",
+        },
+        wardrobe_check_result: {
+          type: "string",
+          enum: ["not_applicable", "matches_found", "no_matches"],
+          description:
+            "not_applicable: shop_new mode with no wardrobe to check. " +
+            "matches_found: wardrobe_only mode succeeded. no_matches: a " +
+            "wardrobe exists but nothing in it fit this occasion — Oracle " +
+            "should say so plainly in reply_text and mode should be " +
+            "shop_new for this response.",
+        },
+        outfit_options: {
+          type: "array",
+          description:
+            "wardrobe_only mode: as many options as genuinely fit (0 to N, " +
+            "no padding to a fixed count). shop_new mode: exactly 3, each " +
+            "a genuinely different silhouette/colour/mood — not the same " +
+            "outfit with one item swapped.",
+          items: {
+            type: "object",
+            required: ["option_label", "items"],
+            properties: {
+              option_label: {
+                type: "string",
+                description:
+                  "Short freeform description of this option's character " +
+                  "(e.g. \"Emerald silk, from your wardrobe\" or \"Sleek " +
+                  "column silhouette in champagne\"). NOT a fixed taxonomy " +
+                  "— no forced classic/bold/minimalist labeling.",
+              },
+              is_primary: {
+                type: "boolean",
+                description:
+                  "True for the option Oracle would lead with (strongest " +
+                  "wardrobe match, or best fit to known/inferred taste). " +
+                  "Exactly one true per response.",
+              },
+              items: {
+                type: "array",
+                description:
+                  "The pieces making up this outfit. A dress/jumpsuit/ " +
+                  "full outfit is ONE item with category dress or " +
+                  "full_look — never split into fake separate top+bottom.",
+                items: {
+                  type: "object",
+                  required: ["category", "name", "source", "reasoning"],
+                  properties: {
+                    category: {
+                      type: "string",
+                      enum: [
+                        "dress",
+                        "full_look",
+                        "top",
+                        "bottom",
+                        "shoes",
+                        "outerwear",
+                        "accessory",
+                      ],
+                    },
+                    name: {
+                      type: "string",
+                      description: "Specific, real, searchable item name.",
+                    },
+                    source: {
+                      type: "string",
+                      enum: ["from_wardrobe", "needs_purchase_or_rental"],
+                      description:
+                        "from_wardrobe requires wardrobe_item_id below. " +
+                        "needs_purchase_or_rental means this item will get " +
+                        "BOTH buy and rent options surfaced later where a " +
+                        "rental market plausibly exists — Oracle does not " +
+                        "pick one for the user.",
+                    },
+                    wardrobe_item_id: {
+                      type: ["string", "null"],
+                      description:
+                        "REQUIRED (non-null) when source is from_wardrobe. " +
+                        "Must be a real ID from the wardrobe list provided " +
+                        "in context — never invented. Server validates this " +
+                        "and downgrades to needs_purchase_or_rental on any " +
+                        "mismatch.",
+                    },
+                    rental_market_likely: {
+                      type: "boolean",
+                      description:
+                        "Only meaningful when source is " +
+                        "needs_purchase_or_rental. True for formal/" +
+                        "statement/designer-tier pieces where a rental " +
+                        "search is worth running later. False for basics/ " +
+                        "low-price items — skip rental search for these " +
+                        "entirely, both for realism and cost.",
+                    },
+                    versatility_note: {
+                      type: ["string", "null"],
+                      description:
+                        "One short framing line, e.g. \"versatile — you'd " +
+                        "likely wear this again\" or \"a one-off statement " +
+                        "piece\". Informational only — never a decision " +
+                        "made on the user's behalf.",
+                    },
+                    reasoning: {
+                      type: "string",
+                      description:
+                        "Why this item, for this person, this occasion. " +
+                        "Should reference real signals when available — " +
+                        "colour analysis best-colours, stated preferences, " +
+                        "past liked items — not generic styling text.",
+                    },
+                    styling_tips: { type: "string" },
+                  },
+                },
+              },
+            },
+          },
+        },
+        anchor_item_id: {
+          type: ["string", "null"],
+          description:
+            "Set when this response is building around a specific " +
+            "wardrobe item the user pinned (Phase 3 feature — schema " +
+            "supports it now even though the UI entry point ships later). " +
+            "When set, every option MUST include this exact item.",
+        },
+        rental_preference: {
+          type: "string",
+          enum: ["both", "buy_only", "rent_only"],
+          description:
+            "Sticky for the conversation. Defaults to both. Switches only " +
+            "when the user says so in her own words at any point — track " +
+            "this across turns via accumulated context, do not ask.",
+        },
+        reply_text: {
+          type: "string",
+          description:
+            "The conversational message shown above the options. If " +
+            "wardrobe_check_result is no_matches, say so plainly here. " +
+            "End with an offer to find pieces to buy or rent for these " +
+            "looks — do NOT run or describe search results yet; that is a " +
+            "separate confirmed step.",
+        },
+        follow_up_question: {
+          type: ["string", "null"],
+          description:
+            "At most one. Only when genuinely needed to proceed well — " +
+            "never interrogating for style preference (that is learned " +
+            "from picks, not asked). Null once enough context is known.",
+        },
+      },
+    },
+  },
+};
+
+// -----------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+}
+
+async function callGateway(messages: unknown[]): Promise<Response> {
+  return await fetch(AI_GATEWAY_URL, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${lovableApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: MODEL,
+      messages,
+      tools: [provideStylingResponseTool],
+      tool_choice: {
+        type: "function",
+        function: { name: "provide_styling_response" },
+      },
+    }),
+  });
+}
+
+function parseToolCall(gatewayJson: any): any {
+  const message = gatewayJson?.choices?.[0]?.message;
+  const call = message?.tool_calls?.[0];
+  if (!call || call.function?.name !== "provide_styling_response") {
+    throw new Error("No provide_styling_response tool call in response");
+  }
+  const args = call.function.arguments;
+  const parsed = typeof args === "string" ? JSON.parse(args) : args;
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("Tool arguments did not parse to an object");
+  }
+  if (!parsed.mode || !Array.isArray(parsed.outfit_options) || typeof parsed.reply_text !== "string") {
+    throw new Error("Tool arguments missing required fields");
+  }
+  return parsed;
+}
+
+// -----------------------------------------------------------------------
+// Handler
+// -----------------------------------------------------------------------
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  if (req.method !== "POST") {
+    return jsonResponse({ error: "method_not_allowed" }, 405);
+  }
+
+  try {
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Auth (optional — guests permitted, IP rate limited)
+    const authHeader = req.headers.get("Authorization");
+    let user: { id: string; email?: string } | null = null;
+
+    if (authHeader) {
+      try {
+        const { data: { user: authUser } } = await supabase.auth.getUser(
+          authHeader.replace("Bearer ", ""),
+        );
+        if (authUser) user = { id: authUser.id, email: authUser.email ?? undefined };
+      } catch (_) {
+        // fall through as guest
+      }
+    }
+
+    // Guest IP rate limiting — mirrors generate-ai-recommendations
+    if (!user) {
+      const forwarded = req.headers.get("x-forwarded-for") || "";
+      const guestIp = forwarded.split(",")[0]?.trim() || "unknown";
+      const { data: guestLimit, error: guestLimitError } = await supabase.rpc(
+        "check_guest_rate_limit",
+        { ip_param: guestIp, daily_limit: 5 },
+      );
+      if (guestLimitError) {
+        console.error("Guest rate limit check error:", guestLimitError);
+      }
+      if (guestLimit && guestLimit.allowed === false) {
+        return jsonResponse({
+          error: "Rate limit exceeded",
+          message: "You've reached the daily limit for guests. Sign up to continue getting styling advice.",
+        }, 429);
+      }
+    }
+
+    // Parse request body
+    const body = await req.json().catch(() => ({}));
+    const {
+      user_message = "",
+      conversation_history = [],
+      accumulated_context = null,
+      anchor_item_id = null,
+      weather_context = null,
+      venue_context = null,
+      event_context = null,
+    } = body ?? {};
+
+    if (typeof user_message !== "string" || !user_message.trim()) {
+      return jsonResponse({ error: "user_message is required" }, 400);
+    }
+
+    // Parallel context fetches for authenticated users
+    let styleProfile: any = null;
+    let wardrobeItems: any[] = [];
+    let preferenceInsights: any[] = [];
+    let recentFeedback: any[] = [];
+    let recentSelections: any[] = [];
+
+    if (user) {
+      const [profileRes, wardrobeRes, insightsRes, feedbackRes, selectionsRes] = await Promise.all([
+        supabase
+          .from("user_style_profiles")
+          .select("*")
+          .eq("user_id", user.id)
+          .maybeSingle(),
+        supabase
+          .from("wardrobe_items")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(75),
+        supabase
+          .from("user_preference_insights")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("confidence_score", { ascending: false })
+          .limit(10),
+        supabase
+          .from("recommendation_feedback")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(5),
+        supabase
+          .from("option_selections")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ]);
+
+      styleProfile = profileRes.data ?? null;
+      wardrobeItems = wardrobeRes.data ?? [];
+      preferenceInsights = insightsRes.data ?? [];
+      recentFeedback = feedbackRes.data ?? [];
+      recentSelections = selectionsRes.data ?? [];
+    }
+
+    // Assemble the context block for the model
+    const contextPayload = {
+      user: user ? { id: user.id, email: user.email } : { guest: true },
+      style_profile: styleProfile,
+      wardrobe_items: wardrobeItems.map((w) => ({
+        id: w.id,
+        name: w.name,
+        category: w.category,
+        colour: w.colour ?? w.color ?? null,
+        brand: w.brand ?? null,
+        image_url: w.image_url ?? null,
+        tags: w.tags ?? null,
+      })),
+      preference_insights: preferenceInsights,
+      recent_feedback: recentFeedback,
+      recent_option_selections: recentSelections,
+      accumulated_context,
+      anchor_item_id,
+      weather_context,
+      venue_context,
+      event_context,
+    };
+
+    const historyMessages = Array.isArray(conversation_history)
+      ? conversation_history
+          .filter((m: any) => m && typeof m.role === "string" && typeof m.content === "string")
+          .slice(-20)
+          .map((m: any) => ({ role: m.role, content: m.content }))
+      : [];
+
+    const messages = [
+      { role: "system", content: ORACLE_SYSTEM_PROMPT },
+      {
+        role: "system",
+        content:
+          "CONTEXT (JSON — treat as real signals, not decoration):\n" +
+          JSON.stringify(contextPayload),
+      },
+      ...historyMessages,
+      { role: "user", content: user_message },
+    ];
+
+    // Call gateway with one retry on tool-call parse failure. No fallback.
+    let parsed: any | null = null;
+    let lastError: unknown = null;
+
+    for (let attempt = 0; attempt < 2; attempt++) {
+      let gatewayResp: Response;
+      try {
+        gatewayResp = await callGateway(messages);
+      } catch (err) {
+        lastError = err;
+        console.error(`Oracle gateway call failed (attempt ${attempt + 1}):`, err);
+        continue;
+      }
+
+      if (gatewayResp.status === 429 || gatewayResp.status === 402) {
+        const text = await gatewayResp.text().catch(() => "");
+        console.error("Gateway rate/credit failure:", gatewayResp.status, text);
+        return jsonResponse(
+          {
+            error: gatewayResp.status === 402 ? "credits_exhausted" : "rate_limited",
+            message: gatewayResp.status === 402
+              ? "AI credits exhausted. Please top up in workspace settings."
+              : "Too many requests to the AI gateway. Please try again shortly.",
+          },
+          gatewayResp.status,
+        );
+      }
+
+      if (!gatewayResp.ok) {
+        lastError = new Error(`Gateway HTTP ${gatewayResp.status}`);
+        console.error("Gateway non-OK response:", gatewayResp.status, await gatewayResp.text().catch(() => ""));
+        continue;
+      }
+
+      const gatewayJson = await gatewayResp.json().catch((e) => {
+        lastError = e;
+        return null;
+      });
+      if (!gatewayJson) continue;
+
+      try {
+        parsed = parseToolCall(gatewayJson);
+        break;
+      } catch (err) {
+        lastError = err;
+        console.error(`Tool-call parse failure (attempt ${attempt + 1}):`, err);
+      }
+    }
+
+    if (!parsed) {
+      console.error("Oracle generation failed after retry:", lastError);
+      return jsonResponse({ error: "generation_failed" }, 502);
+    }
+
+    // Server-side wardrobe_item_id validation:
+    // downgrade any from_wardrobe item whose ID isn't in the user's wardrobe.
+    const validIds = new Set(wardrobeItems.map((w) => String(w.id)));
+    if (Array.isArray(parsed.outfit_options)) {
+      for (const opt of parsed.outfit_options) {
+        if (!Array.isArray(opt?.items)) continue;
+        for (const item of opt.items) {
+          if (
+            item?.source === "from_wardrobe" &&
+            (!item.wardrobe_item_id || !validIds.has(String(item.wardrobe_item_id)))
+          ) {
+            item.source = "needs_purchase_or_rental";
+            item.wardrobe_item_id = null;
+          }
+        }
+      }
+    }
+
+    return jsonResponse({ success: true, data: parsed });
+  } catch (err) {
+    console.error("Oracle-styling unexpected error:", err);
+    return jsonResponse({ error: "generation_failed" }, 502);
+  }
+});
