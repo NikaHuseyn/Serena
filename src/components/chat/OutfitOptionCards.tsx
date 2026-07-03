@@ -51,6 +51,19 @@ interface OutfitOptionCardsProps {
   onSelect: (message: string) => void;
 }
 
+const isUsableProduct = (product: ProductResult) => {
+  const url = product.product_url || '';
+  return (
+    /^https?:\/\//.test(url) &&
+    !url.includes('google.com/search') &&
+    !url.includes('google.co.uk/search') &&
+    !url.includes('google.com/shopping') &&
+    !url.includes('google.co.uk/shopping')
+  );
+};
+
+const usableProducts = (products?: ProductResult[]) => (products || []).filter(isUsableProduct);
+
 // -----------------------------------------------------------------------
 // Small building blocks
 // -----------------------------------------------------------------------
@@ -62,6 +75,8 @@ const ProductCard = ({
   label: 'Buy' | 'Rent';
 }) => {
   const retailer = product.retailer || product.platform || 'Retailer';
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = !!product.image_url && !imageFailed;
   return (
     <a
       href={product.product_url}
@@ -70,12 +85,12 @@ const ProductCard = ({
       className="group flex flex-col rounded-lg border border-border bg-background overflow-hidden hover:border-primary/40 transition-colors"
     >
       <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {product.image_url ? (
-          // eslint-disable-next-line jsx-a11y/alt-text
+        {showImage ? (
           <img
             src={product.image_url}
             alt={product.product_name || retailer}
             loading="lazy"
+            onError={() => setImageFailed(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
           />
         ) : (
@@ -90,6 +105,9 @@ const ProductCard = ({
           <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
         <p className="text-xs font-medium text-foreground truncate">{retailer}</p>
+        <p className="text-[11px] text-muted-foreground line-clamp-2 min-h-[2rem]">
+          {product.product_name || 'View product'}
+        </p>
         <p className="text-sm font-semibold text-foreground">
           {product.price || 'View'}
         </p>
@@ -99,8 +117,8 @@ const ProductCard = ({
 };
 
 const ItemProducts = ({ item }: { item: OutfitItem }) => {
-  const buy = (item.buy || []).slice(0, 4);
-  const rent = (item.rent || []).slice(0, 2);
+  const buy = usableProducts(item.buy).slice(0, 4);
+  const rent = usableProducts(item.rent).slice(0, 2);
   if (buy.length === 0 && rent.length === 0) return null;
 
   return (
@@ -216,7 +234,7 @@ const OptionCard = ({
   // buy/rent arrays. Primary options in shop_new mode come pre-populated by
   // the edge function.
   const hasProductResults = items.some(
-    (it) => it.source !== 'from_wardrobe' && ((it.buy?.length ?? 0) + (it.rent?.length ?? 0) > 0),
+    (it) => it.source !== 'from_wardrobe' && (usableProducts(it.buy).length + usableProducts(it.rent).length > 0),
   );
   const hasSearchable = items.some((it) => it.source !== 'from_wardrobe');
 
