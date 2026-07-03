@@ -471,44 +471,59 @@ const searchGoogleShopping = async (query: string, maxPrice: number): Promise<an
   } catch (err) { console.warn('[Serper] Error:', err); return []; }
 };
 
+// Use Google `site:` search URLs as fallbacks — retailer search paths change
+// frequently and often 404. Google will always resolve and land the user on
+// the retailer's own results page.
+const googleSiteSearch = (query: string, domain: string): string => {
+  const q = encodeURIComponent(`${query} site:${domain}`);
+  return `https://www.google.com/search?q=${q}`;
+};
+
 const buildSearchUrls = (query: string, tier: string): any[] => {
-  const encoded = encodeURIComponent(query);
-  const retailersByTierUrls: Record<string, { name: string; url: string }[]> = {
+  const retailersByTier: Record<string, { name: string; domain: string }[]> = {
     budget: [
-      { name: 'ASOS', url: `https://www.asos.com/search/?q=${encoded}` },
-      { name: 'H&M', url: `https://www2.hm.com/en_gb/search-results.html?q=${encoded}` },
-      { name: 'Zara', url: `https://www.zara.com/uk/en/search?searchTerm=${encoded}` },
+      { name: 'ASOS', domain: 'asos.com' },
+      { name: 'H&M', domain: 'hm.com' },
+      { name: 'Zara', domain: 'zara.com' },
     ],
     mid_range: [
-      { name: '& Other Stories', url: `https://www.stories.com/en_gbp/search.html?q=${encoded}` },
-      { name: 'Reiss', url: `https://www.reiss.com/uk/search?q=${encoded}` },
-      { name: 'Mango', url: `https://shop.mango.com/gb/search?kw=${encoded}` },
-      { name: 'COS', url: `https://www.cos.com/en_gbp/search.html?q=${encoded}` },
+      { name: '& Other Stories', domain: 'stories.com' },
+      { name: 'Reiss', domain: 'reiss.com' },
+      { name: 'Mango', domain: 'mango.com' },
+      { name: 'COS', domain: 'cos.com' },
     ],
     luxury: [
-      { name: 'Net-a-Porter', url: `https://www.net-a-porter.com/en-gb/shop/search/${encoded}` },
-      { name: 'Selfridges', url: `https://www.selfridges.com/GB/en/cat/?freeText=${encoded}` },
-      { name: 'Matches Fashion', url: `https://www.matchesfashion.com/search?q=${encoded}` },
+      { name: 'Net-a-Porter', domain: 'net-a-porter.com' },
+      { name: 'Selfridges', domain: 'selfridges.com' },
+      { name: 'MatchesFashion', domain: 'matchesfashion.com' },
     ],
   };
-  const retailers = retailersByTierUrls[tier] || retailersByTierUrls.mid_range;
+  const retailers = retailersByTier[tier] || retailersByTier.mid_range;
   return retailers.map(r => ({
     retailer: r.name,
     product_name: `Search ${r.name} for "${query}"`,
     price: null,
-    product_url: r.url,
+    product_url: googleSiteSearch(query, r.domain),
     image_url: null,
     source: 'search_url',
   }));
 };
 
 const buildRentalSearchUrls = (query: string): any[] => {
-  const encoded = encodeURIComponent(query);
-  return [
-    { platform: 'HURR', product_name: 'Search HURR', price: null, product_url: `https://www.hurr.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
-    { platform: 'By Rotation', product_name: 'Search By Rotation', price: null, product_url: `https://www.byrotation.com/search?q=${encoded}`, image_url: null, type: 'rental', source: 'search_url' },
-    { platform: 'My Wardrobe HQ', product_name: 'Search My Wardrobe HQ', price: null, product_url: `https://www.mywardrobehq.com`, image_url: null, type: 'rental', source: 'search_url' },
+  const platforms = [
+    { name: 'HURR', domain: 'hurr.com' },
+    { name: 'By Rotation', domain: 'byrotation.com' },
+    { name: 'My Wardrobe HQ', domain: 'mywardrobehq.com' },
   ];
+  return platforms.map(p => ({
+    platform: p.name,
+    product_name: `Search ${p.name} for "${query}"`,
+    price: null,
+    product_url: googleSiteSearch(query, p.domain),
+    image_url: null,
+    type: 'rental',
+    source: 'search_url',
+  }));
 };
 
 const searchFirecrawlPlatform = async (query: string, platform: { name: string; domain: string }, type: 'rental' | 'secondhand'): Promise<any> => {
