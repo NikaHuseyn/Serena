@@ -2,13 +2,24 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// CORS — restricted to the production domain.
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://style-savvy-scheduler-she.lovable.app",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Vary": "Origin",
-};
+// CORS — restricted to the production/preview origins for this project.
+const allowedOrigins = new Set([
+  "https://style-savvy-scheduler-she.lovable.app",
+  "https://id-preview--d8bede3f-1f31-4bb1-b971-2015b3f80231.lovable.app",
+  "https://d8bede3f-1f31-4bb1-b971-2015b3f80231.lovableproject.com",
+]);
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  return {
+    "Access-Control-Allow-Origin": allowedOrigins.has(origin)
+      ? origin
+      : "https://style-savvy-scheduler-she.lovable.app",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -327,10 +338,10 @@ const provideStylingResponseTool = {
 // -----------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------
-function jsonResponse(body: unknown, status = 200) {
+function jsonResponse(req: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -647,11 +658,11 @@ async function searchItemsForOption(
 // -----------------------------------------------------------------------
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: getCorsHeaders(req) });
   }
 
   if (req.method !== "POST") {
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return jsonResponse(req, { error: "method_not_allowed" }, 405);
   }
 
   try {
