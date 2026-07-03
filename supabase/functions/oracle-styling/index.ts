@@ -605,7 +605,7 @@ const prioritizeRetailers = (results: any[]): any[] => {
   return [...fashion, ...other];
 };
 
-const SEARCH_CACHE_VERSION = 'oracle-product-search-v4';
+const SEARCH_CACHE_VERSION = 'oracle-product-search-v5';
 
 const normalizeImageUrl = (url: string | null | undefined): string | null => {
   if (!url || typeof url !== 'string') return null;
