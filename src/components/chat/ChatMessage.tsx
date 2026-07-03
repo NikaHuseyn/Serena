@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Link } from 'react-router-dom';
 import CompleteYourLook from './CompleteYourLook';
 import EmotionalToneCards from './EmotionalToneCards';
+import OutfitOptionCards from './OutfitOptionCards';
 
 interface OutfitItem {
   name: string;
