@@ -423,7 +423,7 @@ export const useStylingChat = () => {
           assumed_current_location_weather: weatherPayload.assumed_current_location_weather,
           venueContext: venueContext || null,
           eventContext: eventContext || null,
-          anchor_item_id: null,
+          anchor_item_id: anchorItemId,
         },
         headers,
       });
@@ -434,6 +434,12 @@ export const useStylingChat = () => {
       // Edge function returns { success: true, data: parsed }; accept the
       // bare parsed shape too so future changes don't break the client.
       const parsed = resp?.data ?? resp ?? {};
+
+      // Oracle can release the anchor when the user has moved on.
+      if (parsed?.release_anchor === true && anchorItemId) {
+        setAnchorItemId(null);
+      }
+
       const normalized = {
         // Map reply_text → assistant message content downstream.
         recommendation: { reasoning: parsed.reply_text || '' },
