@@ -369,7 +369,10 @@ export const useStylingChat = () => {
     userMessage: string,
     resolvedVenueName: string | null,
     detectedEventName: string | null,
-    weatherData: any,
+    weatherPayload: {
+      weather_context: any | null;
+      assumed_current_location_weather: any | null;
+    },
     extraContext?: Record<string, any>,
   ) => {
     const [venueContext, eventContext] = await Promise.all([
@@ -408,13 +411,18 @@ export const useStylingChat = () => {
           message: userMessage,
           conversationHistory: oracleHistory,
           accumulated_context: extraContext?.accumulated_context ?? null,
-          weatherData,
+          // Confirmed: user stated the event's location in this conversation.
+          weather_context: weatherPayload.weather_context,
+          // Assumption: user's approximate current location/weather. Oracle
+          // must treat this as a soft prior, not the event's real weather.
+          assumed_current_location_weather: weatherPayload.assumed_current_location_weather,
           venueContext: venueContext || null,
           eventContext: eventContext || null,
           anchor_item_id: null,
         },
         headers,
       });
+
 
       if (error) throw new Error(error.message || 'Failed to get recommendation');
 
@@ -439,7 +447,8 @@ export const useStylingChat = () => {
     const { data, error } = await supabase.functions.invoke('generate-ai-recommendations', {
       body: {
         recommendationType: 'event_outfit',
-        weatherData,
+        weatherData: weatherPayload.weather_context,
+
         occasion: userMessage,
         eventDetails: { name: userMessage, type: 'event' },
         venueContext: venueContext || undefined,
@@ -474,18 +483,22 @@ export const useStylingChat = () => {
     try {
       const { weatherData, mentionedLocation, mentionedDate } = await fetchWeather(userMessage);
 
-      const shouldBlockWeather = 
-        !weatherData ||
-        weatherData?.source === 'current_location' || 
-        weatherData?.source === 'gps' ||
-        weatherData?.source === 'fallback';
-      const weatherDataForApi = shouldBlockWeather ? null : weatherData;
+      // Confirmed only when the user has stated the event's location
+      // (or a scraped venue provided one). Otherwise the weather is an
+      // assumption from the user's approximate current location.
+      const eventLocationStated =
+        !!mentionedLocation || weatherData?.source === 'mentioned_location';
+      const weatherPayload = {
+        weather_context: eventLocationStated ? weatherData : null,
+        assumed_current_location_weather: !eventLocationStated ? weatherData : null,
+      };
 
       const { data, venueContext, eventContext } = await callRecommendation(
-        userMessage, resolvedVenueName, detectedEventName, weatherDataForApi, extraContext,
+        userMessage, resolvedVenueName, detectedEventName, weatherPayload, extraContext,
       );
 
-      let weatherNote = shouldBlockWeather ? null : buildWeatherNote(weatherData, mentionedLocation, mentionedDate);
+      let weatherNote = eventLocationStated ? buildWeatherNote(weatherData, mentionedLocation, mentionedDate) : null;
+
 
       let responseContent = '';
 
@@ -584,22 +597,23 @@ export const useStylingChat = () => {
       const { weatherData, mentionedLocation, mentionedDate } = await fetchWeather(userMessage);
       
       // Single call — Oracle picks a sensible default tone
-      const shouldBlockWeather = 
-        !weatherData ||
-        weatherData?.source === 'current_location' || 
-        weatherData?.source === 'gps' ||
-        weatherData?.source === 'fallback';
-      const weatherDataForApi = shouldBlockWeather ? null : weatherData;
+      const eventLocationStated =
+        !!mentionedLocation || weatherData?.source === 'mentioned_location';
+      const weatherPayload = {
+        weather_context: eventLocationStated ? weatherData : null,
+        assumed_current_location_weather: !eventLocationStated ? weatherData : null,
+      };
 
       const { data, venueContext, eventContext } = await callRecommendation(
-        userMessage, null, null, weatherDataForApi, {
+        userMessage, null, null, weatherPayload, {
           inferred_venue_formality: vagueVenue.inferredFormality,
           inferred_meal_type: vagueVenue.mealType,
           inferred_occasion_type: vagueVenue.occasionType,
         },
       );
 
-      const weatherNote = shouldBlockWeather ? null : buildWeatherNote(weatherData, mentionedLocation, mentionedDate);
+      const weatherNote = eventLocationStated ? buildWeatherNote(weatherData, mentionedLocation, mentionedDate) : null;
+
 
       let responseContent = data?.recommendation?.reasoning
         || "Here's what I'd suggest for this occasion:";
