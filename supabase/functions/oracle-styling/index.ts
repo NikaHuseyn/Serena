@@ -90,11 +90,20 @@ in any wording. Re-read intent every turn.
 1. Dress code (stated, scraped, or clearly implied). Black tie means floor
    length and elevated fabric, no exceptions. Conservative cultural or
    religious settings mean the coverage they require.
-2. Confirmed weather (only when location AND date are user-confirmed —
-   never cite temperature or conditions from unconfirmed or GPS-derived
-   data, and never name a city she didn't state).
+2. Weather — two kinds, treat them differently:
+   • weather_context is CONFIRMED: the user has stated the event's
+     location in this conversation. Cite it plainly, use its temperature
+     and conditions to drive fabric weight, coverage, and outerwear.
+   • assumed_current_location_weather is a DEFAULT ASSUMPTION from the
+     user's approximate current location. You MAY use it as a soft prior,
+     but state the assumption openly ("assuming this is in London — tell
+     me if it's elsewhere") and never present the assumed location or its
+     weather as confirmed fact. The event's location always wins over the
+     user's current location once known.
+   • If neither exists, don't invent weather.
 3. Genuine physical requirements (dancing all night means dance-able shoes;
    standing outdoors in winter means real outerwear).
+
 
 ## SOFT PREFERENCES — optimize, don't checkbox
 Vibe/emotional goal, colour analysis (prefer her best colours, avoid her
@@ -125,9 +134,14 @@ accordingly and keep it for the whole conversation without asking again.
 Her picks teach you. Never ask "what's your style personality" or similar.
 At most ONE follow_up_question per response, and only when genuinely needed
 to proceed well (an unstated dress code for a formal event; a missing
-location when weather truly matters). Ask nothing she has already answered.
+location or setting — indoor/outdoor, venue — when it genuinely affects
+the outfit). Ask nothing she has already answered. If she dismisses a
+question ("doesn't matter", "just pick something", "you decide", or
+anything with that meaning), treat it as answered: proceed confidently on
+stated assumptions and NEVER raise it again in this conversation.
 When enough is known, follow_up_question is null and reply_text ends with a
 natural next step instead.
+
 
 ## REPLY_TEXT
 Open with one specific sentence tied to her occasion and its feel — never a
@@ -144,9 +158,11 @@ detail.
 
 ## NEVER
 Never invent wardrobe items or IDs. Never split one garment into several.
-Never mention unconfirmed weather or GPS locations. Never ask more than one
-question. Never re-ask anything. Never pad wardrobe results. Never choose
+Never present assumed_current_location_weather or its location as
+confirmed. Never ask more than one question. Never re-ask anything (a
+dismissal counts as an answer). Never pad wardrobe results. Never choose
 rent-vs-buy for her. Never present placeholder or "to be decided" items.`;
+
 
 // -----------------------------------------------------------------------
 // TOOL SCHEMA — provide_styling_response (v2)
@@ -921,6 +937,8 @@ serve(async (req) => {
       anchor_item_id = null,
       weather_context: weatherContextSnake,
       weatherData: weatherContextCamel,
+      assumed_current_location_weather: assumedWeatherSnake,
+      assumedCurrentLocationWeather: assumedWeatherCamel,
       venue_context: venueContextSnake,
       venueContext: venueContextCamel,
       event_context: eventContextSnake,
@@ -932,8 +950,10 @@ serve(async (req) => {
       ? conversationHistorySnake
       : conversationHistoryCamel;
     const weather_context = weatherContextSnake ?? weatherContextCamel ?? null;
+    const assumed_current_location_weather = assumedWeatherSnake ?? assumedWeatherCamel ?? null;
     const venue_context = venueContextSnake ?? venueContextCamel ?? null;
     const event_context = eventContextSnake ?? eventContextCamel ?? null;
+
 
     if (typeof user_message !== "string" || !user_message.trim()) {
       return jsonResponse(req, { error: "user_message is required" }, 400);
@@ -1005,6 +1025,8 @@ serve(async (req) => {
       accumulated_context,
       anchor_item_id,
       weather_context,
+      assumed_current_location_weather,
+
       venue_context,
       event_context,
     };
