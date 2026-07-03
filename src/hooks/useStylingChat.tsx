@@ -6,6 +6,11 @@ import { detectVenue, detectEvent, VenueDetectionResult } from './styling-chat/v
 import { extractLocation, extractFutureDate, formatDateLabel } from './styling-chat/weatherExtraction';
 import { detectVagueVenue, getRelevantEmotionalTones, detectExplicitEmotionalGoal, EmotionalTone } from './styling-chat/vagueVenueDetection';
 
+// Feature flag: when true, chat uses the new oracle-styling edge function
+// (v2, tool-schema based). Flip to false to roll back to the legacy
+// generate-ai-recommendations path — both are wired end to end.
+const USE_ORACLE_V2 = true;
+
 const KNOWN_DRESS_CODES = [
   'black tie', 'white tie',
   'black tie optional',
@@ -46,6 +51,12 @@ export interface ChatMessage {
   toneRecommendations?: any;
   /** Section title: "Shop This Look" or "Complete Your Look" */
   shoppingTitle?: string;
+  /** Oracle v2: which mode the model responded in */
+  mode?: 'wardrobe_only' | 'shop_new';
+  /** Oracle v2: sticky rental preference for the conversation */
+  rental_preference?: 'both' | 'buy_only' | 'rent_only';
+  /** Oracle v2: option cards rendered below the reply */
+  outfit_options?: any[];
   timestamp: Date;
 }
 
@@ -383,6 +394,48 @@ export const useStylingChat = () => {
     const isFollowUp = messages.length > 0;
     const originalRequest = messages.find(m => m.role === 'user')?.content || '';
 
+    // -----------------------------------------------------------------
+    // Oracle v2 path (feature-flagged). Old path kept below for rollback.
+    // -----------------------------------------------------------------
+    if (USE_ORACLE_V2) {
+      const oracleHistory = messages.slice(-10).map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const { data: resp, error } = await supabase.functions.invoke('oracle-styling', {
+        body: {
+          message: userMessage,
+          conversationHistory: oracleHistory,
+          accumulated_context: extraContext?.accumulated_context ?? null,
+          weatherData,
+          venueContext: venueContext || null,
+          eventContext: eventContext || null,
+          anchor_item_id: null,
+        },
+        headers,
+      });
+
+      if (error) throw new Error(error.message || 'Failed to get recommendation');
+
+      // Edge function returns { success: true, data: parsed }; accept the
+      // bare parsed shape too so future changes don't break the client.
+      const parsed = resp?.data ?? resp ?? {};
+      const normalized = {
+        // Map reply_text → assistant message content downstream.
+        recommendation: { reasoning: parsed.reply_text || '' },
+        follow_up_question: parsed.follow_up_question || undefined,
+        // Passed through onto the ChatMessage in the builders below.
+        oracle_v2: {
+          mode: parsed.mode,
+          rental_preference: parsed.rental_preference,
+          outfit_options: parsed.outfit_options,
+        },
+      };
+
+      return { data: normalized, venueContext, eventContext };
+    }
+
     const { data, error } = await supabase.functions.invoke('generate-ai-recommendations', {
       body: {
         recommendationType: 'event_outfit',
@@ -497,6 +550,9 @@ export const useStylingChat = () => {
         wardrobeStatus: data?.wardrobe_status || undefined,
         shoppingTitle,
         weatherNote,
+        mode: data?.oracle_v2?.mode,
+        rental_preference: data?.oracle_v2?.rental_preference,
+        outfit_options: data?.oracle_v2?.outfit_options,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
@@ -563,6 +619,9 @@ export const useStylingChat = () => {
         wardrobeStatus: data?.wardrobe_status || undefined,
         shoppingTitle,
         weatherNote,
+        mode: data?.oracle_v2?.mode,
+        rental_preference: data?.oracle_v2?.rental_preference,
+        outfit_options: data?.oracle_v2?.outfit_options,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
