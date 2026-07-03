@@ -10,6 +10,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import PostInteractions from './PostInteractions';
 import CommentSection from './CommentSection';
 import FollowButton from './FollowButton';
@@ -62,6 +72,7 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
   const { badges } = useBadges(post.user_id);
   const isOwnPost = currentUserId === post.user_id;
   const [editOpen, setEditOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const formattedDate = useMemo(() => 
     new Date(post.created_at).toLocaleDateString('en-US', {
@@ -109,7 +120,7 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
               )}
               {isOwnPost && onDelete && (
                 <DropdownMenuItem
-                  onClick={() => onDelete(post.id)}
+                  onClick={() => setDeleteOpen(true)}
                   className="text-destructive focus:text-destructive"
                 >
                   <Trash2 className="h-4 w-4 mr-2" />
@@ -237,6 +248,27 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
           }}
           onSave={onUpdate}
         />
+      )}
+      {isOwnPost && onDelete && (
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this post?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently remove the post and its images. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => onDelete(post.id)}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </Card>
   );
