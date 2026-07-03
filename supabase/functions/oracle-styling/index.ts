@@ -1394,6 +1394,9 @@ serve(async (req) => {
       }
     }
 
+    if (typeof anchor_enforced === "boolean") {
+      parsed.anchor_enforced = anchor_enforced;
+    }
     return jsonResponse(req, { success: true, data: parsed });
   } catch (err) {
     console.error("Oracle-styling unexpected error:", err);
