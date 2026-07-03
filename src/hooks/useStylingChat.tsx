@@ -57,6 +57,12 @@ export interface ChatMessage {
   rental_preference?: 'both' | 'buy_only' | 'rent_only';
   /** Oracle v2: option cards rendered below the reply */
   outfit_options?: any[];
+  /** Active "Style this" anchor for this conversation. Carried onto every
+   *  assistant message so OutfitOptionCards can mark the pinned piece.
+   *  Cleared on release_anchor or clearChat; preserved when loading from
+   *  sessionStorage only if explicitly stored (we default to null on
+   *  restore to avoid stale badges). */
+  anchor_item_id?: string | null;
   timestamp: Date;
 }
 
