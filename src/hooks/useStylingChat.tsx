@@ -369,7 +369,10 @@ export const useStylingChat = () => {
     userMessage: string,
     resolvedVenueName: string | null,
     detectedEventName: string | null,
-    weatherData: any,
+    weatherPayload: {
+      weather_context: any | null;
+      assumed_current_location_weather: any | null;
+    },
     extraContext?: Record<string, any>,
   ) => {
     const [venueContext, eventContext] = await Promise.all([
@@ -408,13 +411,18 @@ export const useStylingChat = () => {
           message: userMessage,
           conversationHistory: oracleHistory,
           accumulated_context: extraContext?.accumulated_context ?? null,
-          weatherData,
+          // Confirmed: user stated the event's location in this conversation.
+          weather_context: weatherPayload.weather_context,
+          // Assumption: user's approximate current location/weather. Oracle
+          // must treat this as a soft prior, not the event's real weather.
+          assumed_current_location_weather: weatherPayload.assumed_current_location_weather,
           venueContext: venueContext || null,
           eventContext: eventContext || null,
           anchor_item_id: null,
         },
         headers,
       });
+
 
       if (error) throw new Error(error.message || 'Failed to get recommendation');
 
