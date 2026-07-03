@@ -120,6 +120,7 @@ const IndexContent = () => {
                   outfit_options={message.outfit_options}
                   mode={message.mode}
                   rental_preference={message.rental_preference}
+                  anchor_item_id={message.anchor_item_id}
                   onSendMessage={sendMessage}
                 />
 
