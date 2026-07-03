@@ -406,6 +406,33 @@ export type Database = {
           },
         ]
       }
+      option_selections: {
+        Row: {
+          conversation_hint: string | null
+          created_at: string
+          id: string
+          option_label: string
+          option_traits: Json | null
+          user_id: string
+        }
+        Insert: {
+          conversation_hint?: string | null
+          created_at?: string
+          id?: string
+          option_label: string
+          option_traits?: Json | null
+          user_id: string
+        }
+        Update: {
+          conversation_hint?: string | null
+          created_at?: string
+          id?: string
+          option_label?: string
+          option_traits?: Json | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       outfit_combinations: {
         Row: {
           created_at: string | null
@@ -678,6 +705,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      search_cache: {
+        Row: {
+          created_at: string
+          query_key: string
+          results: Json
+        }
+        Insert: {
+          created_at?: string
+          query_key: string
+          results: Json
+        }
+        Update: {
+          created_at?: string
+          query_key?: string
+          results?: Json
+        }
+        Relationships: []
       }
       seasonal_forecasts: {
         Row: {
