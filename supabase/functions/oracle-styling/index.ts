@@ -1106,6 +1106,34 @@ serve(async (req) => {
       recentSelections = selectionsRes.data ?? [];
     }
 
+    // Resolve the anchor item (Style this). Only honoured for authenticated
+    // users whose wardrobe actually contains the requested id — guests or
+    // stale ids fall back to a normal (non-anchored) run.
+    let anchorItem: {
+      id: string;
+      name: string;
+      category: string | null;
+      colour: string | null;
+      brand: string | null;
+    } | null = null;
+    if (user && typeof anchor_item_id === "string" && anchor_item_id) {
+      const match = wardrobeItems.find((w) => String(w.id) === String(anchor_item_id));
+      if (match) {
+        anchorItem = {
+          id: String(match.id),
+          name: match.name,
+          category: match.category ?? null,
+          colour: match.colour ?? match.color ?? null,
+          brand: match.brand ?? null,
+        };
+      } else {
+        console.warn(
+          `Anchor item ${anchor_item_id} not found for user ${user.id}; ignoring anchor`,
+        );
+      }
+    }
+    const effectiveAnchorId = anchorItem?.id ?? null;
+
     // Assemble the context block for the model
     const contextPayload = {
       user: user ? { authenticated: true } : { guest: true },
@@ -1123,7 +1151,8 @@ serve(async (req) => {
       recent_feedback: recentFeedback,
       recent_option_selections: recentSelections,
       accumulated_context,
-      anchor_item_id,
+      anchor_item_id: effectiveAnchorId,
+      anchor_item: anchorItem,
       weather_context,
       assumed_current_location_weather,
 
