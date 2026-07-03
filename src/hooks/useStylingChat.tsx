@@ -100,6 +100,18 @@ export const useStylingChat = () => {
   // Tracks selected emotional tone for follow-up context
   const [selectedEmotionalTone, setSelectedEmotionalTone] = useState<string | null>(null);
 
+  // Anchor item ("Style this" from wardrobe). Persists for the whole
+  // conversation until Oracle judges the user has moved on
+  // (release_anchor === true on a response) or clearChat is called.
+  // Kept in a ref too so freshly-set anchors are visible to the very next
+  // sendMessage call without waiting for a re-render.
+  const [anchorItemId, setAnchorItemIdState] = useState<string | null>(null);
+  const anchorItemIdRef = useRef<string | null>(null);
+  const setAnchorItemId = useCallback((id: string | null) => {
+    anchorItemIdRef.current = id;
+    setAnchorItemIdState(id);
+  }, []);
+
   // Accumulated conversation context
   const [conversationCtx, setConversationCtx] = useState<ConversationContext>({
     location: null,
@@ -418,7 +430,7 @@ export const useStylingChat = () => {
           assumed_current_location_weather: weatherPayload.assumed_current_location_weather,
           venueContext: venueContext || null,
           eventContext: eventContext || null,
-          anchor_item_id: null,
+          anchor_item_id: anchorItemIdRef.current,
         },
         headers,
       });
@@ -429,6 +441,12 @@ export const useStylingChat = () => {
       // Edge function returns { success: true, data: parsed }; accept the
       // bare parsed shape too so future changes don't break the client.
       const parsed = resp?.data ?? resp ?? {};
+
+      // Oracle can release the anchor when the user has moved on.
+      if (parsed?.release_anchor === true && anchorItemIdRef.current) {
+        setAnchorItemId(null);
+      }
+
       const normalized = {
         // Map reply_text → assistant message content downstream.
         recommendation: { reasoning: parsed.reply_text || '' },
@@ -472,7 +490,7 @@ export const useStylingChat = () => {
     if (error) throw new Error(error.message || 'Failed to get recommendation');
 
     return { data, venueContext, eventContext };
-  }, [messages, scrapeVenue, scrapeEvent]);
+  }, [messages, scrapeVenue, scrapeEvent, setAnchorItemId]);
 
   const executeRecommendation = useCallback(async (
     userMessage: string,
@@ -822,6 +840,7 @@ export const useStylingChat = () => {
     setMessages([]);
     setPendingVenue(null);
     setSelectedEmotionalTone(null);
+    setAnchorItemId(null);
     setConversationCtx({
       location: null,
       venue_type: null,
@@ -840,6 +859,36 @@ export const useStylingChat = () => {
     sessionStorage.removeItem('guest_session_id');
   }, []);
 
+  /**
+   * Start a new "Style this" conversation anchored on a wardrobe item.
+   * Clears any existing conversation and sends the first user message.
+   */
+  const startAnchoredConversation = useCallback(
+    async (itemId: string, itemName: string) => {
+      setMessages([]);
+      setPendingVenue(null);
+      setSelectedEmotionalTone(null);
+      setConversationCtx({
+        location: null,
+        venue_type: null,
+        dress_code: null,
+        emotional_goal: null,
+        who_with: null,
+        budget: null,
+        date: null,
+        style_preferences: [],
+        liked_items: [],
+        rejected_items: [],
+        exchange_count: 0,
+      });
+      setAnchorItemId(itemId);
+      // Give React a tick so state settles before sendMessage reads it
+      await Promise.resolve();
+      await sendMessage(`Build an outfit around my ${itemName}`);
+    },
+    [sendMessage],
+  );
+
   return {
     messages,
     isLoading,
@@ -847,5 +896,7 @@ export const useStylingChat = () => {
     clearChat,
     selectEmotionalTone,
     selectedEmotionalTone,
+    anchorItemId,
+    startAnchoredConversation,
   };
 };

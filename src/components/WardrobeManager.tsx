@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Shirt, Edit, Trash2, Tag, Sparkles, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { Plus, Shirt, Edit, Trash2, Tag, Sparkles, Loader2, CheckCircle, AlertCircle, Wand2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useBehaviorAnalytics } from '@/hooks/useBehaviorAnalytics';
 import { useAIItemCategorization } from '@/hooks/useAIItemCategorization';
@@ -23,6 +24,7 @@ interface WardrobeItem {
 }
 
 const WardrobeManager = () => {
+  const navigate = useNavigate();
   const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
@@ -485,6 +487,20 @@ const WardrobeManager = () => {
                     {item.size && <p><strong>Size:</strong> {item.size}</p>}
                     {item.notes && <p><strong>Notes:</strong> {item.notes}</p>}
                   </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() =>
+                      navigate('/', {
+                        state: { anchorItemId: item.id, anchorItemName: item.name },
+                      })
+                    }
+                  >
+                    <Wand2 className="h-3.5 w-3.5 mr-1.5" />
+                    Style this
+                  </Button>
                 </div>
               </CardContent>
             </Card>

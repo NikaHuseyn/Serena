@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 import BottomNav from '@/components/BottomNav';
 import ChatMessage from '@/components/chat/ChatMessage';
@@ -15,10 +15,23 @@ import { Card, CardContent } from '@/components/ui/card';
 
 const IndexContent = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
-  const { messages, isLoading, sendMessage, clearChat, selectEmotionalTone, selectedEmotionalTone } = useStylingChat();
+  const { messages, isLoading, sendMessage, clearChat, selectEmotionalTone, selectedEmotionalTone, startAnchoredConversation } = useStylingChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+  const routerLocation = useLocation();
   const [nudgeDismissed, setNudgeDismissed] = useState(() => sessionStorage.getItem('guest_nudge_dismissed') === 'true');
+
+  // "Style this" entry point from wardrobe: start a fresh anchored chat.
+  const anchorHandledRef = useRef(false);
+  useEffect(() => {
+    const state = routerLocation.state as { anchorItemId?: string; anchorItemName?: string } | null;
+    if (state?.anchorItemId && state?.anchorItemName && !anchorHandledRef.current) {
+      anchorHandledRef.current = true;
+      // Clear router state so refresh/back doesn't re-fire
+      navigate(routerLocation.pathname, { replace: true, state: null });
+      startAnchoredConversation(state.anchorItemId, state.anchorItemName);
+    }
+  }, [routerLocation, navigate, startAnchoredConversation]);
 
   const suggestions = [
     "Black tie gala this Saturday",
