@@ -483,18 +483,22 @@ export const useStylingChat = () => {
     try {
       const { weatherData, mentionedLocation, mentionedDate } = await fetchWeather(userMessage);
 
-      const shouldBlockWeather = 
-        !weatherData ||
-        weatherData?.source === 'current_location' || 
-        weatherData?.source === 'gps' ||
-        weatherData?.source === 'fallback';
-      const weatherDataForApi = shouldBlockWeather ? null : weatherData;
+      // Confirmed only when the user has stated the event's location
+      // (or a scraped venue provided one). Otherwise the weather is an
+      // assumption from the user's approximate current location.
+      const eventLocationStated =
+        !!mentionedLocation || weatherData?.source === 'mentioned_location';
+      const weatherPayload = {
+        weather_context: eventLocationStated ? weatherData : null,
+        assumed_current_location_weather: !eventLocationStated ? weatherData : null,
+      };
 
       const { data, venueContext, eventContext } = await callRecommendation(
-        userMessage, resolvedVenueName, detectedEventName, weatherDataForApi, extraContext,
+        userMessage, resolvedVenueName, detectedEventName, weatherPayload, extraContext,
       );
 
-      let weatherNote = shouldBlockWeather ? null : buildWeatherNote(weatherData, mentionedLocation, mentionedDate);
+      let weatherNote = eventLocationStated ? buildWeatherNote(weatherData, mentionedLocation, mentionedDate) : null;
+
 
       let responseContent = '';
 
