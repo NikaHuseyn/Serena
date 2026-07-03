@@ -1025,6 +1025,8 @@ serve(async (req) => {
       accumulated_context,
       anchor_item_id,
       weather_context,
+      assumed_current_location_weather,
+
       venue_context,
       event_context,
     };
