@@ -1,5 +1,5 @@
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useBehaviorAnalytics } from './useBehaviorAnalytics';
 import { useGuestNudge } from './useGuestNudge';
@@ -45,22 +45,42 @@ export interface PostFilter {
   brand?: string;
 }
 
+const PAGE_SIZE = 20;
+
 export const useSocialPosts = (filter?: PostFilter) => {
   const [posts, setPosts] = useState<SocialPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
   const { trackEvent } = useBehaviorAnalytics();
   const { requireAuth } = useGuestNudge();
 
-  const fetchPosts = useCallback(async () => {
-    try {
+  // Refs to remember what we've already loaded so loadMore doesn't re-query
+  // the same profiles/likes for posts from earlier pages.
+  const knownUserIdsRef = useRef<Set<string>>(new Set());
+  const knownLikeStatusRef = useRef<Map<string, boolean>>(new Map());
+
+  const fetchPage = useCallback(async (pageNum: number, append: boolean) => {
+    const isReset = !append && pageNum === 0;
+    if (append) {
+      setLoadingMore(true);
+    } else {
       setLoading(true);
+    }
+
+    try {
       const { data: { user } } = await supabase.auth.getUser();
+
+      const from = pageNum * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
 
       let query = supabase
         .from('posts')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .range(from, to);
       if (filter?.tag) query = query.contains('tags', [filter.tag]);
       if (filter?.brand) query = query.contains('brand_tags', [filter.brand]);
 
@@ -68,35 +88,63 @@ export const useSocialPosts = (filter?: PostFilter) => {
 
       if (fetchError) throw fetchError;
 
-      const userIds = postsData?.map(post => post.user_id) || [];
-      const { data: profilesData } = await supabase
-        .from('social_profiles')
-        .select('user_id, display_name, avatar_url')
-        .in('user_id', userIds);
+      const newPosts = postsData || [];
+      const isLastPage = newPosts.length < PAGE_SIZE;
 
-      const profilesMap = new Map();
-      profilesData?.forEach(profile => {
-        profilesMap.set(profile.user_id, {
-          display_name: profile.display_name,
-          avatar_url: profile.avatar_url
+      // Reset bookkeeping on a fresh first-page load so filter changes start clean
+      if (isReset) {
+        knownUserIdsRef.current.clear();
+        knownLikeStatusRef.current.clear();
+      }
+
+      // Only fetch profiles for users we haven't seen yet
+      const missingUserIds = newPosts
+        .map(p => p.user_id)
+        .filter(uid => !knownUserIdsRef.current.has(uid));
+
+      const profilesMap = new Map<string, { display_name: string | null; avatar_url: string | null }>();
+      if (missingUserIds.length > 0) {
+        const { data: profilesData } = await supabase
+          .from('social_profiles')
+          .select('user_id, display_name, avatar_url')
+          .in('user_id', missingUserIds);
+
+        profilesData?.forEach(profile => {
+          profilesMap.set(profile.user_id, {
+            display_name: profile.display_name,
+            avatar_url: profile.avatar_url
+          });
         });
-      });
+      }
 
-      let postsWithLikeStatus: SocialPost[] = [];
-      
-      if (postsData) {
-        let likedPostIds = new Set<string>();
-        if (user) {
-          const postIds = postsData.map(post => post.id);
-          const { data: likesData } = await supabase
-            .from('likes')
-            .select('post_id')
-            .in('post_id', postIds)
-            .eq('user_id', user.id);
-          likedPostIds = new Set(likesData?.map(like => like.post_id) || []);
+      // Only fetch likes for posts whose like-status we don't already know
+      const postsNeedingLikeQuery = user
+        ? newPosts.filter(p => !knownLikeStatusRef.current.has(p.id))
+        : [];
+
+      let likedPostIds = new Set<string>();
+      if (user && postsNeedingLikeQuery.length > 0) {
+        const postIds = postsNeedingLikeQuery.map(p => p.id);
+        const { data: likesData } = await supabase
+          .from('likes')
+          .select('post_id')
+          .in('post_id', postIds)
+          .eq('user_id', user.id);
+        likedPostIds = new Set(likesData?.map(like => like.post_id) || []);
+      }
+
+      const postsWithLikeStatus: SocialPost[] = newPosts.map(post => {
+        let user_liked: boolean;
+        if (knownLikeStatusRef.current.has(post.id)) {
+          user_liked = knownLikeStatusRef.current.get(post.id)!;
+        } else {
+          user_liked = likedPostIds.has(post.id);
+          knownLikeStatusRef.current.set(post.id, user_liked);
         }
 
-        postsWithLikeStatus = postsData.map(post => ({
+        knownUserIdsRef.current.add(post.user_id);
+
+        return {
           id: post.id,
           user_id: post.user_id,
           image_urls: post.image_urls || [],
@@ -114,16 +162,25 @@ export const useSocialPosts = (filter?: PostFilter) => {
           oracle_summary: (post as any).oracle_summary || null,
           oracle_summary_public: (post as any).oracle_summary_public || false,
           social_profiles: profilesMap.get(post.user_id) || null,
-          user_liked: likedPostIds.has(post.id)
-        }));
+          user_liked
+        };
+      });
+
+      if (append) {
+        setPosts(prev => [...prev, ...postsWithLikeStatus]);
+      } else {
+        setPosts(postsWithLikeStatus);
       }
 
-      setPosts(postsWithLikeStatus);
+      setHasMore(!isLastPage);
+      setPage(pageNum);
+      setError(null);
     } catch (err) {
       console.error('Error fetching posts:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch posts');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, [filter?.tag, filter?.brand]);
 
@@ -156,15 +213,15 @@ export const useSocialPosts = (filter?: PostFilter) => {
 
       trackEvent({
         event_type: 'community_post_create',
-        event_data: { 
+        event_data: {
           post_id: data.id,
           post_type: postData.post_type || 'single',
           has_images: postData.image_urls.length > 0,
-          caption_length: postData.caption.length 
+          caption_length: postData.caption.length
         }
       });
 
-      fetchPosts();
+      fetchPage(0, false);
     } catch (err) {
       console.error('Error creating post:', err);
       throw err;
@@ -196,17 +253,20 @@ export const useSocialPosts = (filter?: PostFilter) => {
 
       trackEvent({
         event_type: 'community_post_like',
-        event_data: { 
+        event_data: {
           post_id: postId,
           action: post.user_liked ? 'unlike' : 'like'
         }
       });
 
-      setPosts(prev => prev.map(p => 
-        p.id === postId 
-          ? { 
-              ...p, 
-              user_liked: !p.user_liked,
+      const newLiked = !post.user_liked;
+      knownLikeStatusRef.current.set(postId, newLiked);
+
+      setPosts(prev => prev.map(p =>
+        p.id === postId
+          ? {
+              ...p,
+              user_liked: newLiked,
               likes_count: p.user_liked ? p.likes_count - 1 : p.likes_count + 1
             }
           : p
@@ -254,6 +314,9 @@ export const useSocialPosts = (filter?: PostFilter) => {
         .eq('user_id', user.id);
 
       if (error) throw error;
+
+      knownLikeStatusRef.current.delete(postId);
+      knownUserIdsRef.current.delete(post.user_id);
 
       setPosts(prev => prev.filter(p => p.id !== postId));
 
@@ -328,18 +391,26 @@ export const useSocialPosts = (filter?: PostFilter) => {
     }
   };
 
+  const loadMore = useCallback(async () => {
+    if (loadingMore || loading || !hasMore) return;
+    await fetchPage(page + 1, true);
+  }, [fetchPage, loadingMore, loading, hasMore, page]);
+
   useEffect(() => {
-    fetchPosts();
-  }, [fetchPosts]);
+    fetchPage(0, false);
+  }, [fetchPage]);
 
   return {
     posts,
     loading,
+    loadingMore,
     error,
+    hasMore,
     createPost,
     toggleLike,
     deletePost,
     updatePost,
-    refetch: fetchPosts
+    refetch: () => fetchPage(0, false),
+    loadMore,
   };
 };

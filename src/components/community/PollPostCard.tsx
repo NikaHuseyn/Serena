@@ -131,6 +131,7 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
                     <img
                       src={url}
                       alt={`Option ${index + 1}`}
+                      loading="lazy"
                       className="w-full h-full object-cover"
                     />
                     {/* Option label */}

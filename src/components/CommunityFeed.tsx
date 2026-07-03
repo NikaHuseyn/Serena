@@ -19,7 +19,7 @@ import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
 import { useGuestNudge } from '@/hooks/useGuestNudge';
 
 const CommunityFeed = () => {
-  const { posts, loading, error, createPost, toggleLike, deletePost, updatePost } = useSocialPosts();
+  const { posts, loading, loadingMore, error, hasMore, createPost, toggleLike, deletePost, updatePost, loadMore } = useSocialPosts();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { markAsRead } = useCommunityNotifications();
@@ -195,6 +195,18 @@ const CommunityFeed = () => {
                 />
               );
             })
+          )}
+
+          {hasMore && posts.length > 0 && (
+            <div className="flex justify-center pt-2">
+              <Button
+                variant="outline"
+                onClick={loadMore}
+                disabled={loadingMore}
+              >
+                {loadingMore ? 'Loading…' : 'Load more'}
+              </Button>
+            </div>
           )}
         </div>
 

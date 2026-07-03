@@ -140,6 +140,7 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
                 <img
                   src={url}
                   alt={`Post image ${index + 1}`}
+                  loading="lazy"
                   className="w-full h-full object-cover"
                 />
                 {index === 3 && post.image_urls.length > 4 && (
