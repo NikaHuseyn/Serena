@@ -331,6 +331,15 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
           </div>
         )}
         {renderRecommendation()}
+        {!isUser && outfit_options && outfit_options.length > 0 && (
+          <OutfitOptionCards
+            options={outfit_options}
+            mode={mode}
+            rentalPreference={rental_preference}
+            stylingCategory={styling_category}
+            onSelect={(msg) => (onSendMessage ?? onCitySelect)?.(msg)}
+          />
+        )}
         {/* Guest sign-up nudge */}
         {!isUser && isFirstGuestResponse && !wardrobeStatus?.is_authenticated && (
           <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20 flex items-start justify-between gap-3">
