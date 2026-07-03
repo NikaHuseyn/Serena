@@ -112,6 +112,8 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
       toast.error('Add a photo or write something to share');
       return;
     }
+    let uploadedPaths: string[] = [];
+    let imageUrls: string[] = [];
     try {
       setSubmitting(true);
 
@@ -121,9 +123,10 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
         return;
       }
 
-      let imageUrls: string[] = [];
       if (selectedFiles.length > 0) {
-        imageUrls = await uploadFiles(user.id);
+        const { urls, paths } = await uploadFiles(user.id);
+        imageUrls = urls;
+        uploadedPaths = paths;
       }
 
       const tags = extractHashtags(caption);
@@ -149,6 +152,20 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
       onClose();
     } catch (err) {
       console.error('Failed to create post:', err);
+      // Best-effort cleanup: delete any images we already uploaded so they don't
+      // become orphans in the bucket if post creation (or anything after upload) failed.
+      if (uploadedPaths.length > 0) {
+        try {
+          const { error: cleanupError } = await supabase.storage
+            .from('community-photos')
+            .remove(uploadedPaths);
+          if (cleanupError) {
+            console.error('Error cleaning up uploaded images after failed post:', cleanupError);
+          }
+        } catch (cleanupErr) {
+          console.error('Storage cleanup threw after failed post:', cleanupErr);
+        }
+      }
       toast.error('Failed to create post. Please try again.');
     } finally {
       setSubmitting(false);
