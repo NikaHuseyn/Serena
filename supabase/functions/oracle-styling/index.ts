@@ -308,6 +308,24 @@ const provideStylingResponseTool = {
                         "past liked items — not generic styling text.",
                     },
                     styling_tips: { type: "string" },
+                    garment_type: {
+                      type: "string",
+                      description:
+                        "Single lowercase noun for the garment (e.g. " +
+                        "'dress', 'gown', 'suit', 'blazer', 'trousers', " +
+                        "'heels', 'clutch'). Used as a strict whole-word " +
+                        "filter on product-search results.",
+                    },
+                    search_keywords: {
+                      type: "array",
+                      items: { type: "string" },
+                      description:
+                        "3–6 concrete search terms describing THIS item " +
+                        "(colour, fabric, silhouette, garment). No " +
+                        "adjectives like 'luminous' or 'architectural'. " +
+                        "Example: ['black','silk','slip','dress']. Used " +
+                        "verbatim to build the product query.",
+                    },
                   },
                 },
               },
