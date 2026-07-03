@@ -6,6 +6,11 @@ import { detectVenue, detectEvent, VenueDetectionResult } from './styling-chat/v
 import { extractLocation, extractFutureDate, formatDateLabel } from './styling-chat/weatherExtraction';
 import { detectVagueVenue, getRelevantEmotionalTones, detectExplicitEmotionalGoal, EmotionalTone } from './styling-chat/vagueVenueDetection';
 
+// Feature flag: when true, chat uses the new oracle-styling edge function
+// (v2, tool-schema based). Flip to false to roll back to the legacy
+// generate-ai-recommendations path — both are wired end to end.
+const USE_ORACLE_V2 = true;
+
 const KNOWN_DRESS_CODES = [
   'black tie', 'white tie',
   'black tie optional',
