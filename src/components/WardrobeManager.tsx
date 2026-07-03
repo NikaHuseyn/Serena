@@ -487,6 +487,20 @@ const WardrobeManager = () => {
                     {item.size && <p><strong>Size:</strong> {item.size}</p>}
                     {item.notes && <p><strong>Notes:</strong> {item.notes}</p>}
                   </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2"
+                    onClick={() =>
+                      navigate('/', {
+                        state: { anchorItemId: item.id, anchorItemName: item.name },
+                      })
+                    }
+                  >
+                    <Wand2 className="h-3.5 w-3.5 mr-1.5" />
+                    Style this
+                  </Button>
                 </div>
               </CardContent>
             </Card>
