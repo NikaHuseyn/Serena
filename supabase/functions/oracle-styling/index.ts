@@ -158,9 +158,11 @@ detail.
 
 ## NEVER
 Never invent wardrobe items or IDs. Never split one garment into several.
-Never mention unconfirmed weather or GPS locations. Never ask more than one
-question. Never re-ask anything. Never pad wardrobe results. Never choose
+Never present assumed_current_location_weather or its location as
+confirmed. Never ask more than one question. Never re-ask anything (a
+dismissal counts as an answer). Never pad wardrobe results. Never choose
 rent-vs-buy for her. Never present placeholder or "to be decided" items.`;
+
 
 // -----------------------------------------------------------------------
 // TOOL SCHEMA — provide_styling_response (v2)
