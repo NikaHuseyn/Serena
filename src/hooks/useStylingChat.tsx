@@ -394,6 +394,48 @@ export const useStylingChat = () => {
     const isFollowUp = messages.length > 0;
     const originalRequest = messages.find(m => m.role === 'user')?.content || '';
 
+    // -----------------------------------------------------------------
+    // Oracle v2 path (feature-flagged). Old path kept below for rollback.
+    // -----------------------------------------------------------------
+    if (USE_ORACLE_V2) {
+      const oracleHistory = messages.slice(-10).map(m => ({
+        role: m.role,
+        content: m.content,
+      }));
+
+      const { data: resp, error } = await supabase.functions.invoke('oracle-styling', {
+        body: {
+          message: userMessage,
+          conversationHistory: oracleHistory,
+          accumulated_context: extraContext?.accumulated_context ?? null,
+          weatherData,
+          venueContext: venueContext || null,
+          eventContext: eventContext || null,
+          anchor_item_id: null,
+        },
+        headers,
+      });
+
+      if (error) throw new Error(error.message || 'Failed to get recommendation');
+
+      // Edge function returns { success: true, data: parsed }; accept the
+      // bare parsed shape too so future changes don't break the client.
+      const parsed = resp?.data ?? resp ?? {};
+      const normalized = {
+        // Map reply_text → assistant message content downstream.
+        recommendation: { reasoning: parsed.reply_text || '' },
+        follow_up_question: parsed.follow_up_question || undefined,
+        // Passed through onto the ChatMessage in the builders below.
+        oracle_v2: {
+          mode: parsed.mode,
+          rental_preference: parsed.rental_preference,
+          outfit_options: parsed.outfit_options,
+        },
+      };
+
+      return { data: normalized, venueContext, eventContext };
+    }
+
     const { data, error } = await supabase.functions.invoke('generate-ai-recommendations', {
       body: {
         recommendationType: 'event_outfit',
