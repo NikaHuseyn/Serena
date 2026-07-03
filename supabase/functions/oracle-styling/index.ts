@@ -937,6 +937,8 @@ serve(async (req) => {
       anchor_item_id = null,
       weather_context: weatherContextSnake,
       weatherData: weatherContextCamel,
+      assumed_current_location_weather: assumedWeatherSnake,
+      assumedCurrentLocationWeather: assumedWeatherCamel,
       venue_context: venueContextSnake,
       venueContext: venueContextCamel,
       event_context: eventContextSnake,
@@ -948,8 +950,10 @@ serve(async (req) => {
       ? conversationHistorySnake
       : conversationHistoryCamel;
     const weather_context = weatherContextSnake ?? weatherContextCamel ?? null;
+    const assumed_current_location_weather = assumedWeatherSnake ?? assumedWeatherCamel ?? null;
     const venue_context = venueContextSnake ?? venueContextCamel ?? null;
     const event_context = eventContextSnake ?? eventContextCamel ?? null;
+
 
     if (typeof user_message !== "string" || !user_message.trim()) {
       return jsonResponse(req, { error: "user_message is required" }, 400);
