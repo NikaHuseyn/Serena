@@ -221,6 +221,32 @@ export const useSocialPosts = (filter?: PostFilter) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('User not authenticated');
 
+      // Best-effort cleanup of the post's images in storage before deleting the row.
+      // A storage failure here must NOT block the database deletion.
+      const post = posts.find(p => p.id === postId);
+      if (post?.image_urls?.length) {
+        try {
+          const marker = '/community-photos/';
+          const paths = post.image_urls
+            .map(url => {
+              const idx = url.indexOf(marker);
+              return idx >= 0 ? url.substring(idx + marker.length) : null;
+            })
+            .filter((p): p is string => Boolean(p));
+
+          if (paths.length > 0) {
+            const { error: storageError } = await supabase.storage
+              .from('community-photos')
+              .remove(paths);
+            if (storageError) {
+              console.error('Error removing post images from storage:', storageError);
+            }
+          }
+        } catch (storageErr) {
+          console.error('Storage cleanup threw during post delete:', storageErr);
+        }
+      }
+
       const { error } = await supabase
         .from('posts')
         .delete()
