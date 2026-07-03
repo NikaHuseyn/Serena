@@ -430,7 +430,7 @@ export const useStylingChat = () => {
           assumed_current_location_weather: weatherPayload.assumed_current_location_weather,
           venueContext: venueContext || null,
           eventContext: eventContext || null,
-          anchor_item_id: anchorItemId,
+          anchor_item_id: anchorItemIdRef.current,
         },
         headers,
       });
