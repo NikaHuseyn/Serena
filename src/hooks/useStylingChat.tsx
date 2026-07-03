@@ -597,22 +597,23 @@ export const useStylingChat = () => {
       const { weatherData, mentionedLocation, mentionedDate } = await fetchWeather(userMessage);
       
       // Single call — Oracle picks a sensible default tone
-      const shouldBlockWeather = 
-        !weatherData ||
-        weatherData?.source === 'current_location' || 
-        weatherData?.source === 'gps' ||
-        weatherData?.source === 'fallback';
-      const weatherDataForApi = shouldBlockWeather ? null : weatherData;
+      const eventLocationStated =
+        !!mentionedLocation || weatherData?.source === 'mentioned_location';
+      const weatherPayload = {
+        weather_context: eventLocationStated ? weatherData : null,
+        assumed_current_location_weather: !eventLocationStated ? weatherData : null,
+      };
 
       const { data, venueContext, eventContext } = await callRecommendation(
-        userMessage, null, null, weatherDataForApi, {
+        userMessage, null, null, weatherPayload, {
           inferred_venue_formality: vagueVenue.inferredFormality,
           inferred_meal_type: vagueVenue.mealType,
           inferred_occasion_type: vagueVenue.occasionType,
         },
       );
 
-      const weatherNote = shouldBlockWeather ? null : buildWeatherNote(weatherData, mentionedLocation, mentionedDate);
+      const weatherNote = eventLocationStated ? buildWeatherNote(weatherData, mentionedLocation, mentionedDate) : null;
+
 
       let responseContent = data?.recommendation?.reasoning
         || "Here's what I'd suggest for this occasion:";
