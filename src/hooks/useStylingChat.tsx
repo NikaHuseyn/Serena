@@ -447,7 +447,8 @@ export const useStylingChat = () => {
     const { data, error } = await supabase.functions.invoke('generate-ai-recommendations', {
       body: {
         recommendationType: 'event_outfit',
-        weatherData,
+        weatherData: weatherPayload.weather_context,
+
         occasion: userMessage,
         eventDetails: { name: userMessage, type: 'event' },
         venueContext: venueContext || undefined,
