@@ -45,9 +45,15 @@ interface ChatMessageProps {
   isLoading?: boolean;
   shoppingTitle?: string;
   isFirstGuestResponse?: boolean;
+  /** Oracle v2 option cards */
+  outfit_options?: any[];
+  mode?: 'wardrobe_only' | 'shop_new';
+  rental_preference?: 'both' | 'buy_only' | 'rent_only';
+  styling_category?: 'womenswear' | 'menswear' | 'mixed';
+  onSendMessage?: (message: string) => void;
 }
 
-const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, selectedToneId, onSelectTone, isLoading, shoppingTitle, isFirstGuestResponse }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, selectedToneId, onSelectTone, isLoading, shoppingTitle, isFirstGuestResponse, outfit_options, mode, rental_preference, styling_category, onSendMessage }: ChatMessageProps) => {
   const isUser = role === 'user';
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
