@@ -62,6 +62,8 @@ const ProductCard = ({
   label: 'Buy' | 'Rent';
 }) => {
   const retailer = product.retailer || product.platform || 'Retailer';
+  const [imageFailed, setImageFailed] = useState(false);
+  const showImage = !!product.image_url && !imageFailed;
   return (
     <a
       href={product.product_url}
@@ -70,12 +72,12 @@ const ProductCard = ({
       className="group flex flex-col rounded-lg border border-border bg-background overflow-hidden hover:border-primary/40 transition-colors"
     >
       <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {product.image_url ? (
-          // eslint-disable-next-line jsx-a11y/alt-text
+        {showImage ? (
           <img
             src={product.image_url}
             alt={product.product_name || retailer}
             loading="lazy"
+            onError={() => setImageFailed(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
           />
         ) : (
