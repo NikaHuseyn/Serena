@@ -483,7 +483,7 @@ export const useStylingChat = () => {
     if (error) throw new Error(error.message || 'Failed to get recommendation');
 
     return { data, venueContext, eventContext };
-  }, [messages, scrapeVenue, scrapeEvent]);
+  }, [messages, scrapeVenue, scrapeEvent, anchorItemId]);
 
   const executeRecommendation = useCallback(async (
     userMessage: string,
