@@ -674,6 +674,32 @@ const searchFirecrawlRetailer = async (query: string, retailer: RetailerTarget):
   }
 };
 
+const searchSerperRetailer = async (query: string, retailer: RetailerTarget): Promise<any | null> => {
+  if (!serperApiKey) return null;
+  try {
+    const response = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: { 'X-API-KEY': serperApiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: `${query} site:${retailer.domain}`, gl: 'gb', hl: 'en', num: 3 }),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const result = (data.organic || []).find((r: any) => isValidProductUrl(r.link));
+    if (!result) return null;
+    const priceMatch = `${result.title || ''} ${result.snippet || ''}`.match(/£[\d,]+(?:\.\d{2})?/);
+    return {
+      retailer: retailer.name,
+      product_name: result.title || `Result from ${retailer.name}`,
+      price: priceMatch ? priceMatch[0] : null,
+      product_url: result.link,
+      image_url: result.imageUrl || result.thumbnail || null,
+      source: 'serper_web',
+    };
+  } catch (_) {
+    return null;
+  }
+};
+
 // -----------------------------------------------------------------------
 // Search policy — buy always (unless rent_only), rent only when the item's
 // rental_market_likely is true AND rental_preference allows it. Every
@@ -737,10 +763,14 @@ async function runBuySearch(query: string, tier: string): Promise<any[]> {
   let realResults = cleanProductResults(prioritizeRetailers(gathered), 4);
   if (realResults.length < 3) {
     const retailerPool = (BUY_RETAILERS_BY_TIER[tier] || BUY_RETAILERS_BY_TIER.mid_range).slice(0, 4);
-    const firecrawlResults = (await Promise.all(
-      retailerPool.map((r) => searchFirecrawlRetailer(variants[1] || query, r)),
-    )).filter(Boolean);
-    realResults = cleanProductResults(prioritizeRetailers([...realResults, ...firecrawlResults]), 4);
+    const [webResults, firecrawlResults] = await Promise.all([
+      Promise.all(retailerPool.map((r) => searchSerperRetailer(variants[1] || query, r))),
+      Promise.all(retailerPool.map((r) => searchFirecrawlRetailer(variants[1] || query, r))),
+    ]);
+    realResults = cleanProductResults(
+      prioritizeRetailers([...realResults, ...webResults.filter(Boolean), ...firecrawlResults.filter(Boolean)]),
+      4,
+    );
   }
 
   return realResults.length > 0 ? realResults : cleanProductResults(buildSearchUrls(query, tier), 4);
