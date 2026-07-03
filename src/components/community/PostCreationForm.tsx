@@ -53,24 +53,18 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
       toast.error(`Only ${MAX_PHOTOS} photos allowed per post`);
     }
 
-    const MAX_SIZE = 5 * 1024 * 1024;
-    const oversized = toProcess.filter(f => f.size > MAX_SIZE).length;
-    let compressingToast: string | number | undefined;
-    if (oversized > 0) {
-      compressingToast = toast.loading(`Compressing ${oversized} large photo${oversized > 1 ? 's' : ''}…`);
-    }
+    // Every selected photo is compressed so uploads stay light (~1MB each).
+    const compressingToast = toast.loading(
+      `Compressing ${toProcess.length} photo${toProcess.length > 1 ? 's' : ''}…`
+    );
 
     const { ImageProcessor } = await import('@/utils/imageProcessing');
     const processed: File[] = [];
     let failed = 0;
 
     for (const file of toProcess) {
-      if (file.size <= MAX_SIZE) {
-        processed.push(file);
-        continue;
-      }
       try {
-        const blob = await ImageProcessor.compressImage(file, { maxSizeMB: 4.5, maxWidthOrHeight: 1920 });
+        const blob = await ImageProcessor.compressImage(file, { maxSizeMB: 1, maxWidthOrHeight: 1600 });
         const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
         processed.push(new File([blob], file.name.replace(/\.[^.]+$/, '') + `.${ext}`, { type: blob.type || file.type }));
       } catch {
@@ -78,7 +72,7 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
       }
     }
 
-    if (compressingToast !== undefined) toast.dismiss(compressingToast);
+    toast.dismiss(compressingToast);
     if (failed > 0) toast.error(`${failed} photo${failed > 1 ? 's' : ''} couldn't be compressed`);
     if (processed.length === 0) return;
 
