@@ -87,9 +87,10 @@ const ProductCard = ({
       <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
         {showImage ? (
           <img
-            src={product.image_url}
+            src={product.image_url!}
             alt={product.product_name || retailer}
             loading="lazy"
+            referrerPolicy="no-referrer"
             onError={() => setImageFailed(true)}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform"
           />
