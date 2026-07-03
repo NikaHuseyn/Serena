@@ -810,12 +810,71 @@ async function runBuySearch(query: string, tier: string): Promise<any[]> {
   return realResults.length > 0 ? realResults : cleanProductResults(buildSearchUrls(query, tier), 4);
 }
 
+// Rental lookups now use Serper web search restricted by site: (Firecrawl was
+// too slow for an interactive tap). We parse title/link/price where present.
+async function searchSerperRental(
+  query: string,
+  platform: { name: string; domain: string },
+): Promise<any | null> {
+  if (!serperApiKey) return null;
+  try {
+    const res = await fetch('https://google.serper.dev/search', {
+      method: 'POST',
+      headers: { 'X-API-KEY': serperApiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ q: `${query} site:${platform.domain}`, gl: 'gb', hl: 'en', num: 3 }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const result = (data.organic || []).find((r: any) =>
+      isValidProductUrl(r.link) &&
+      // avoid landing on generic search / category index pages
+      !/\/(search|category|categories|browse)(\/|\?|$)/i.test(r.link),
+    );
+    if (!result) return null;
+    const text = `${result.title || ''} ${result.snippet || ''}`;
+    const priceMatch = text.match(/£[\d,]+(?:\.\d{2})?(?:\s*(?:\/\s*day|per\s*day|per\s*occasion))?/i);
+    return {
+      platform: platform.name,
+      product_name: result.title || `Result from ${platform.name}`,
+      price: priceMatch ? priceMatch[0] : null,
+      product_url: result.link,
+      image_url: result.imageUrl || result.thumbnail || null,
+      type: 'rental',
+      source: 'serper_web',
+    };
+  } catch (_) {
+    return null;
+  }
+}
+
 async function runRentSearch(query: string): Promise<any[]> {
   const settled = await Promise.all(
-    RENTAL_PLATFORMS.map((p) => searchFirecrawlPlatform(query, p, 'rental')),
+    RENTAL_PLATFORMS.map((p) => searchSerperRental(query, p)),
   );
-  const found = settled.filter((r) => r).slice(0, 2);
-  return found.length > 0 ? cleanProductResults(found, 2) : cleanProductResults(buildRentalSearchUrls(query), 2);
+  return cleanProductResults(settled.filter(Boolean), 2);
+}
+
+// Whole-word garment filter: for a "tailored suit", the product title must
+// contain "suit" as its own word — "bodysuit" is excluded, "trouser suit"
+// passes.
+function filterByGarmentType(results: any[], garmentType: string | undefined): any[] {
+  const g = (garmentType || '').trim().toLowerCase();
+  if (!g) return results;
+  const escaped = g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(`\\b${escaped}s?\\b`, 'i');
+  return results.filter((r) => re.test(String(r?.product_name || '')));
+}
+
+// Buy cards must be real, specific products with a price. Allow at most one
+// price-missing card, and only when fewer than 3 priced results exist.
+function enforceHonestBuyRules(results: any[], limit = 4): any[] {
+  const priced = results.filter((r) => r?.price);
+  const unpriced = results.filter((r) => !r?.price);
+  const out = priced.slice(0, limit);
+  if (out.length < 3 && unpriced.length > 0 && out.length < limit) {
+    out.push(unpriced[0]);
+  }
+  return out;
 }
 
 async function searchItemsForOption(
@@ -824,15 +883,22 @@ async function searchItemsForOption(
   rentalPreference: string | undefined,
   stylingCategory: string | undefined,
 ): Promise<any[]> {
-  const prefix = stylingCategory === 'menswear' ? "men's " : '';
+  const genderPrefix = stylingCategory === 'menswear' ? "men's" : "women's";
+  // Run every item's buy + rent lookups fully in parallel.
   return await Promise.all(
     items.map(async (item: any) => {
-      const baseQuery = `${prefix}${item?.name ?? ''}`.trim();
+      const keywords = Array.isArray(item?.search_keywords) && item.search_keywords.length > 0
+        ? item.search_keywords.filter((k: any) => typeof k === 'string' && k.trim()).join(' ')
+        : (typeof item?.name === 'string' ? item.name : '');
+      const garmentType = typeof item?.garment_type === 'string' ? item.garment_type : '';
+      const includeGarment = garmentType && !keywords.toLowerCase().includes(garmentType.toLowerCase());
+      const baseQuery = [genderPrefix, keywords, includeGarment ? garmentType : '']
+        .filter(Boolean).join(' ').trim();
       const tier = item?.price_tier || 'mid_range';
       const wantBuy = rentalPreference !== 'rent_only';
       const wantRent =
         rentalPreference !== 'buy_only' && item?.rental_market_likely === true;
-      const [buy, rent] = await Promise.all([
+      const [buyRaw, rentRaw] = await Promise.all([
         wantBuy && baseQuery
           ? cachedSearch(supabase, baseQuery, tier, 'buy', () => runBuySearch(baseQuery, tier))
           : Promise.resolve([]),
@@ -840,6 +906,8 @@ async function searchItemsForOption(
           ? cachedSearch(supabase, baseQuery, tier, 'rent', () => runRentSearch(baseQuery))
           : Promise.resolve([]),
       ]);
+      const buy = enforceHonestBuyRules(filterByGarmentType(buyRaw, garmentType), 4);
+      const rent = filterByGarmentType(rentRaw, garmentType).slice(0, 2);
       return { ...item, buy, rent };
     }),
   );
