@@ -2,13 +2,24 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// CORS — restricted to the production domain.
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "https://style-savvy-scheduler-she.lovable.app",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Vary": "Origin",
-};
+// CORS — restricted to the production/preview origins for this project.
+const allowedOrigins = new Set([
+  "https://style-savvy-scheduler-she.lovable.app",
+  "https://id-preview--d8bede3f-1f31-4bb1-b971-2015b3f80231.lovable.app",
+  "https://d8bede3f-1f31-4bb1-b971-2015b3f80231.lovableproject.com",
+]);
+
+function getCorsHeaders(req: Request) {
+  const origin = req.headers.get("Origin") || "";
+  return {
+    "Access-Control-Allow-Origin": allowedOrigins.has(origin)
+      ? origin
+      : "https://style-savvy-scheduler-she.lovable.app",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Vary": "Origin",
+  };
+}
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -327,10 +338,10 @@ const provideStylingResponseTool = {
 // -----------------------------------------------------------------------
 // Helpers
 // -----------------------------------------------------------------------
-function jsonResponse(body: unknown, status = 200) {
+function jsonResponse(req: Request, body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
@@ -647,11 +658,11 @@ async function searchItemsForOption(
 // -----------------------------------------------------------------------
 serve(async (req) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: getCorsHeaders(req) });
   }
 
   if (req.method !== "POST") {
-    return jsonResponse({ error: "method_not_allowed" }, 405);
+    return jsonResponse(req, { error: "method_not_allowed" }, 405);
   }
 
   try {
@@ -684,7 +695,7 @@ serve(async (req) => {
         console.error("Guest rate limit check error:", guestLimitError);
       }
       if (guestLimit && guestLimit.allowed === false) {
-        return jsonResponse({
+        return jsonResponse(req, {
           error: "Rate limit exceeded",
           message: "You've reached the daily limit for guests. Sign up to continue getting styling advice.",
         }, 429);
@@ -702,7 +713,7 @@ serve(async (req) => {
     if (action === "record_selection") {
       const { option_label, option_traits, conversation_hint } = body ?? {};
       if (typeof option_label !== "string" || !option_label.trim()) {
-        return jsonResponse({ error: "option_label is required" }, 400);
+        return jsonResponse(req, { error: "option_label is required" }, 400);
       }
       if (user) {
         const { error: insertError } = await supabase.from("option_selections").insert({
@@ -713,10 +724,10 @@ serve(async (req) => {
         });
         if (insertError) {
           console.error("option_selections insert failed:", insertError);
-          return jsonResponse({ error: "selection_record_failed" }, 500);
+          return jsonResponse(req, { error: "selection_record_failed" }, 500);
         }
       }
-      return jsonResponse({ ok: true });
+      return jsonResponse(req, { ok: true });
     }
 
     // Handle search_option action — the tap-to-load path for non-primary
@@ -725,10 +736,10 @@ serve(async (req) => {
     if (action === "search_option") {
       const { option_label, items_to_search, rental_preference, styling_category } = body ?? {};
       if (typeof option_label !== "string" || !option_label.trim()) {
-        return jsonResponse({ error: "option_label is required" }, 400);
+        return jsonResponse(req, { error: "option_label is required" }, 400);
       }
       if (!Array.isArray(items_to_search)) {
-        return jsonResponse({ error: "items_to_search must be an array" }, 400);
+        return jsonResponse(req, { error: "items_to_search must be an array" }, 400);
       }
       const nonWardrobe = items_to_search.filter(
         (i: any) => i?.source !== "from_wardrobe",
@@ -739,22 +750,35 @@ serve(async (req) => {
         typeof rental_preference === "string" ? rental_preference : undefined,
         typeof styling_category === "string" ? styling_category : undefined,
       );
-      return jsonResponse({ ok: true, option_label, items: searched });
+      return jsonResponse(req, { ok: true, option_label, items: searched });
     }
 
 
     const {
-      user_message = "",
-      conversation_history = [],
+      user_message: userMessageSnake,
+      message: userMessageCamel,
+      conversation_history: conversationHistorySnake,
+      conversationHistory: conversationHistoryCamel,
       accumulated_context = null,
       anchor_item_id = null,
-      weather_context = null,
-      venue_context = null,
-      event_context = null,
+      weather_context: weatherContextSnake,
+      weatherData: weatherContextCamel,
+      venue_context: venueContextSnake,
+      venueContext: venueContextCamel,
+      event_context: eventContextSnake,
+      eventContext: eventContextCamel,
     } = body ?? {};
 
+    const user_message = typeof userMessageSnake === "string" ? userMessageSnake : userMessageCamel;
+    const conversation_history = Array.isArray(conversationHistorySnake)
+      ? conversationHistorySnake
+      : conversationHistoryCamel;
+    const weather_context = weatherContextSnake ?? weatherContextCamel ?? null;
+    const venue_context = venueContextSnake ?? venueContextCamel ?? null;
+    const event_context = eventContextSnake ?? eventContextCamel ?? null;
+
     if (typeof user_message !== "string" || !user_message.trim()) {
-      return jsonResponse({ error: "user_message is required" }, 400);
+      return jsonResponse(req, { error: "user_message is required" }, 400);
     }
 
     // Parallel context fetches for authenticated users
@@ -869,6 +893,7 @@ serve(async (req) => {
         const text = await gatewayResp.text().catch(() => "");
         console.error("Gateway rate/credit failure:", gatewayResp.status, text);
         return jsonResponse(
+          req,
           {
             error: gatewayResp.status === 402 ? "credits_exhausted" : "rate_limited",
             message: gatewayResp.status === 402
@@ -902,7 +927,7 @@ serve(async (req) => {
 
     if (!parsed) {
       console.error("Oracle generation failed after retry:", lastError);
-      return jsonResponse({ error: "generation_failed" }, 502);
+      return jsonResponse(req, { error: "generation_failed" }, 502);
     }
 
     // Server-side wardrobe_item_id validation:
@@ -967,9 +992,9 @@ serve(async (req) => {
       }
     }
 
-    return jsonResponse({ success: true, data: parsed });
+    return jsonResponse(req, { success: true, data: parsed });
   } catch (err) {
     console.error("Oracle-styling unexpected error:", err);
-    return jsonResponse({ error: "generation_failed" }, 502);
+    return jsonResponse(req, { error: "generation_failed" }, 502);
   }
 });
