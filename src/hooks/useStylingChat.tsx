@@ -100,6 +100,11 @@ export const useStylingChat = () => {
   // Tracks selected emotional tone for follow-up context
   const [selectedEmotionalTone, setSelectedEmotionalTone] = useState<string | null>(null);
 
+  // Anchor item ("Style this" from wardrobe). Persists for the whole
+  // conversation until Oracle judges the user has moved on
+  // (release_anchor === true on a response) or clearChat is called.
+  const [anchorItemId, setAnchorItemId] = useState<string | null>(null);
+
   // Accumulated conversation context
   const [conversationCtx, setConversationCtx] = useState<ConversationContext>({
     location: null,
