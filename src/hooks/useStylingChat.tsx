@@ -103,7 +103,14 @@ export const useStylingChat = () => {
   // Anchor item ("Style this" from wardrobe). Persists for the whole
   // conversation until Oracle judges the user has moved on
   // (release_anchor === true on a response) or clearChat is called.
-  const [anchorItemId, setAnchorItemId] = useState<string | null>(null);
+  // Kept in a ref too so freshly-set anchors are visible to the very next
+  // sendMessage call without waiting for a re-render.
+  const [anchorItemId, setAnchorItemIdState] = useState<string | null>(null);
+  const anchorItemIdRef = useRef<string | null>(null);
+  const setAnchorItemId = useCallback((id: string | null) => {
+    anchorItemIdRef.current = id;
+    setAnchorItemIdState(id);
+  }, []);
 
   // Accumulated conversation context
   const [conversationCtx, setConversationCtx] = useState<ConversationContext>({
