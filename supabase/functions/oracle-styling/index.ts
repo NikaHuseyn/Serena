@@ -719,6 +719,30 @@ serve(async (req) => {
       return jsonResponse({ ok: true });
     }
 
+    // Handle search_option action — the tap-to-load path for non-primary
+    // options. Runs the same buy/rent policy for the passed items and
+    // returns them with { buy, rent } attached.
+    if (action === "search_option") {
+      const { option_label, items_to_search, rental_preference, styling_category } = body ?? {};
+      if (typeof option_label !== "string" || !option_label.trim()) {
+        return jsonResponse({ error: "option_label is required" }, 400);
+      }
+      if (!Array.isArray(items_to_search)) {
+        return jsonResponse({ error: "items_to_search must be an array" }, 400);
+      }
+      const nonWardrobe = items_to_search.filter(
+        (i: any) => i?.source !== "from_wardrobe",
+      );
+      const searched = await searchItemsForOption(
+        supabase,
+        nonWardrobe,
+        typeof rental_preference === "string" ? rental_preference : undefined,
+        typeof styling_category === "string" ? styling_category : undefined,
+      );
+      return jsonResponse({ ok: true, option_label, items: searched });
+    }
+
+
     const {
       user_message = "",
       conversation_history = [],
