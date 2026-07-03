@@ -833,6 +833,7 @@ export const useStylingChat = () => {
     setMessages([]);
     setPendingVenue(null);
     setSelectedEmotionalTone(null);
+    setAnchorItemId(null);
     setConversationCtx({
       location: null,
       venue_type: null,
@@ -851,6 +852,36 @@ export const useStylingChat = () => {
     sessionStorage.removeItem('guest_session_id');
   }, []);
 
+  /**
+   * Start a new "Style this" conversation anchored on a wardrobe item.
+   * Clears any existing conversation and sends the first user message.
+   */
+  const startAnchoredConversation = useCallback(
+    async (itemId: string, itemName: string) => {
+      setMessages([]);
+      setPendingVenue(null);
+      setSelectedEmotionalTone(null);
+      setConversationCtx({
+        location: null,
+        venue_type: null,
+        dress_code: null,
+        emotional_goal: null,
+        who_with: null,
+        budget: null,
+        date: null,
+        style_preferences: [],
+        liked_items: [],
+        rejected_items: [],
+        exchange_count: 0,
+      });
+      setAnchorItemId(itemId);
+      // Give React a tick so state settles before sendMessage reads it
+      await Promise.resolve();
+      await sendMessage(`Build an outfit around my ${itemName}`);
+    },
+    [sendMessage],
+  );
+
   return {
     messages,
     isLoading,
@@ -858,5 +889,7 @@ export const useStylingChat = () => {
     clearChat,
     selectEmotionalTone,
     selectedEmotionalTone,
+    anchorItemId,
+    startAnchoredConversation,
   };
 };
