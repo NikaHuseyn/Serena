@@ -423,6 +423,32 @@ serve(async (req) => {
 
     // Parse request body
     const body = await req.json().catch(() => ({}));
+    const action = body?.action;
+
+    // Handle record_selection action — short-circuits the AI flow.
+    // Authenticated: insert into option_selections. Guests: no-op (no user_id
+    // to attach to), still respond with the same shape so the client treats it
+    // uniformly.
+    if (action === "record_selection") {
+      const { option_label, option_traits, conversation_hint } = body ?? {};
+      if (typeof option_label !== "string" || !option_label.trim()) {
+        return jsonResponse({ error: "option_label is required" }, 400);
+      }
+      if (user) {
+        const { error: insertError } = await supabase.from("option_selections").insert({
+          user_id: user.id,
+          option_label: option_label.trim(),
+          option_traits: option_traits ?? null,
+          conversation_hint: conversation_hint ?? null,
+        });
+        if (insertError) {
+          console.error("option_selections insert failed:", insertError);
+          return jsonResponse({ error: "selection_record_failed" }, 500);
+        }
+      }
+      return jsonResponse({ ok: true });
+    }
+
     const {
       user_message = "",
       conversation_history = [],
@@ -586,16 +612,30 @@ serve(async (req) => {
     }
 
     // Server-side wardrobe_item_id validation:
-    // downgrade any from_wardrobe item whose ID isn't in the user's wardrobe.
+    // - Guests (no user) and users with an empty wardrobe: every from_wardrobe
+    //   item is downgraded — the AI cannot legitimately pick from what we did
+    //   not load.
+    // - Otherwise: wardrobe_item_id must be non-null AND present in the loaded
+    //   wardrobe. Anything else is an invention by the model.
+    // - On downgrade: log a warning with the item's name so we can audit
+    //   hallucinations.
     const validIds = new Set(wardrobeItems.map((w) => String(w.id)));
+    const forceDowngrade = !user || wardrobeItems.length === 0;
     if (Array.isArray(parsed.outfit_options)) {
       for (const opt of parsed.outfit_options) {
         if (!Array.isArray(opt?.items)) continue;
         for (const item of opt.items) {
-          if (
-            item?.source === "from_wardrobe" &&
-            (!item.wardrobe_item_id || !validIds.has(String(item.wardrobe_item_id)))
-          ) {
+          if (item?.source !== "from_wardrobe") continue;
+          const idValid =
+            item.wardrobe_item_id != null &&
+            validIds.has(String(item.wardrobe_item_id));
+          if (forceDowngrade || !idValid) {
+            const reason = forceDowngrade
+              ? `no wardrobe in scope (user=${!!user}, items=${wardrobeItems.length})`
+              : `wardrobe_item_id missing or not in user's wardrobe`;
+            console.warn(
+              `Wardrobe validation: downgrading "${item?.name ?? "(unnamed)"}" — ${reason}`,
+            );
             item.source = "needs_purchase_or_rental";
             item.wardrobe_item_id = null;
           }
