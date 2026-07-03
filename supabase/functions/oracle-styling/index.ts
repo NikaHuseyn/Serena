@@ -937,6 +937,36 @@ serve(async (req) => {
       }
     }
 
+    // shop_new mode: auto-run product search for the primary option's
+    // non-wardrobe items and attach { buy, rent } directly to each item.
+    // Other options load on tap via the search_option action above.
+    if (parsed.mode === "shop_new" && Array.isArray(parsed.outfit_options)) {
+      const primary = parsed.outfit_options.find((o: any) => o?.is_primary === true);
+      if (primary && Array.isArray(primary.items)) {
+        const nonWardrobe = primary.items.filter(
+          (i: any) => i?.source !== "from_wardrobe",
+        );
+        if (nonWardrobe.length > 0) {
+          try {
+            const searched = await searchItemsForOption(
+              supabase,
+              nonWardrobe,
+              typeof parsed.rental_preference === "string" ? parsed.rental_preference : undefined,
+              typeof parsed.styling_category === "string" ? parsed.styling_category : undefined,
+            );
+            const byName = new Map(searched.map((s: any) => [s.name, s]));
+            primary.items = primary.items.map((it: any) => {
+              if (it?.source === "from_wardrobe") return it;
+              const enriched = byName.get(it?.name);
+              return enriched ? { ...it, buy: enriched.buy, rent: enriched.rent } : it;
+            });
+          } catch (err) {
+            console.error("Primary-option search failed (non-fatal):", err);
+          }
+        }
+      }
+    }
+
     return jsonResponse({ success: true, data: parsed });
   } catch (err) {
     console.error("Oracle-styling unexpected error:", err);
