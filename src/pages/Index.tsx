@@ -104,7 +104,12 @@ const IndexContent = () => {
                   selectedToneId={selectedEmotionalTone}
                   onSelectTone={selectEmotionalTone}
                   shoppingTitle={message.shoppingTitle}
+                  outfit_options={message.outfit_options}
+                  mode={message.mode}
+                  rental_preference={message.rental_preference}
+                  onSendMessage={sendMessage}
                 />
+
               ))}
               {isLoading && <ChatMessage role="assistant" content="" isLoading />}
               {/* Guest sign-up nudge: show once after first assistant response */}
