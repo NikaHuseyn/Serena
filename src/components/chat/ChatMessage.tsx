@@ -50,10 +50,13 @@ interface ChatMessageProps {
   mode?: 'wardrobe_only' | 'shop_new';
   rental_preference?: 'both' | 'buy_only' | 'rent_only';
   styling_category?: 'womenswear' | 'menswear' | 'mixed';
+  /** Active "Style this" anchor (wardrobe item id) — propagated to
+   *  OutfitOptionCards so the pinned piece is marked distinctly. */
+  anchor_item_id?: string | null;
   onSendMessage?: (message: string) => void;
 }
 
-const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, selectedToneId, onSelectTone, isLoading, shoppingTitle, isFirstGuestResponse, outfit_options, mode, rental_preference, styling_category, onSendMessage }: ChatMessageProps) => {
+const ChatMessage = ({ role, content, recommendation, venueContext, eventContext, culturalContext, cityClarificationChips, onCitySelect, weatherNote, wardrobeStatus, emotionalToneCards, toneRecommendations, selectedToneId, onSelectTone, isLoading, shoppingTitle, isFirstGuestResponse, outfit_options, mode, rental_preference, styling_category, anchor_item_id, onSendMessage }: ChatMessageProps) => {
   const isUser = role === 'user';
   const [bannerDismissed, setBannerDismissed] = useState(false);
 
@@ -337,6 +340,7 @@ const ChatMessage = ({ role, content, recommendation, venueContext, eventContext
             mode={mode}
             rentalPreference={rental_preference}
             stylingCategory={styling_category}
+            anchorItemId={anchor_item_id}
             onSelect={(msg) => (onSendMessage ?? onCitySelect)?.(msg)}
           />
         )}

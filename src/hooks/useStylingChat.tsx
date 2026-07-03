@@ -57,6 +57,12 @@ export interface ChatMessage {
   rental_preference?: 'both' | 'buy_only' | 'rent_only';
   /** Oracle v2: option cards rendered below the reply */
   outfit_options?: any[];
+  /** Active "Style this" anchor for this conversation. Carried onto every
+   *  assistant message so OutfitOptionCards can mark the pinned piece.
+   *  Cleared on release_anchor or clearChat; preserved when loading from
+   *  sessionStorage only if explicitly stored (we default to null on
+   *  restore to avoid stale badges). */
+  anchor_item_id?: string | null;
   timestamp: Date;
 }
 
@@ -442,6 +448,11 @@ export const useStylingChat = () => {
       // bare parsed shape too so future changes don't break the client.
       const parsed = resp?.data ?? resp ?? {};
 
+      // Snapshot the anchor the response was generated for — used to mark
+      // the pinned piece in this message's option cards even if Oracle
+      // also flipped release_anchor on the same response.
+      const anchorForMessage = anchorItemIdRef.current ?? null;
+
       // Oracle can release the anchor when the user has moved on.
       if (parsed?.release_anchor === true && anchorItemIdRef.current) {
         setAnchorItemId(null);
@@ -456,6 +467,7 @@ export const useStylingChat = () => {
           mode: parsed.mode,
           rental_preference: parsed.rental_preference,
           outfit_options: parsed.outfit_options,
+          anchor_item_id: anchorForMessage,
         },
       };
 
@@ -584,6 +596,7 @@ export const useStylingChat = () => {
         mode: data?.oracle_v2?.mode,
         rental_preference: data?.oracle_v2?.rental_preference,
         outfit_options: data?.oracle_v2?.outfit_options,
+        anchor_item_id: data?.oracle_v2?.anchor_item_id ?? null,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
@@ -654,6 +667,7 @@ export const useStylingChat = () => {
         mode: data?.oracle_v2?.mode,
         rental_preference: data?.oracle_v2?.rental_preference,
         outfit_options: data?.oracle_v2?.outfit_options,
+        anchor_item_id: data?.oracle_v2?.anchor_item_id ?? null,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
