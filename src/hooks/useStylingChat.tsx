@@ -619,6 +619,9 @@ export const useStylingChat = () => {
         wardrobeStatus: data?.wardrobe_status || undefined,
         shoppingTitle,
         weatherNote,
+        mode: data?.oracle_v2?.mode,
+        rental_preference: data?.oracle_v2?.rental_preference,
+        outfit_options: data?.oracle_v2?.outfit_options,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
