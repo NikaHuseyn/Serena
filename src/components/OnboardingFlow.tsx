@@ -339,13 +339,11 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
     { id: 'welcome', title: 'Welcome', icon: <Sparkles className="h-5 w-5" />, component: WelcomeStep },
     { id: 'profile', title: 'Profile', icon: <User className="h-5 w-5" />, component: ProfileStep },
     { id: 'style', title: 'Style', icon: <Palette className="h-5 w-5" />, component: StyleStep },
-    { id: 'calendar', title: 'Calendar', icon: <Calendar className="h-5 w-5" />, component: CalendarStep },
     { id: 'complete', title: 'Complete', icon: <CheckCircle className="h-5 w-5" />, component: CompletionStep },
   ];
 
   const progress = ((currentStep + 1) / steps.length) * 100;
   const handleNext = () => { if (currentStep < steps.length - 1) setCurrentStep(currentStep + 1); };
-  const handleSkipToCalendar = () => setCurrentStep(3);
   const handlePrevious = () => { if (currentStep > 0) setCurrentStep(currentStep - 1); };
 
   const handleComplete = async () => {
@@ -383,10 +381,9 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
 
   // Build step-specific props
   const stepProps: Record<string, any> = {
-    welcome: { onNext: handleNext, onSkipToCalendar: handleSkipToCalendar },
+    welcome: { onNext: handleNext },
     profile: { data: profileData, onChange: setProfileData, onNext: handleNext },
     style: { data: styleData, onChange: setStyleData, onNext: handleNext },
-    calendar: { onNext: handleNext },
     complete: { profileData, styleData, onComplete: handleComplete },
   };
 

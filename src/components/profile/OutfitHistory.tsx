@@ -22,11 +22,6 @@ const OutfitHistory = () => {
             id,
             name,
             image_url
-          ),
-          synced_calendar_events (
-            id,
-            title,
-            location
           )
         `)
         .eq('user_id', user.id)
@@ -110,21 +105,6 @@ const OutfitHistory = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {entry.synced_calendar_events && (
-                    <div className="flex items-start gap-2">
-                      <Calendar className="h-4 w-4 text-gray-500 mt-0.5" />
-                      <div>
-                        <p className="text-sm font-medium">{entry.synced_calendar_events.title}</p>
-                        {entry.synced_calendar_events.location && (
-                          <p className="text-xs text-gray-600 flex items-center gap-1">
-                            <MapPin className="h-3 w-3" />
-                            {entry.synced_calendar_events.location}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
                   {entry.weather_data && (
                     <div className="flex items-start gap-2">
                       <CloudSun className="h-4 w-4 text-gray-500 mt-0.5" />
