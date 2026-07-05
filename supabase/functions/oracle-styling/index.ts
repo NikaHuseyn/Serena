@@ -380,19 +380,18 @@ const provideStylingResponseTool = {
             "from picks, not asked). Null once enough context is known.",
         },
         research_request: {
-          type: ["object", "null"],
-          properties: {
-            venue_name: { type: ["string", "null"] },
-            event_name: { type: ["string", "null"] },
-            weather_location: { type: ["string", "null"] },
-            weather_date: { type: ["string", "null"] },
-          },
+          type: "object",
           description:
-            "Set ONLY on a first pass, ONLY when the user named a SPECIFIC " +
-            "venue or event whose dress code/atmosphere you don't confidently " +
-            "know, and/or when a stated event location (+date if known) makes " +
-            "a real weather lookup worthwhile. Never for vague descriptions. " +
-            "Leave null otherwise.",
+            "OMIT this field entirely when no research is needed. Include " +
+            "it ONLY on a first pass when the user named a specific venue/" +
+            "event you don't confidently know, or stated an event location " +
+            "worth a weather lookup.",
+          properties: {
+            venue_name: { type: "string" },
+            event_name: { type: "string" },
+            weather_location: { type: "string" },
+            weather_date: { type: "string" },
+          },
         },
       },
     },
