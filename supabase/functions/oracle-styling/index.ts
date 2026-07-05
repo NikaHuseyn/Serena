@@ -1246,6 +1246,7 @@ serve(async (req) => {
     let parsed: any | null = null;
     let lastError: unknown = null;
 
+    const firstPassStart = Date.now();
     for (let attempt = 0; attempt < 2; attempt++) {
       let gatewayResp: Response;
       try {
@@ -1291,6 +1292,7 @@ serve(async (req) => {
         console.error(`Tool-call parse failure (attempt ${attempt + 1}):`, err);
       }
     }
+    console.log(`[timing] first pass elapsed: ${Date.now() - firstPassStart}ms`);
 
     if (!parsed) {
       console.error("Oracle generation failed after retry:", lastError);
@@ -1300,6 +1302,8 @@ serve(async (req) => {
     // ------------------------------------------------------------------
     // Research second pass — if Oracle asked for a lookup, run it and
     // re-invoke the gateway ONCE with the findings attached.
+    // Every research call is bounded by RESEARCH_TIMEOUT_MS; on timeout
+    // or error we proceed with whatever succeeded (possibly nothing).
     // ------------------------------------------------------------------
     const rr = parsed?.research_request;
     if (rr && typeof rr === "object") {
@@ -1310,17 +1314,39 @@ serve(async (req) => {
 
       if (venueName || eventName || weatherLoc) {
         console.log("Oracle research pass:", { venueName, eventName, weatherLoc, weatherDate });
+
+        const runResearch = async (
+          label: string,
+          fn: () => Promise<{ data: any; error: any }>,
+        ): Promise<{ data: any; error: any }> => {
+          const started = Date.now();
+          const result = await withTimeout(
+            fn().catch((e) => ({ error: e, data: null })),
+            RESEARCH_TIMEOUT_MS,
+            label,
+            { data: null, error: new Error("timeout") },
+          );
+          console.log(`[timing] ${label} elapsed: ${Date.now() - started}ms`);
+          return result;
+        };
+
         const [venueRes, eventRes, weatherRes] = await Promise.all([
           venueName
-            ? supabase.functions.invoke("scrape-venue", { body: { venueName } }).catch((e) => ({ error: e, data: null }))
+            ? runResearch("scrape-venue", () =>
+                supabase.functions.invoke("scrape-venue", { body: { venueName } }),
+              )
             : Promise.resolve({ data: null, error: null }),
           eventName
-            ? supabase.functions.invoke("scrape-event", { body: { eventName } }).catch((e) => ({ error: e, data: null }))
+            ? runResearch("scrape-event", () =>
+                supabase.functions.invoke("scrape-event", { body: { eventName } }),
+              )
             : Promise.resolve({ data: null, error: null }),
           weatherLoc
-            ? supabase.functions.invoke("weather-recommendations", {
-                body: weatherDate ? { location: weatherLoc, forecastDate: weatherDate } : { location: weatherLoc },
-              }).catch((e) => ({ error: e, data: null }))
+            ? runResearch("weather-recommendations", () =>
+                supabase.functions.invoke("weather-recommendations", {
+                  body: weatherDate ? { location: weatherLoc, forecastDate: weatherDate } : { location: weatherLoc },
+                }),
+              )
             : Promise.resolve({ data: null, error: null }),
         ]);
 
@@ -1330,6 +1356,7 @@ serve(async (req) => {
 
         // Re-invoke the gateway ONCE with enriched context.
         messages = buildMessages();
+        const secondPassStart = Date.now();
         try {
           const secondResp = await callGateway(messages);
           if (secondResp.ok) {
@@ -1350,8 +1377,10 @@ serve(async (req) => {
         } catch (err) {
           console.error("Research second-pass gateway call failed:", err);
         }
+        console.log(`[timing] second pass elapsed: ${Date.now() - secondPassStart}ms`);
       }
     }
+
 
 
 
