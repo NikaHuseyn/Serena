@@ -1052,28 +1052,34 @@ serve(async (req) => {
       conversationHistory: conversationHistoryCamel,
       accumulated_context = null,
       anchor_item_id = null,
-      weather_context: weatherContextSnake,
-      weatherData: weatherContextCamel,
-      assumed_current_location_weather: assumedWeatherSnake,
-      assumedCurrentLocationWeather: assumedWeatherCamel,
-      venue_context: venueContextSnake,
-      venueContext: venueContextCamel,
-      event_context: eventContextSnake,
-      eventContext: eventContextCamel,
+      assumed_current_location: assumedLocation = null,
     } = body ?? {};
 
     const user_message = typeof userMessageSnake === "string" ? userMessageSnake : userMessageCamel;
     const conversation_history = Array.isArray(conversationHistorySnake)
       ? conversationHistorySnake
       : conversationHistoryCamel;
-    const weather_context = weatherContextSnake ?? weatherContextCamel ?? null;
-    const assumed_current_location_weather = assumedWeatherSnake ?? assumedWeatherCamel ?? null;
-    const venue_context = venueContextSnake ?? venueContextCamel ?? null;
-    const event_context = eventContextSnake ?? eventContextCamel ?? null;
-
 
     if (typeof user_message !== "string" || !user_message.trim()) {
       return jsonResponse(req, { error: "user_message is required" }, 400);
+    }
+
+    // Fetch assumed_current_location_weather ONCE up front when coords provided
+    let assumed_current_location_weather: any = null;
+    if (
+      assumedLocation &&
+      typeof assumedLocation === "object" &&
+      typeof assumedLocation.lat === "number" &&
+      typeof assumedLocation.lon === "number"
+    ) {
+      try {
+        const { data, error } = await supabase.functions.invoke("weather-recommendations", {
+          body: { lat: assumedLocation.lat, lon: assumedLocation.lon },
+        });
+        if (!error && data) assumed_current_location_weather = data;
+      } catch (err) {
+        console.warn("assumed_current_location_weather fetch failed:", err);
+      }
     }
 
     // Parallel context fetches for authenticated users
