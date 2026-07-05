@@ -138,7 +138,7 @@ export const useStylingChat = () => {
 
       const assumed = await getAssumedCoordsIfGranted();
 
-      const { data: resp, error } = await supabase.functions.invoke('oracle-styling', {
+      const invokePromise = supabase.functions.invoke('oracle-styling', {
         body: {
           message: userMessage,
           conversationHistory,
@@ -147,6 +147,17 @@ export const useStylingChat = () => {
         },
         headers,
       });
+
+      // Overall 90s ceiling — if oracle-styling hangs, surface the honest
+      // error instead of spinning forever.
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('oracle_styling_timeout_90s')), 90_000);
+      });
+
+      const { data: resp, error } = await Promise.race([
+        invokePromise,
+        timeoutPromise,
+      ]) as Awaited<typeof invokePromise>;
 
       if (error) throw new Error(error.message || 'Failed to get recommendation');
 
