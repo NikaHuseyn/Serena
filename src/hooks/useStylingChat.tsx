@@ -23,21 +23,38 @@ export interface ChatMessage {
  */
 async function getAssumedCoordsIfGranted(): Promise<{ lat: number; lon: number } | null> {
   try {
-    if (!('geolocation' in navigator) || !('permissions' in navigator)) return null;
-    // @ts-ignore — 'geolocation' is a valid PermissionName in modern browsers
-    const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
-    if (status.state !== 'granted') return null;
+    if (typeof navigator === 'undefined') return null;
+    if (!('geolocation' in navigator)) return null;
+    // Feature-detect Permissions API — Samsung Internet and some mobile
+    // browsers don't support it. Never let this block a send.
+    // @ts-ignore
+    if (!navigator.permissions || typeof navigator.permissions.query !== 'function') return null;
+
+    let status: PermissionStatus | null = null;
+    try {
+      // @ts-ignore — 'geolocation' is a valid PermissionName in modern browsers
+      status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+    } catch {
+      return null;
+    }
+    if (!status || status.state !== 'granted') return null;
+
     return await new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-        () => resolve(null),
-        { enableHighAccuracy: false, timeout: 3000, maximumAge: 10 * 60 * 1000 },
-      );
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 3000, maximumAge: 10 * 60 * 1000 },
+        );
+      } catch {
+        resolve(null);
+      }
     });
   } catch {
     return null;
   }
 }
+
 
 export const useStylingChat = () => {
   // Restore guest conversation from sessionStorage on mount
@@ -127,16 +144,37 @@ export const useStylingChat = () => {
     setIsLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
+      // Auth session lookup — never fatal. Guest mode if it throws or is absent.
+      let headers: Record<string, string> = {};
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data?.session?.access_token;
+        if (token) headers = { Authorization: `Bearer ${token}` };
+      } catch (e) {
+        console.warn('[useStylingChat] getSession failed, proceeding as guest:', e);
+      }
 
-      // Last 10 user/assistant messages for context
-      const conversationHistory = messages.slice(-10).map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
+      // Conversation history mapping — never fatal.
+      let conversationHistory: { role: string; content: string }[] = [];
+      try {
+        conversationHistory = messages.slice(-10).map(m => ({
+          role: m.role,
+          content: m.content,
+        }));
+      } catch (e) {
+        console.warn('[useStylingChat] history mapping failed, sending empty history:', e);
+        conversationHistory = [];
+      }
 
-      const assumed = await getAssumedCoordsIfGranted();
+      // Silent location check — already fully guarded internally, but wrap
+      // once more so nothing here can escape.
+      let assumed: { lat: number; lon: number } | null = null;
+      try {
+        assumed = await getAssumedCoordsIfGranted();
+      } catch (e) {
+        console.warn('[useStylingChat] geolocation check failed, proceeding without:', e);
+        assumed = null;
+      }
 
       const invokePromise = supabase.functions.invoke('oracle-styling', {
         body: {
@@ -147,6 +185,7 @@ export const useStylingChat = () => {
         },
         headers,
       });
+
 
       // Overall 90s ceiling — if oracle-styling hangs, surface the honest
       // error instead of spinning forever.
@@ -190,9 +229,14 @@ export const useStylingChat = () => {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
-    } catch (error) {
-      console.error('Error in styling chat:', error);
-      toast.error('Something went wrong. Please try again.');
+    } catch (error: any) {
+      console.error('[useStylingChat] sendMessage failed:', error);
+      const hint = error?.name || error?.message
+        ? ` (${error?.name || 'Error'}: ${String(error?.message ?? error).slice(0, 140)})`
+        : '';
+      const isDev = typeof import.meta !== 'undefined' && (import.meta as any)?.env?.DEV;
+      toast.error(`Something went wrong. Please try again.${isDev ? hint : ''}`);
+
 
       const errorMsg: ChatMessage = {
         id: `error-${Date.now()}`,
