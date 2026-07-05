@@ -160,7 +160,10 @@ Never invent wardrobe items or IDs. Never split one garment into several.
 Never present assumed_current_location_weather or its location as
 confirmed. Never ask more than one question. Never re-ask anything (a
 dismissal counts as an answer). Never pad wardrobe results. Never choose
-rent-vs-buy for her. Never present placeholder or "to be decided" items.`;
+rent-vs-buy for her. Never present placeholder or "to be decided" items.
+
+## RESEARCH
+If the user names a specific venue or event you don't confidently know, or states the event's location where weather would genuinely shape the outfit, set research_request accordingly — once. You will be re-invoked with the findings attached; incorporate them and do not request research again.`;
 
 
 // -----------------------------------------------------------------------
@@ -375,6 +378,21 @@ const provideStylingResponseTool = {
             "At most one. Only when genuinely needed to proceed well — " +
             "never interrogating for style preference (that is learned " +
             "from picks, not asked). Null once enough context is known.",
+        },
+        research_request: {
+          type: ["object", "null"],
+          properties: {
+            venue_name: { type: ["string", "null"] },
+            event_name: { type: ["string", "null"] },
+            weather_location: { type: ["string", "null"] },
+            weather_date: { type: ["string", "null"] },
+          },
+          description:
+            "Set ONLY on a first pass, ONLY when the user named a SPECIFIC " +
+            "venue or event whose dress code/atmosphere you don't confidently " +
+            "know, and/or when a stated event location (+date if known) makes " +
+            "a real weather lookup worthwhile. Never for vague descriptions. " +
+            "Leave null otherwise.",
         },
       },
     },
@@ -1034,28 +1052,34 @@ serve(async (req) => {
       conversationHistory: conversationHistoryCamel,
       accumulated_context = null,
       anchor_item_id = null,
-      weather_context: weatherContextSnake,
-      weatherData: weatherContextCamel,
-      assumed_current_location_weather: assumedWeatherSnake,
-      assumedCurrentLocationWeather: assumedWeatherCamel,
-      venue_context: venueContextSnake,
-      venueContext: venueContextCamel,
-      event_context: eventContextSnake,
-      eventContext: eventContextCamel,
+      assumed_current_location: assumedLocation = null,
     } = body ?? {};
 
     const user_message = typeof userMessageSnake === "string" ? userMessageSnake : userMessageCamel;
     const conversation_history = Array.isArray(conversationHistorySnake)
       ? conversationHistorySnake
       : conversationHistoryCamel;
-    const weather_context = weatherContextSnake ?? weatherContextCamel ?? null;
-    const assumed_current_location_weather = assumedWeatherSnake ?? assumedWeatherCamel ?? null;
-    const venue_context = venueContextSnake ?? venueContextCamel ?? null;
-    const event_context = eventContextSnake ?? eventContextCamel ?? null;
-
 
     if (typeof user_message !== "string" || !user_message.trim()) {
       return jsonResponse(req, { error: "user_message is required" }, 400);
+    }
+
+    // Fetch assumed_current_location_weather ONCE up front when coords provided
+    let assumed_current_location_weather: any = null;
+    if (
+      assumedLocation &&
+      typeof assumedLocation === "object" &&
+      typeof assumedLocation.lat === "number" &&
+      typeof assumedLocation.lon === "number"
+    ) {
+      try {
+        const { data, error } = await supabase.functions.invoke("weather-recommendations", {
+          body: { lat: assumedLocation.lat, lon: assumedLocation.lon },
+        });
+        if (!error && data) assumed_current_location_weather = data;
+      } catch (err) {
+        console.warn("assumed_current_location_weather fetch failed:", err);
+      }
     }
 
     // Parallel context fetches for authenticated users
@@ -1134,7 +1158,7 @@ serve(async (req) => {
     const effectiveAnchorId = anchorItem?.id ?? null;
 
     // Assemble the context block for the model
-    const contextPayload = {
+    const contextPayload: any = {
       user: user ? { authenticated: true } : { guest: true },
       style_profile: styleProfile,
       wardrobe_items: wardrobeItems.map((w) => ({
@@ -1152,11 +1176,7 @@ serve(async (req) => {
       accumulated_context,
       anchor_item_id: effectiveAnchorId,
       anchor_item: anchorItem,
-      weather_context,
       assumed_current_location_weather,
-
-      venue_context,
-      event_context,
     };
 
     const historyMessages = Array.isArray(conversation_history)
@@ -1171,7 +1191,7 @@ serve(async (req) => {
           .map((m: any) => ({ role: m.role, content: m.content }))
       : [];
 
-    const messages = [
+    const buildMessages = () => [
       { role: "system", content: ORACLE_SYSTEM_PROMPT },
       {
         role: "system",
@@ -1182,6 +1202,8 @@ serve(async (req) => {
       ...historyMessages,
       { role: "user", content: user_message },
     ];
+
+    let messages = buildMessages();
 
     // Call gateway with one retry on tool-call parse failure. No fallback.
     let parsed: any | null = null;
@@ -1237,6 +1259,64 @@ serve(async (req) => {
       console.error("Oracle generation failed after retry:", lastError);
       return jsonResponse(req, { error: "generation_failed" }, 502);
     }
+
+    // ------------------------------------------------------------------
+    // Research second pass — if Oracle asked for a lookup, run it and
+    // re-invoke the gateway ONCE with the findings attached.
+    // ------------------------------------------------------------------
+    const rr = parsed?.research_request;
+    if (rr && typeof rr === "object") {
+      const venueName = typeof rr.venue_name === "string" && rr.venue_name.trim() ? rr.venue_name.trim() : null;
+      const eventName = typeof rr.event_name === "string" && rr.event_name.trim() ? rr.event_name.trim() : null;
+      const weatherLoc = typeof rr.weather_location === "string" && rr.weather_location.trim() ? rr.weather_location.trim() : null;
+      const weatherDate = typeof rr.weather_date === "string" && rr.weather_date.trim() ? rr.weather_date.trim() : null;
+
+      if (venueName || eventName || weatherLoc) {
+        console.log("Oracle research pass:", { venueName, eventName, weatherLoc, weatherDate });
+        const [venueRes, eventRes, weatherRes] = await Promise.all([
+          venueName
+            ? supabase.functions.invoke("scrape-venue", { body: { venueName } }).catch((e) => ({ error: e, data: null }))
+            : Promise.resolve({ data: null, error: null }),
+          eventName
+            ? supabase.functions.invoke("scrape-event", { body: { eventName } }).catch((e) => ({ error: e, data: null }))
+            : Promise.resolve({ data: null, error: null }),
+          weatherLoc
+            ? supabase.functions.invoke("weather-recommendations", {
+                body: weatherDate ? { location: weatherLoc, forecastDate: weatherDate } : { location: weatherLoc },
+              }).catch((e) => ({ error: e, data: null }))
+            : Promise.resolve({ data: null, error: null }),
+        ]);
+
+        if (!venueRes.error && venueRes.data) contextPayload.researched_venue = venueRes.data;
+        if (!eventRes.error && eventRes.data) contextPayload.researched_event = eventRes.data;
+        if (!weatherRes.error && weatherRes.data) contextPayload.confirmed_weather = weatherRes.data;
+
+        // Re-invoke the gateway ONCE with enriched context.
+        messages = buildMessages();
+        try {
+          const secondResp = await callGateway(messages);
+          if (secondResp.ok) {
+            const secondJson = await secondResp.json().catch(() => null);
+            if (secondJson) {
+              try {
+                const secondParsed = parseToolCall(secondJson);
+                // Ignore any research_request on the second pass (no loops).
+                secondParsed.research_request = null;
+                parsed = secondParsed;
+              } catch (err) {
+                console.error("Research second-pass parse failed; keeping first response:", err);
+              }
+            }
+          } else {
+            console.error("Research second-pass gateway non-OK:", secondResp.status);
+          }
+        } catch (err) {
+          console.error("Research second-pass gateway call failed:", err);
+        }
+      }
+    }
+
+
 
     // Server-side wardrobe_item_id validation:
     // - Guests (no user) and users with an empty wardrobe: every from_wardrobe
