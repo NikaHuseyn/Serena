@@ -1158,7 +1158,7 @@ serve(async (req) => {
     const effectiveAnchorId = anchorItem?.id ?? null;
 
     // Assemble the context block for the model
-    const contextPayload = {
+    const contextPayload: any = {
       user: user ? { authenticated: true } : { guest: true },
       style_profile: styleProfile,
       wardrobe_items: wardrobeItems.map((w) => ({
@@ -1176,11 +1176,7 @@ serve(async (req) => {
       accumulated_context,
       anchor_item_id: effectiveAnchorId,
       anchor_item: anchorItem,
-      weather_context,
       assumed_current_location_weather,
-
-      venue_context,
-      event_context,
     };
 
     const historyMessages = Array.isArray(conversation_history)
@@ -1195,7 +1191,7 @@ serve(async (req) => {
           .map((m: any) => ({ role: m.role, content: m.content }))
       : [];
 
-    const messages = [
+    const buildMessages = () => [
       { role: "system", content: ORACLE_SYSTEM_PROMPT },
       {
         role: "system",
@@ -1206,6 +1202,8 @@ serve(async (req) => {
       ...historyMessages,
       { role: "user", content: user_message },
     ];
+
+    let messages = buildMessages();
 
     // Call gateway with one retry on tool-call parse failure. No fallback.
     let parsed: any | null = null;
