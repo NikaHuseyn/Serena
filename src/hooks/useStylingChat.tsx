@@ -144,16 +144,37 @@ export const useStylingChat = () => {
     setIsLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = session ? { Authorization: `Bearer ${session.access_token}` } : {};
+      // Auth session lookup — never fatal. Guest mode if it throws or is absent.
+      let headers: Record<string, string> = {};
+      try {
+        const { data } = await supabase.auth.getSession();
+        const token = data?.session?.access_token;
+        if (token) headers = { Authorization: `Bearer ${token}` };
+      } catch (e) {
+        console.warn('[useStylingChat] getSession failed, proceeding as guest:', e);
+      }
 
-      // Last 10 user/assistant messages for context
-      const conversationHistory = messages.slice(-10).map(m => ({
-        role: m.role,
-        content: m.content,
-      }));
+      // Conversation history mapping — never fatal.
+      let conversationHistory: { role: string; content: string }[] = [];
+      try {
+        conversationHistory = messages.slice(-10).map(m => ({
+          role: m.role,
+          content: m.content,
+        }));
+      } catch (e) {
+        console.warn('[useStylingChat] history mapping failed, sending empty history:', e);
+        conversationHistory = [];
+      }
 
-      const assumed = await getAssumedCoordsIfGranted();
+      // Silent location check — already fully guarded internally, but wrap
+      // once more so nothing here can escape.
+      let assumed: { lat: number; lon: number } | null = null;
+      try {
+        assumed = await getAssumedCoordsIfGranted();
+      } catch (e) {
+        console.warn('[useStylingChat] geolocation check failed, proceeding without:', e);
+        assumed = null;
+      }
 
       const invokePromise = supabase.functions.invoke('oracle-styling', {
         body: {
@@ -164,6 +185,7 @@ export const useStylingChat = () => {
         },
         headers,
       });
+
 
       // Overall 90s ceiling — if oracle-styling hangs, surface the honest
       // error instead of spinning forever.
