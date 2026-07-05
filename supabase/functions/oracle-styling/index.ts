@@ -1260,6 +1260,64 @@ serve(async (req) => {
       return jsonResponse(req, { error: "generation_failed" }, 502);
     }
 
+    // ------------------------------------------------------------------
+    // Research second pass — if Oracle asked for a lookup, run it and
+    // re-invoke the gateway ONCE with the findings attached.
+    // ------------------------------------------------------------------
+    const rr = parsed?.research_request;
+    if (rr && typeof rr === "object") {
+      const venueName = typeof rr.venue_name === "string" && rr.venue_name.trim() ? rr.venue_name.trim() : null;
+      const eventName = typeof rr.event_name === "string" && rr.event_name.trim() ? rr.event_name.trim() : null;
+      const weatherLoc = typeof rr.weather_location === "string" && rr.weather_location.trim() ? rr.weather_location.trim() : null;
+      const weatherDate = typeof rr.weather_date === "string" && rr.weather_date.trim() ? rr.weather_date.trim() : null;
+
+      if (venueName || eventName || weatherLoc) {
+        console.log("Oracle research pass:", { venueName, eventName, weatherLoc, weatherDate });
+        const [venueRes, eventRes, weatherRes] = await Promise.all([
+          venueName
+            ? supabase.functions.invoke("scrape-venue", { body: { venueName } }).catch((e) => ({ error: e, data: null }))
+            : Promise.resolve({ data: null, error: null }),
+          eventName
+            ? supabase.functions.invoke("scrape-event", { body: { eventName } }).catch((e) => ({ error: e, data: null }))
+            : Promise.resolve({ data: null, error: null }),
+          weatherLoc
+            ? supabase.functions.invoke("weather-recommendations", {
+                body: weatherDate ? { location: weatherLoc, forecastDate: weatherDate } : { location: weatherLoc },
+              }).catch((e) => ({ error: e, data: null }))
+            : Promise.resolve({ data: null, error: null }),
+        ]);
+
+        if (!venueRes.error && venueRes.data) contextPayload.researched_venue = venueRes.data;
+        if (!eventRes.error && eventRes.data) contextPayload.researched_event = eventRes.data;
+        if (!weatherRes.error && weatherRes.data) contextPayload.confirmed_weather = weatherRes.data;
+
+        // Re-invoke the gateway ONCE with enriched context.
+        messages = buildMessages();
+        try {
+          const secondResp = await callGateway(messages);
+          if (secondResp.ok) {
+            const secondJson = await secondResp.json().catch(() => null);
+            if (secondJson) {
+              try {
+                const secondParsed = parseToolCall(secondJson);
+                // Ignore any research_request on the second pass (no loops).
+                secondParsed.research_request = null;
+                parsed = secondParsed;
+              } catch (err) {
+                console.error("Research second-pass parse failed; keeping first response:", err);
+              }
+            }
+          } else {
+            console.error("Research second-pass gateway non-OK:", secondResp.status);
+          }
+        } catch (err) {
+          console.error("Research second-pass gateway call failed:", err);
+        }
+      }
+    }
+
+
+
     // Server-side wardrobe_item_id validation:
     // - Guests (no user) and users with an empty wardrobe: every from_wardrobe
     //   item is downgraded — the AI cannot legitimately pick from what we did
