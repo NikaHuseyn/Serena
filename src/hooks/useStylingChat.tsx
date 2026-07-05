@@ -229,9 +229,14 @@ export const useStylingChat = () => {
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
-    } catch (error) {
-      console.error('Error in styling chat:', error);
-      toast.error('Something went wrong. Please try again.');
+    } catch (error: any) {
+      console.error('[useStylingChat] sendMessage failed:', error);
+      const hint = error?.name || error?.message
+        ? ` (${error?.name || 'Error'}: ${String(error?.message ?? error).slice(0, 140)})`
+        : '';
+      const isDev = typeof import.meta !== 'undefined' && (import.meta as any)?.env?.DEV;
+      toast.error(`Something went wrong. Please try again.${isDev ? hint : ''}`);
+
 
       const errorMsg: ChatMessage = {
         id: `error-${Date.now()}`,
