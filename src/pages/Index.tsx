@@ -15,7 +15,7 @@ import { Card, CardContent } from '@/components/ui/card';
 
 const IndexContent = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
-  const { messages, isLoading, sendMessage, clearChat, selectEmotionalTone, selectedEmotionalTone, startAnchoredConversation } = useStylingChat();
+  const { messages, isLoading, sendMessage, clearChat, startAnchoredConversation } = useStylingChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const routerLocation = useLocation();
@@ -104,26 +104,12 @@ const IndexContent = () => {
                   key={message.id}
                   role={message.role}
                   content={message.content}
-                  recommendation={message.recommendation}
-                  venueContext={message.venueContext}
-                  eventContext={message.eventContext}
-                  culturalContext={message.culturalContext}
-                  cityClarificationChips={message.cityClarificationChips}
-                  onCitySelect={sendMessage}
-                  weatherNote={message.weatherNote}
-                  wardrobeStatus={message.wardrobeStatus}
-                  emotionalToneCards={message.emotionalToneCards}
-                  toneRecommendations={message.toneRecommendations}
-                  selectedToneId={selectedEmotionalTone}
-                  onSelectTone={selectEmotionalTone}
-                  shoppingTitle={message.shoppingTitle}
                   outfit_options={message.outfit_options}
                   mode={message.mode}
                   rental_preference={message.rental_preference}
                   anchor_item_id={message.anchor_item_id}
                   onSendMessage={sendMessage}
                 />
-
               ))}
               {isLoading && <ChatMessage role="assistant" content="" isLoading />}
               {/* Guest sign-up nudge: show once after first assistant response */}
