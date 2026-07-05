@@ -23,21 +23,38 @@ export interface ChatMessage {
  */
 async function getAssumedCoordsIfGranted(): Promise<{ lat: number; lon: number } | null> {
   try {
-    if (!('geolocation' in navigator) || !('permissions' in navigator)) return null;
-    // @ts-ignore — 'geolocation' is a valid PermissionName in modern browsers
-    const status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
-    if (status.state !== 'granted') return null;
+    if (typeof navigator === 'undefined') return null;
+    if (!('geolocation' in navigator)) return null;
+    // Feature-detect Permissions API — Samsung Internet and some mobile
+    // browsers don't support it. Never let this block a send.
+    // @ts-ignore
+    if (!navigator.permissions || typeof navigator.permissions.query !== 'function') return null;
+
+    let status: PermissionStatus | null = null;
+    try {
+      // @ts-ignore — 'geolocation' is a valid PermissionName in modern browsers
+      status = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+    } catch {
+      return null;
+    }
+    if (!status || status.state !== 'granted') return null;
+
     return await new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
-        () => resolve(null),
-        { enableHighAccuracy: false, timeout: 3000, maximumAge: 10 * 60 * 1000 },
-      );
+      try {
+        navigator.geolocation.getCurrentPosition(
+          (pos) => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          () => resolve(null),
+          { enableHighAccuracy: false, timeout: 3000, maximumAge: 10 * 60 * 1000 },
+        );
+      } catch {
+        resolve(null);
+      }
     });
   } catch {
     return null;
   }
 }
+
 
 export const useStylingChat = () => {
   // Restore guest conversation from sessionStorage on mount
