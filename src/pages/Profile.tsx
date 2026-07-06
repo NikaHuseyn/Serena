@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 import BottomNav from '@/components/BottomNav';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Settings, Shield, Crown } from 'lucide-react';
+import { User, Settings, Shield } from 'lucide-react';
 import LoadingState from '@/components/LoadingState';
 import PersonalInfoForm from '@/components/profile/PersonalInfoForm';
 import StylePreferencesForm from '@/components/profile/StylePreferencesForm';
@@ -13,12 +13,12 @@ import OutfitHistory from '@/components/profile/OutfitHistory';
 import UserWishlist from '@/components/profile/UserWishlist';
 import PurchaseHistory from '@/components/profile/PurchaseHistory';
 import PrivacySettingsForm from '@/components/profile/PrivacySettingsForm';
-import SubscriptionTier from '@/components/SubscriptionTier';
+
 
 const Profile = () => {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [usageData, setUsageData] = useState<any>(null);
+  
   const [analysisImage, setAnalysisImage] = useState<File | null>(null);
 
   useEffect(() => {
@@ -43,17 +43,6 @@ const Profile = () => {
         setProfile(profileData);
       }
 
-      // Fetch usage data for rate limiting display
-      if (user.email) {
-        const { data: usageLimitData, error: usageError } = await supabase.rpc('check_ai_rate_limit', {
-          user_email: user.email,
-          target_user_id: user.id
-        });
-
-        if (!usageError && usageLimitData) {
-          setUsageData(usageLimitData);
-        }
-      }
 
     } catch (error) {
       console.error('Error loading profile data:', error);
@@ -86,12 +75,12 @@ const Profile = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Profile Settings</h1>
           <p className="text-gray-600">
-            Manage your personal information, style preferences, and subscription
+            Manage your personal information and style preferences
           </p>
         </div>
 
         <Tabs defaultValue="personal" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:grid-cols-6">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-5">
             <TabsTrigger value="personal" className="flex items-center space-x-2">
               <User className="h-4 w-4" />
               <span className="hidden sm:inline">Personal</span>
@@ -107,10 +96,6 @@ const Profile = () => {
             <TabsTrigger value="colors" className="flex items-center space-x-2">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Colors</span>
-            </TabsTrigger>
-            <TabsTrigger value="subscription" className="flex items-center space-x-2">
-              <Crown className="h-4 w-4" />
-              <span className="hidden sm:inline">Subscription</span>
             </TabsTrigger>
             <TabsTrigger value="privacy" className="flex items-center space-x-2">
               <Shield className="h-4 w-4" />
@@ -138,16 +123,6 @@ const Profile = () => {
             />
           </TabsContent>
 
-          <TabsContent value="subscription">
-            <SubscriptionTier 
-              currentTier={usageData?.subscription_tier}
-              usageData={usageData ? {
-                current_usage: usageData.current_usage,
-                rate_limit: usageData.rate_limit,
-                reset_time: usageData.reset_time
-              } : undefined}
-            />
-          </TabsContent>
 
           <TabsContent value="privacy">
             <PrivacySettingsForm profile={profile} onUpdate={handleProfileUpdate} />
