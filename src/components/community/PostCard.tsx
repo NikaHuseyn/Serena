@@ -1,5 +1,6 @@
 
 import React, { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -89,17 +90,22 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
         {/* User Info Header */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <Avatar className="h-10 w-10">
-              <AvatarImage src={post.social_profiles?.avatar_url || undefined} />
-              <AvatarFallback>
-                {post.social_profiles?.display_name?.charAt(0) || 'U'}
-              </AvatarFallback>
-            </Avatar>
+            <Link to={`/profile/${post.user_id}`} className="flex-shrink-0">
+              <Avatar className="h-10 w-10 hover:opacity-90 transition-opacity">
+                <AvatarImage src={post.social_profiles?.avatar_url || undefined} />
+                <AvatarFallback>
+                  {post.social_profiles?.display_name?.charAt(0) || 'U'}
+                </AvatarFallback>
+              </Avatar>
+            </Link>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="font-semibold text-sm">
+                <Link
+                  to={`/profile/${post.user_id}`}
+                  className="font-semibold text-sm hover:underline"
+                >
                   {post.social_profiles?.display_name || 'Anonymous User'}
-                </h3>
+                </Link>
                 {!isOwnPost && <FollowButton userId={post.user_id} />}
               </div>
               <BadgeDisplay badges={badges} limit={2} />

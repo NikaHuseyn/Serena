@@ -170,6 +170,13 @@ export type Database = {
             referencedRelation: "posts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts_base"
+            referencedColumns: ["id"]
+          },
         ]
       }
       content_reports: {
@@ -206,6 +213,13 @@ export type Database = {
             columns: ["post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts_base"
             referencedColumns: ["id"]
           },
         ]
@@ -363,6 +377,13 @@ export type Database = {
             referencedRelation: "posts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts_base"
+            referencedColumns: ["id"]
+          },
         ]
       }
       notifications: {
@@ -402,6 +423,13 @@ export type Database = {
             columns: ["related_post_id"]
             isOneToOne: false
             referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_related_post_id_fkey"
+            columns: ["related_post_id"]
+            isOneToOne: false
+            referencedRelation: "posts_base"
             referencedColumns: ["id"]
           },
         ]
@@ -493,6 +521,13 @@ export type Database = {
             referencedRelation: "posts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "outfit_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts_base"
+            referencedColumns: ["id"]
+          },
         ]
       }
       outfit_history: {
@@ -579,9 +614,16 @@ export type Database = {
             referencedRelation: "posts"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "outfit_votes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts_base"
+            referencedColumns: ["id"]
+          },
         ]
       }
-      posts: {
+      posts_base: {
         Row: {
           brand_tags: string[]
           caption: string | null
@@ -1393,7 +1435,72 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      posts: {
+        Row: {
+          brand_tags: string[] | null
+          caption: string | null
+          comments_count: number | null
+          created_at: string | null
+          flag_reason: string | null
+          id: string | null
+          image_urls: string[] | null
+          is_flagged: boolean | null
+          likes_count: number | null
+          location: string | null
+          mentioned_user_ids: string[] | null
+          occasion_context: string | null
+          oracle_summary: string | null
+          oracle_summary_public: boolean | null
+          poll_question: string | null
+          post_type: string | null
+          tags: string[] | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          brand_tags?: string[] | null
+          caption?: string | null
+          comments_count?: number | null
+          created_at?: string | null
+          flag_reason?: string | null
+          id?: string | null
+          image_urls?: string[] | null
+          is_flagged?: boolean | null
+          likes_count?: number | null
+          location?: string | null
+          mentioned_user_ids?: string[] | null
+          occasion_context?: string | null
+          oracle_summary?: never
+          oracle_summary_public?: boolean | null
+          poll_question?: string | null
+          post_type?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          brand_tags?: string[] | null
+          caption?: string | null
+          comments_count?: number | null
+          created_at?: string | null
+          flag_reason?: string | null
+          id?: string | null
+          image_urls?: string[] | null
+          is_flagged?: boolean | null
+          likes_count?: number | null
+          location?: string | null
+          mentioned_user_ids?: string[] | null
+          occasion_context?: string | null
+          oracle_summary?: never
+          oracle_summary_public?: boolean | null
+          poll_question?: string | null
+          post_type?: string | null
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       check_ai_rate_limit: { Args: { user_id_param: string }; Returns: Json }
