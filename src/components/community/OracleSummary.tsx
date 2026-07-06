@@ -53,9 +53,9 @@ const OracleSummary = ({
         .map(c => `${c.option_index !== null ? `[Option ${c.option_index + 1}] ` : ''}${c.content}`)
         .join('\n');
 
-      const { data, error } = await supabase.functions.invoke('generate-ai-recommendations', {
+      const { data, error } = await supabase.functions.invoke('oracle-styling', {
         body: {
-          request_type: 'community_summary',
+          action: 'community_summary',
           occasion: occasionContext || '',
           vote_summary: votesSummary,
           comments_text: commentsSummary,
@@ -65,7 +65,7 @@ const OracleSummary = ({
 
       if (error) throw error;
 
-      const generatedSummary = data?.summary || data?.recommendation || 'Unable to generate summary at this time.';
+      const generatedSummary = data?.summary || 'Unable to generate summary at this time.';
 
       await supabase
         .from('posts')

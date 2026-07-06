@@ -1052,6 +1052,66 @@ serve(async (req) => {
       }
     }
 
+    // Parse request body (needed to decide whether to rate-limit)
+    const body = await req.json().catch(() => ({}));
+    const action = body?.action;
+
+    // community_summary — auth-required, lightweight, single gateway call.
+    // Does NOT count against guest rate limits (guests are rejected outright).
+    if (action === "community_summary") {
+      if (!user) {
+        return jsonResponse(req, { error: "auth_required" }, 401);
+      }
+      const {
+        occasion = "",
+        vote_summary = "",
+        comments_text = "",
+        option_count = 0,
+      } = body ?? {};
+
+      const system =
+        "You are Oracle, OutfitOracle's stylist. Write a short, warm, fun 2-3 sentence summary of this community outfit poll: which option the community favoured and why, drawing on the vote counts and comments. UK English. No preamble.";
+      const userMsg = [
+        `Occasion: ${occasion || "(not specified)"}`,
+        `Options: ${option_count}`,
+        `Votes: ${vote_summary || "(none yet)"}`,
+        `Comments:\n${comments_text || "(no comments)"}`,
+      ].join("\n\n");
+
+      try {
+        const resp = await fetch(AI_GATEWAY_URL, {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${lovableApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: MODEL,
+            messages: [
+              { role: "system", content: system },
+              { role: "user", content: userMsg },
+            ],
+            max_tokens: 300,
+            temperature: 0.8,
+          }),
+        });
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => "");
+          console.error("community_summary gateway error:", resp.status, errText);
+          return jsonResponse(req, { error: "gateway_error" }, 502);
+        }
+        const json = await resp.json();
+        const summary = json?.choices?.[0]?.message?.content?.trim() || "";
+        if (!summary) {
+          return jsonResponse(req, { error: "empty_summary" }, 502);
+        }
+        return jsonResponse(req, { summary });
+      } catch (err) {
+        console.error("community_summary failed:", err);
+        return jsonResponse(req, { error: "summary_failed" }, 500);
+      }
+    }
+
     // Guest IP rate limiting — mirrors generate-ai-recommendations
     if (!user) {
       const forwarded = req.headers.get("x-forwarded-for") || "";
@@ -1070,10 +1130,6 @@ serve(async (req) => {
         }, 429);
       }
     }
-
-    // Parse request body
-    const body = await req.json().catch(() => ({}));
-    const action = body?.action;
 
     // Handle record_selection action — short-circuits the AI flow.
     // Authenticated: insert into option_selections. Guests: no-op (no user_id
