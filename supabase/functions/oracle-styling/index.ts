@@ -859,6 +859,32 @@ async function cachedSearch(
   return results;
 }
 
+// Prefer Serper/Google Shopping thumbnails (encrypted-tbn.googleusercontent
+// hosts) over retailer-CDN images, which frequently hotlink-block. When we
+// have a google_shopping result whose retailer matches a
+// serper_web/firecrawl/retailer_search result, copy the Google thumbnail
+// onto the retailer result if it lacks one or its image is from the
+// retailer's own CDN.
+function preferGoogleThumbnails(results: any[]): any[] {
+  const googleByRetailer = new Map<string, string>();
+  for (const r of results) {
+    if (r?.source === 'google_shopping' && r.image_url && r.retailer) {
+      const key = String(r.retailer).toLowerCase();
+      if (!googleByRetailer.has(key)) googleByRetailer.set(key, r.image_url);
+    }
+  }
+  return results.map((r: any) => {
+    if (r?.source === 'google_shopping' || !r?.retailer) return r;
+    const key = String(r.retailer).toLowerCase();
+    const googleImg = googleByRetailer.get(key);
+    if (!googleImg) return r;
+    const currentIsRetailerCdn =
+      !r.image_url ||
+      (typeof r.image_url === 'string' && !/googleusercontent|gstatic/.test(r.image_url));
+    return currentIsRetailerCdn ? { ...r, image_url: googleImg } : r;
+  });
+}
+
 async function runBuySearch(query: string, tier: string): Promise<any[]> {
   const maxPrice = priceTierMax(tier);
   const variants = buildProductQueryVariants(query);
@@ -880,10 +906,13 @@ async function runBuySearch(query: string, tier: string): Promise<any[]> {
       Promise.all(retailerPool.map((r) => searchSerperRetailer(variants[1] || query, r))),
       Promise.all(retailerPool.map((r) => searchFirecrawlRetailer(variants[1] || query, r))),
     ]);
+    const merged = [...gathered, ...realResults, ...webResults.filter(Boolean), ...firecrawlResults.filter(Boolean)];
     realResults = cleanProductResults(
-      prioritizeRetailers([...realResults, ...webResults.filter(Boolean), ...firecrawlResults.filter(Boolean)]),
+      prioritizeRetailers(preferGoogleThumbnails(merged)),
       4,
     );
+  } else {
+    realResults = preferGoogleThumbnails(realResults);
   }
 
   // Only return real, specific products — no "Browse X for..." fallback cards.
