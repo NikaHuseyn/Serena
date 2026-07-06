@@ -7,7 +7,6 @@ import {
   ChevronUp,
   Loader2,
   ExternalLink,
-  ShoppingBag,
   Sparkles,
   Pin,
 } from 'lucide-react';
@@ -49,9 +48,6 @@ interface OutfitOptionCardsProps {
   mode?: 'wardrobe_only' | 'shop_new';
   rentalPreference?: string;
   stylingCategory?: string;
-  /** Active "Style this" anchor (wardrobe item id). When set, the matching
-   *  wardrobe item in each option gets a distinct "Your piece" badge so
-   *  it's obvious which piece the look is built around. */
   anchorItemId?: string | null;
   onSelect: (message: string) => void;
 }
@@ -70,18 +66,19 @@ const isUsableProduct = (product: ProductResult) => {
 const usableProducts = (products?: ProductResult[]) => (products || []).filter(isUsableProduct);
 
 // -----------------------------------------------------------------------
-// Small building blocks
+// Product cards
 // -----------------------------------------------------------------------
-const ProductCard = ({
+/** Full image card — used ONLY when the product has a real image that loads. */
+const ProductImageCard = ({
   product,
   label,
+  onImageFail,
 }: {
   product: ProductResult;
   label: 'Buy' | 'Rent';
+  onImageFail: () => void;
 }) => {
   const retailer = product.retailer || product.platform || 'Retailer';
-  const [imageFailed, setImageFailed] = useState(false);
-  const showImage = !!product.image_url && !imageFailed;
   return (
     <a
       href={product.product_url}
@@ -90,18 +87,14 @@ const ProductCard = ({
       className="group flex flex-col rounded-lg border border-border bg-background overflow-hidden hover:border-primary/40 transition-colors"
     >
       <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
-        {showImage ? (
-          <img
-            src={product.image_url!}
-            alt={product.product_name || retailer}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-            onError={() => setImageFailed(true)}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform"
-          />
-        ) : (
-          <ShoppingBag className="h-8 w-8 text-muted-foreground/40" />
-        )}
+        <img
+          src={product.image_url!}
+          alt={product.product_name || retailer}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={onImageFail}
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform"
+        />
       </div>
       <div className="p-2 flex flex-col gap-0.5">
         <div className="flex items-center justify-between gap-2">
@@ -122,28 +115,92 @@ const ProductCard = ({
   );
 };
 
+/** Compact text row — used when no image OR image failed to load. */
+const ProductTextRow = ({ product, label }: { product: ProductResult; label: 'Buy' | 'Rent' }) => {
+  const retailer = product.retailer || product.platform || 'Retailer';
+  return (
+    <a
+      href={product.product_url}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex items-center justify-between gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors"
+    >
+      <div className="min-w-0 flex-1 flex items-baseline gap-2">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">
+          {label}
+        </span>
+        <span className="text-xs font-medium text-foreground truncate">{retailer}</span>
+        <span className="text-[11px] text-muted-foreground truncate">
+          · {product.product_name || 'View product'}
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5 flex-shrink-0">
+        <span className="text-xs font-semibold text-foreground">{product.price || ''}</span>
+        <span className="text-[11px] text-primary group-hover:underline">View →</span>
+      </div>
+    </a>
+  );
+};
+
+/** Auto-fallback wrapper: shows image card until onError, then text row. */
+const ProductCard = ({ product, label }: { product: ProductResult; label: 'Buy' | 'Rent' }) => {
+  const [imageFailed, setImageFailed] = useState(false);
+  const hasImage = !!product.image_url && !imageFailed;
+  if (hasImage) {
+    return <ProductImageCard product={product} label={label} onImageFail={() => setImageFailed(true)} />;
+  }
+  return <ProductTextRow product={product} label={label} />;
+};
+
 const ItemProducts = ({ item }: { item: OutfitItem }) => {
-  const buy = usableProducts(item.buy).slice(0, 4);
+  const buyAll = usableProducts(item.buy);
   const rent = usableProducts(item.rent).slice(0, 2);
+  const [showAllBuy, setShowAllBuy] = useState(false);
+  const buyVisible = showAllBuy ? buyAll : buyAll.slice(0, 2);
+  const buyExtra = buyAll.length - buyVisible.length;
+
   const showRentFallback =
     item.rental_market_likely === true &&
     rent.length === 0 &&
     item.source !== 'from_wardrobe';
   const rentalQuery = encodeURIComponent(item.name || '');
-  if (buy.length === 0 && rent.length === 0 && !showRentFallback) return null;
+
+  if (buyAll.length === 0 && rent.length === 0 && !showRentFallback) return null;
+
+  // Split visible buys into "image-eligible" and "text-only" groups so the
+  // grid never contains a mix that would leave an awkward empty tile.
+  const buyWithImage = buyVisible.filter((p) => !!p.image_url);
+  const buyTextOnly = buyVisible.filter((p) => !p.image_url);
 
   return (
     <div className="mt-3 space-y-2">
-      {buy.length > 0 && (
+      {buyAll.length > 0 && (
         <div>
           <p className="text-xs font-medium text-muted-foreground mb-1.5">
-            Buy · {buy.length} option{buy.length === 1 ? '' : 's'}
+            Buy · {buyAll.length} option{buyAll.length === 1 ? '' : 's'}
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {buy.map((p, i) => (
-              <ProductCard key={`buy-${i}`} product={p} label="Buy" />
-            ))}
-          </div>
+          {buyWithImage.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {buyWithImage.map((p, i) => (
+                <ProductCard key={`buy-img-${i}`} product={p} label="Buy" />
+              ))}
+            </div>
+          )}
+          {buyTextOnly.length > 0 && (
+            <div className={`${buyWithImage.length > 0 ? 'mt-2' : ''} flex flex-col`}>
+              {buyTextOnly.map((p, i) => (
+                <ProductTextRow key={`buy-txt-${i}`} product={p} label="Buy" />
+              ))}
+            </div>
+          )}
+          {buyExtra > 0 && (
+            <button
+              onClick={() => setShowAllBuy(true)}
+              className="mt-2 text-xs text-primary hover:underline"
+            >
+              +{buyExtra} more
+            </button>
+          )}
         </div>
       )}
       {rent.length > 0 && (
@@ -151,7 +208,7 @@ const ItemProducts = ({ item }: { item: OutfitItem }) => {
           <p className="text-xs font-medium text-muted-foreground mb-1.5">
             Rent · {rent.length} option{rent.length === 1 ? '' : 's'}
           </p>
-          <div className="grid grid-cols-2 gap-2 sm:max-w-[50%]">
+          <div className="flex flex-col">
             {rent.map((p, i) => (
               <ProductCard key={`rent-${i}`} product={p} label="Rent" />
             ))}
@@ -185,8 +242,6 @@ const ItemProducts = ({ item }: { item: OutfitItem }) => {
 const OutfitItemRow = ({ item, anchorItemId }: { item: OutfitItem; anchorItemId?: string | null }) => {
   const [expanded, setExpanded] = useState(false);
   const isFromWardrobe = item.source === 'from_wardrobe';
-  // An anchor item is always a from_wardrobe piece whose id matches the
-  // pinned anchor for this conversation.
   const isAnchor =
     isFromWardrobe &&
     !!anchorItemId &&
@@ -195,7 +250,6 @@ const OutfitItemRow = ({ item, anchorItemId }: { item: OutfitItem; anchorItemId?
 
   return (
     <div className="py-3 border-b border-border last:border-b-0">
-      {/* Single heading — one concept, buy + rent shown together below */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
           <div className="flex items-center flex-wrap gap-2">
@@ -277,10 +331,9 @@ const OptionCard = ({
   const [items, setItems] = useState<OutfitItem[]>(option.items || []);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState<string | null>(null);
+  // Primary option is expanded; secondary options collapse by default.
+  const [expanded, setExpanded] = useState<boolean>(!!option.is_primary);
 
-  // "Has product results" means at least one non-wardrobe item already carries
-  // buy/rent arrays. Primary options in shop_new mode come pre-populated by
-  // the edge function.
   const hasProductResults = items.some(
     (it) => it.source !== 'from_wardrobe' && (usableProducts(it.buy).length + usableProducts(it.rent).length > 0),
   );
@@ -310,6 +363,7 @@ const OptionCard = ({
           return found ? { ...it, buy: found.buy, rent: found.rent } : it;
         }),
       );
+      setExpanded(true);
     } catch (err: any) {
       console.warn('search_option failed:', err);
       setSearchError('Could not load prices right now. Try again.');
@@ -319,10 +373,7 @@ const OptionCard = ({
   };
 
   const handleSelect = async () => {
-    // Send the visible chat message immediately.
     onSelect(`Let's go with: ${option.option_label}`);
-
-    // Background: record selection for authenticated users (fail silently).
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
@@ -342,27 +393,50 @@ const OptionCard = ({
     } catch { /* fail silently */ }
   };
 
+  // Item names summary for collapsed state
+  const itemsSummary = (option.items || []).map((i) => i.name).join(' · ');
+
   return (
     <div className="rounded-xl border border-border bg-background overflow-hidden">
-      <div className="px-4 py-3 border-b border-border flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2 min-w-0">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full px-4 py-3 border-b border-border flex items-center justify-between gap-3 text-left hover:bg-muted/30 transition-colors"
+        aria-expanded={expanded}
+      >
+        <div className="flex items-center gap-2 min-w-0 flex-1">
           {option.is_primary && (
             <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
           )}
-          <p className="text-sm font-semibold text-foreground truncate">
-            {option.option_label}
-          </p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-foreground truncate">
+              {option.option_label}
+            </p>
+            {!expanded && (
+              <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                {itemsSummary}
+              </p>
+            )}
+          </div>
         </div>
-      </div>
+        {expanded ? (
+          <ChevronUp className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        ) : (
+          <ChevronDown className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+        )}
+      </button>
 
-      <div className="px-4">
-        {items.map((item, idx) => (
-          <OutfitItemRow key={`${item.name}-${idx}`} item={item} anchorItemId={anchorItemId} />
-        ))}
-      </div>
+      {expanded && (
+        <div className="px-4">
+          {items.map((item, idx) => (
+            <OutfitItemRow key={`${item.name}-${idx}`} item={item} anchorItemId={anchorItemId} />
+          ))}
+        </div>
+      )}
 
-      <div className="px-4 py-3 border-t border-border flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-        {!hasProductResults && hasSearchable ? (
+      {/* Single action row per option card */}
+      <div className="px-4 py-3 border-t border-border flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-end">
+        {!hasProductResults && hasSearchable && (
           <Button
             variant="outline"
             size="sm"
@@ -379,10 +453,6 @@ const OptionCard = ({
               'See buy & rent options'
             )}
           </Button>
-        ) : (
-          <span className="text-xs text-muted-foreground">
-            {hasProductResults ? 'Buy & rent prices below' : 'Every piece is in your wardrobe'}
-          </span>
         )}
         <Button size="sm" onClick={handleSelect} className="w-full sm:w-auto">
           I'll go with this one
