@@ -231,6 +231,7 @@ export const useStylingChat = () => {
         rental_preference: parsed.rental_preference,
         outfit_options: parsed.outfit_options,
         anchor_item_id: anchorForMessage,
+        anchor_enforced: parsed?.anchor_enforced ?? true,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, assistantMsg]);
