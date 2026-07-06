@@ -24,6 +24,7 @@ const Admin = React.lazy(() => import("./pages/Admin"));
 const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
 const PaymentCanceled = React.lazy(() => import("./pages/PaymentCanceled"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
+const UserProfile = React.lazy(() => import("./pages/UserProfile"));
 
 const AppRoutes = () => (
   <Suspense fallback={<LoadingState message="Loading page..." />}>
@@ -36,6 +37,7 @@ const AppRoutes = () => (
       
       <Route path="/community" element={<Community />} />
       <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
+      <Route path="/profile/:userId" element={<UserProfile />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="/payment-success" element={<AuthGuard><PaymentSuccess /></AuthGuard>} />
       <Route path="/payment-canceled" element={<AuthGuard><PaymentCanceled /></AuthGuard>} />
