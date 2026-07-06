@@ -176,13 +176,16 @@ export const useStylingChat = () => {
         assumed = null;
       }
 
+      const body = {
+        message: userMessage,
+        conversationHistory,
+        anchor_item_id: anchorItemIdRef.current,
+        assumed_current_location: assumed,
+      };
+      console.log('[oracle] invoking oracle-styling', body);
+
       const invokePromise = supabase.functions.invoke('oracle-styling', {
-        body: {
-          message: userMessage,
-          conversationHistory,
-          anchor_item_id: anchorItemIdRef.current,
-          assumed_current_location: assumed,
-        },
+        body,
         headers,
       });
 
