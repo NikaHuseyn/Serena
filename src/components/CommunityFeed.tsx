@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Camera, Users } from 'lucide-react';
+import { Camera, Users, UserCircle } from 'lucide-react';
 import { useSocialPosts } from '@/hooks/useSocialPosts';
 import PostCreationForm from './community/PostCreationForm';
 import PostCard from './community/PostCard';
@@ -133,10 +133,18 @@ const CommunityFeed = () => {
             </h2>
             <p className="text-muted-foreground">Get inspired by the community and share your style</p>
           </div>
-          <Button onClick={handleShowPostForm}>
-            <Camera className="h-4 w-4 mr-2" />
-            Share Outfit
-          </Button>
+          <div className="flex items-center gap-2">
+            {currentUserId && (
+              <Button variant="outline" onClick={() => navigate(`/profile/${currentUserId}`)}>
+                <UserCircle className="h-4 w-4 mr-2" />
+                My profile
+              </Button>
+            )}
+            <Button onClick={handleShowPostForm}>
+              <Camera className="h-4 w-4 mr-2" />
+              Share Outfit
+            </Button>
+          </div>
         </div>
 
         {!currentUserId && <GuestNudgeBanner />}
