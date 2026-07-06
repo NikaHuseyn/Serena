@@ -79,6 +79,9 @@ in any wording. Re-read intent every turn.
 - A dress, gown, or jumpsuit is ONE item (category dress or full_look).
   Never split it into an invented top and bottom. Never create placeholder
   items of any kind.
+- Item names must be clean garment names — no trailing colour words,
+  brand names, or descriptors glued on (write "Wide-leg navy tailored
+  trousers", never "Wide-leg navy tailored trousers Rose").
 - from_wardrobe items MUST carry the exact wardrobe_item_id from the list
   you were given. If you cannot point to a real ID, the item is not from
   the wardrobe.
@@ -87,6 +90,12 @@ in any wording. Re-read intent every turn.
   direction, then find only what's missing for that chosen look.
 - If anchor_item context is provided, every option MUST be built around
   that exact item.
+
+## REWARD THE PICK
+When she picks an option, respond with warm momentum — confirm the choice
+in one sentence, then move straight to completing the look (the missing
+pieces for that outfit: shoes, outerwear, accessories as relevant), asking
+at most one focused question.
 
 ## HARD CONSTRAINTS — every option must satisfy all that apply
 1. Dress code (stated, scraped, or clearly implied). Black tie means floor
@@ -147,9 +156,11 @@ natural next step instead.
 ## REPLY_TEXT
 Open with one specific sentence tied to her occasion and its feel — never a
 generic "Here's what I'd suggest". Wardrobe_only: present her own pieces
-with warmth, then offer to look at buy/rent options too. Shop_new: introduce
-the three directions briefly; products for the leading option are being
-fetched — do not describe or invent specific retailer results in text.
+with warmth, then offer to look at buy/rent options too. Shop_new:
+introduce the three directions briefly. Products for the leading option
+are ALREADY being fetched in this same response — never promise to search
+later ("I'll find pieces once we have a winner" is forbidden), never
+describe or invent specific retailer results in text.
 If she asks a general style question rather than requesting an outfit
 ("what colours suit cool undertones?", "how do I style a white shirt?"),
 answer it fully in reply_text with an empty outfit_options array — do not
@@ -848,6 +859,32 @@ async function cachedSearch(
   return results;
 }
 
+// Prefer Serper/Google Shopping thumbnails (encrypted-tbn.googleusercontent
+// hosts) over retailer-CDN images, which frequently hotlink-block. When we
+// have a google_shopping result whose retailer matches a
+// serper_web/firecrawl/retailer_search result, copy the Google thumbnail
+// onto the retailer result if it lacks one or its image is from the
+// retailer's own CDN.
+function preferGoogleThumbnails(results: any[]): any[] {
+  const googleByRetailer = new Map<string, string>();
+  for (const r of results) {
+    if (r?.source === 'google_shopping' && r.image_url && r.retailer) {
+      const key = String(r.retailer).toLowerCase();
+      if (!googleByRetailer.has(key)) googleByRetailer.set(key, r.image_url);
+    }
+  }
+  return results.map((r: any) => {
+    if (r?.source === 'google_shopping' || !r?.retailer) return r;
+    const key = String(r.retailer).toLowerCase();
+    const googleImg = googleByRetailer.get(key);
+    if (!googleImg) return r;
+    const currentIsRetailerCdn =
+      !r.image_url ||
+      (typeof r.image_url === 'string' && !/googleusercontent|gstatic/.test(r.image_url));
+    return currentIsRetailerCdn ? { ...r, image_url: googleImg } : r;
+  });
+}
+
 async function runBuySearch(query: string, tier: string): Promise<any[]> {
   const maxPrice = priceTierMax(tier);
   const variants = buildProductQueryVariants(query);
@@ -869,10 +906,13 @@ async function runBuySearch(query: string, tier: string): Promise<any[]> {
       Promise.all(retailerPool.map((r) => searchSerperRetailer(variants[1] || query, r))),
       Promise.all(retailerPool.map((r) => searchFirecrawlRetailer(variants[1] || query, r))),
     ]);
+    const merged = [...gathered, ...realResults, ...webResults.filter(Boolean), ...firecrawlResults.filter(Boolean)];
     realResults = cleanProductResults(
-      prioritizeRetailers([...realResults, ...webResults.filter(Boolean), ...firecrawlResults.filter(Boolean)]),
+      prioritizeRetailers(preferGoogleThumbnails(merged)),
       4,
     );
+  } else {
+    realResults = preferGoogleThumbnails(realResults);
   }
 
   // Only return real, specific products — no "Browse X for..." fallback cards.
