@@ -49,6 +49,8 @@ interface OutfitOptionCardsProps {
   rentalPreference?: string;
   stylingCategory?: string;
   anchorItemId?: string | null;
+  /** Whether anchor enforcement succeeded (absent = true). When false, anchor highlighting is suppressed. */
+  anchorEnforced?: boolean;
   onSelect: (message: string) => void;
 }
 
@@ -475,12 +477,21 @@ const OutfitOptionCards: React.FC<OutfitOptionCardsProps> = ({
   rentalPreference,
   stylingCategory,
   anchorItemId,
+  anchorEnforced,
   onSelect,
 }) => {
   if (!options || options.length === 0) return null;
 
+  const enforcementFailed = anchorEnforced === false;
+  const effectiveAnchorId = enforcementFailed ? null : anchorItemId;
+
   return (
     <div className="mt-4 space-y-3">
+      {enforcementFailed && (
+        <p className="text-xs text-muted-foreground italic">
+          I couldn't work your piece into every look this time — these are the strongest options I found.
+        </p>
+      )}
       {mode && (
         <p className="text-xs uppercase tracking-wide text-muted-foreground">
           {mode === 'wardrobe_only' ? 'From your wardrobe' : 'Shop the look'}
@@ -492,7 +503,7 @@ const OutfitOptionCards: React.FC<OutfitOptionCardsProps> = ({
           option={opt}
           rentalPreference={rentalPreference}
           stylingCategory={stylingCategory}
-          anchorItemId={anchorItemId}
+          anchorItemId={effectiveAnchorId}
           onSelect={onSelect}
         />
       ))}

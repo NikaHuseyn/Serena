@@ -13,6 +13,8 @@ interface ChatMessageProps {
   styling_category?: 'womenswear' | 'menswear' | 'mixed';
   /** Active "Style this" anchor (wardrobe item id). */
   anchor_item_id?: string | null;
+  /** Whether anchor enforcement succeeded on this message (absent = true). */
+  anchor_enforced?: boolean;
   onSendMessage?: (message: string) => void;
 }
 
@@ -25,6 +27,7 @@ const ChatMessage = ({
   rental_preference,
   styling_category,
   anchor_item_id,
+  anchor_enforced,
   onSendMessage,
 }: ChatMessageProps) => {
   const isUser = role === 'user';
@@ -62,6 +65,7 @@ const ChatMessage = ({
             rentalPreference={rental_preference}
             stylingCategory={styling_category}
             anchorItemId={anchor_item_id}
+            anchorEnforced={anchor_enforced}
             onSelect={(msg) => onSendMessage?.(msg)}
           />
         )}

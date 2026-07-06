@@ -108,6 +108,7 @@ const IndexContent = () => {
                   mode={message.mode}
                   rental_preference={message.rental_preference}
                   anchor_item_id={message.anchor_item_id}
+                  anchor_enforced={message.anchor_enforced}
                   onSendMessage={sendMessage}
                 />
               ))}
