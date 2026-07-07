@@ -141,8 +141,8 @@ const IndexContent = () => {
         )}
 
         <div className="sticky bottom-0 bg-background pt-4 pb-6">
-          {hasMessages && (
-            <div className="flex justify-center mb-4">
+          <div className="flex justify-center gap-2 mb-4">
+            {hasMessages && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -152,8 +152,20 @@ const IndexContent = () => {
                 <RotateCcw className="h-4 w-4 mr-2" />
                 New conversation
               </Button>
-            </div>
-          )}
+            )}
+            {user && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setHistoryOpen(true)}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Conversation history"
+              >
+                <History className="h-4 w-4 mr-2" />
+                History
+              </Button>
+            )}
+          </div>
           <ChatInput
             onSend={sendMessage}
             isLoading={isLoading}
@@ -161,6 +173,11 @@ const IndexContent = () => {
           />
         </div>
       </main>
+      <ConversationHistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        onSelect={(id) => loadConversation(id)}
+      />
       <BottomNav />
     </div>
   );
