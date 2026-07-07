@@ -999,7 +999,7 @@ async function searchItemsForOption(
   rentalPreference: string | undefined,
   stylingCategory: string | undefined,
 ): Promise<any[]> {
-  const genderPrefix = stylingCategory === 'menswear' ? "men's" : "women's";
+  const isMenswear = stylingCategory === 'menswear';
   // Run every item's buy + rent lookups fully in parallel.
   return await Promise.all(
     items.map(async (item: any) => {
@@ -1008,8 +1008,9 @@ async function searchItemsForOption(
         : (typeof item?.name === 'string' ? item.name : '');
       const garmentType = typeof item?.garment_type === 'string' ? item.garment_type : '';
       const includeGarment = garmentType && !keywords.toLowerCase().includes(garmentType.toLowerCase());
-      const baseQuery = [genderPrefix, keywords, includeGarment ? garmentType : '']
+      const rawQuery = [keywords, includeGarment ? garmentType : '']
         .filter(Boolean).join(' ').trim();
+      const baseQuery = enforceGenderInQuery(rawQuery, isMenswear);
       const tier = item?.price_tier || 'mid_range';
       const wantBuy = rentalPreference !== 'rent_only';
       const wantRent =
@@ -1022,8 +1023,10 @@ async function searchItemsForOption(
           ? cachedSearch(supabase, baseQuery, tier, 'rent', () => runRentSearch(baseQuery))
           : Promise.resolve([]),
       ]);
-      const buy = enforceHonestBuyRules(filterByGarmentType(buyRaw, garmentType), 4);
-      const rent = filterByGarmentType(rentRaw, garmentType).slice(0, 2);
+      const buyFiltered = filterOutMenswear(buyRaw, isMenswear);
+      const rentFiltered = filterOutMenswear(rentRaw, isMenswear);
+      const buy = enforceHonestBuyRules(filterByGarmentType(buyFiltered, garmentType), 4);
+      const rent = filterByGarmentType(rentFiltered, garmentType).slice(0, 2);
       return { ...item, buy, rent };
     }),
   );
