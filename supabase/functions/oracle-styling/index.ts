@@ -131,6 +131,13 @@ not the phrase, decides). Once established in a conversation, keep it.
 Never ask whether she is a man or a woman; if ambiguous, style the default
 and let her correct naturally.
 
+## PRODUCT SEARCH RULES
+Default to womenswear always. Every product search query MUST include
+"women's" (e.g. "women's olive wool blazer UK"). Only search menswear if
+the user explicitly said they are shopping for a man — never infer it
+from the item type. A suit, blazer, or trousers request from a user is a
+women's suit, women's blazer, women's trousers.
+
 ## BUY vs RENT — you inform, she decides
 Every non-wardrobe item may later be shown with both a buy and a rent price.
 Set rental_market_likely true only for formal, statement, or designer-tier
@@ -986,13 +993,45 @@ function enforceHonestBuyRules(results: any[], limit = 4): any[] {
   return out;
 }
 
+// Womenswear-by-default guarantees. The system prompt tells the model to
+// include "women's" in every query, but we enforce it in code too so a
+// stray menswear query can never leak through to Serper/ShopStyle.
+const WOMEN_TERMS_RE = /\b(women'?s?|woman'?s?|ladies|female|womens)\b/i;
+const MEN_TERMS_RE = /\b(men'?s?|man'?s?|male|mens)\b/i;
+
+function enforceGenderInQuery(query: string, isMenswear: boolean): string {
+  const q = (query || '').trim();
+  if (!q) return q;
+  if (isMenswear) {
+    return MEN_TERMS_RE.test(q) || WOMEN_TERMS_RE.test(q) ? q : `men's ${q}`;
+  }
+  // Womenswear (default): strip any men's terms, then ensure women's is present.
+  let out = q.replace(MEN_TERMS_RE, '').replace(/\s+/g, ' ').trim();
+  if (!WOMEN_TERMS_RE.test(out)) out = `women's ${out}`;
+  return out;
+}
+
+// Result-side guard: drop obvious menswear listings from womenswear searches.
+// "Men" / "Men's" / "Mens" as whole words in the title, never matching
+// "women" or "womens".
+function filterOutMenswear(results: any[], isMenswear: boolean): any[] {
+  if (isMenswear) return results;
+  const menRe = /(^|[^a-z])(men'?s?|mens)([^a-z]|$)/i;
+  return results.filter((r) => {
+    const title = String(r?.product_name || '');
+    // Remove women-substrings first so "women's" doesn't trip the men regex.
+    const stripped = title.replace(/wom[ae]n'?s?/ig, '');
+    return !menRe.test(stripped);
+  });
+}
+
 async function searchItemsForOption(
   supabase: any,
   items: any[],
   rentalPreference: string | undefined,
   stylingCategory: string | undefined,
 ): Promise<any[]> {
-  const genderPrefix = stylingCategory === 'menswear' ? "men's" : "women's";
+  const isMenswear = stylingCategory === 'menswear';
   // Run every item's buy + rent lookups fully in parallel.
   return await Promise.all(
     items.map(async (item: any) => {
@@ -1001,8 +1040,9 @@ async function searchItemsForOption(
         : (typeof item?.name === 'string' ? item.name : '');
       const garmentType = typeof item?.garment_type === 'string' ? item.garment_type : '';
       const includeGarment = garmentType && !keywords.toLowerCase().includes(garmentType.toLowerCase());
-      const baseQuery = [genderPrefix, keywords, includeGarment ? garmentType : '']
+      const rawQuery = [keywords, includeGarment ? garmentType : '']
         .filter(Boolean).join(' ').trim();
+      const baseQuery = enforceGenderInQuery(rawQuery, isMenswear);
       const tier = item?.price_tier || 'mid_range';
       const wantBuy = rentalPreference !== 'rent_only';
       const wantRent =
@@ -1015,8 +1055,10 @@ async function searchItemsForOption(
           ? cachedSearch(supabase, baseQuery, tier, 'rent', () => runRentSearch(baseQuery))
           : Promise.resolve([]),
       ]);
-      const buy = enforceHonestBuyRules(filterByGarmentType(buyRaw, garmentType), 4);
-      const rent = filterByGarmentType(rentRaw, garmentType).slice(0, 2);
+      const buyFiltered = filterOutMenswear(buyRaw, isMenswear);
+      const rentFiltered = filterOutMenswear(rentRaw, isMenswear);
+      const buy = enforceHonestBuyRules(filterByGarmentType(buyFiltered, garmentType), 4);
+      const rent = filterByGarmentType(rentFiltered, garmentType).slice(0, 2);
       return { ...item, buy, rent };
     }),
   );
