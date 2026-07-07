@@ -1,22 +1,42 @@
 
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Upload, Loader2, Sparkles, Palette, AlertCircle } from 'lucide-react';
+import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
+interface ColourItem {
+  name: string;
+  hex: string;
+}
+
+interface Dimension {
+  verdict: string;
+  evidence: string;
+}
+
 interface ColorAnalysis {
+  status?: 'ok' | 'retake';
+  retake_reason?: string | null;
+  season?: string | null;
+  secondary_season?: string | null;
+  confidence?: 'high' | 'medium' | 'low';
   skin_tone: string;
-  undertone: string;
-  seasonal_type: string;
-  best_colours: string[];
-  colours_to_avoid: string[];
-  styling_advice: string;
+  undertone: Dimension | string;
+  value?: Dimension;
+  chroma?: Dimension;
+  best_colours: ColourItem[] | string[];
+  avoid_colours?: ColourItem[];
+  colours_to_avoid?: string[];
+  summary?: string;
+  styling_advice?: string;
+  seasonal_type?: string;
 }
 
 interface StyleProfile {
@@ -30,56 +50,50 @@ interface ColorAnalysisSectionProps {
   onAnalysisImageChange: (file: File | null) => void;
 }
 
-const COLOUR_MAP: Record<string, string> = {
-  black: '#000000', white: '#ffffff', navy: '#1e3a8a', beige: '#f5f5dc',
-  gray: '#6b7280', grey: '#6b7280', brown: '#8b4513', pink: '#ec4899',
-  blue: '#3b82f6', green: '#10b981', red: '#ef4444', yellow: '#f59e0b',
-  purple: '#8b5cf6', orange: '#f97316', teal: '#14b8a6', coral: '#f87171',
-  burgundy: '#800020', olive: '#808000', cream: '#fffdd0', ivory: '#fffff0',
-  lavender: '#e6e6fa', mauve: '#e0b0ff', rust: '#b7410e', sage: '#b2ac88',
-  terracotta: '#e2725b', turquoise: '#40e0d0', gold: '#ffd700', silver: '#c0c0c0',
-  charcoal: '#36454f', khaki: '#c3b091', maroon: '#800000', plum: '#8e4585',
-  'dusty rose': '#dcae96', 'deep red': '#8b0000', 'soft pink': '#ffb6c1',
-  'warm white': '#faf0e6', 'off-white': '#f5f5f0', 'deep blue': '#00008b',
-  'forest green': '#228b22', 'emerald green': '#50c878', 'cobalt blue': '#0047ab',
-  'sky blue': '#87ceeb', 'royal blue': '#4169e1', 'rose': '#ff007f',
-  'camel': '#c19a6b', 'peach': '#ffcba4', 'mint': '#98ff98',
-};
-
-function getColourHex(name: string): string | null {
-  const key = name.toLowerCase().trim();
-  return COLOUR_MAP[key] || null;
+function normaliseColour(c: ColourItem | string): ColourItem {
+  if (typeof c === 'string') return { name: c, hex: '' };
+  return { name: c?.name || '', hex: c?.hex || '' };
 }
 
-const ColourSwatch: React.FC<{ colour: string; variant?: 'best' | 'avoid' }> = ({ colour, variant = 'best' }) => {
-  const hex = getColourHex(colour);
+const ColourSwatch: React.FC<{ colour: ColourItem; variant?: 'best' | 'avoid' }> = ({ colour, variant = 'best' }) => {
+  const hex = colour.hex && /^#[0-9a-fA-F]{6}$/.test(colour.hex) ? colour.hex : null;
   return (
     <div className="flex items-center gap-2">
       {hex ? (
         <span
           className={cn(
-            "w-6 h-6 rounded-full border flex-shrink-0",
-            variant === 'avoid' ? "border-destructive/30" : "border-border"
+            'w-6 h-6 rounded-full border flex-shrink-0',
+            variant === 'avoid' ? 'border-destructive/30' : 'border-border',
           )}
           style={{ backgroundColor: hex }}
         />
       ) : (
         <span className="w-6 h-6 rounded-full border border-border bg-muted flex-shrink-0" />
       )}
-      <span className="text-sm capitalize">{colour}</span>
+      <span className="text-sm capitalize">{colour.name}</span>
     </div>
   );
 };
 
+const confidenceVariant = (c?: string) =>
+  c === 'high' ? 'default' : c === 'low' ? 'destructive' : 'secondary';
+
 const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }: ColorAnalysisSectionProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [retakeReason, setRetakeReason] = useState<string | null>(null);
 
   const analysis = profile?.color_analysis as ColorAnalysis | null;
+  const isValidAnalysis = !!analysis && analysis.status !== 'retake' && Array.isArray(analysis.best_colours);
+
+  const undertoneObj = typeof analysis?.undertone === 'object' ? analysis?.undertone as Dimension : undefined;
+  const undertoneVerdict = typeof analysis?.undertone === 'string' ? analysis?.undertone : undertoneObj?.verdict;
 
   const handleFileSelect = (file: File | null) => {
     onAnalysisImageChange(file);
+    setRetakeReason(null);
     if (file) {
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
@@ -92,14 +106,13 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
     if (!analysisImage) return;
 
     setIsAnalysing(true);
+    setRetakeReason(null);
     try {
-      // 1. Get user
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Please sign in first');
 
-      // 2. Upload to Supabase Storage
       const fileExt = analysisImage.name.split('.').pop() || 'jpg';
-      const filePath = `${user.id}/color-analysis.${fileExt}`;
+      const filePath = `${user.id}/color-analysis-${Date.now()}.${fileExt}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profile-photos')
@@ -111,24 +124,33 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
         .from('profile-photos')
         .getPublicUrl(filePath);
 
-      // 3. Call edge function
       const { data, error } = await supabase.functions.invoke('color-analysis', {
         body: { imageUrl: publicUrl },
       });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
-      if (data?.error) {
-        throw new Error(data.error);
+      const result: ColorAnalysis = data.analysis;
+
+      if (result.status === 'retake') {
+        setRetakeReason(result.retake_reason || 'Please try a clearer photo in even natural light.');
+        toast({
+          title: 'Photo needs a retake',
+          description: result.retake_reason || 'Please try again with better lighting.',
+        });
+        return;
       }
 
       toast({
         title: 'Analysis complete ✨',
-        description: `You're a ${data.analysis.seasonal_type}!`,
+        description: result.season ? `You're a ${result.season}!` : 'Your colour analysis is ready.',
       });
 
-      // Reload profile to show results
-      window.location.reload();
+      // Refresh the profile query so results update in place.
+      await queryClient.invalidateQueries({ queryKey: ['userStyleProfile'] });
+      onAnalysisImageChange(null);
+      setPreviewUrl(null);
     } catch (error: any) {
       console.error('Colour analysis error:', error);
       toast({
@@ -141,6 +163,9 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
     }
   };
 
+  const bestColours = (analysis?.best_colours || []).map(normaliseColour);
+  const avoidColours = (analysis?.avoid_colours || (analysis?.colours_to_avoid as any) || []).map(normaliseColour);
+
   return (
     <Card>
       <CardHeader>
@@ -151,7 +176,6 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Upload section */}
         <div className="space-y-4">
           <div>
             <Label htmlFor="analysis_image" className="text-sm font-medium">
@@ -169,7 +193,6 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
             />
           </div>
 
-          {/* Preview */}
           {(previewUrl || profile?.analysis_image_url) && (
             <div className="flex items-start gap-4">
               <img
@@ -178,11 +201,7 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
                 className="w-24 h-24 rounded-xl object-cover border border-border"
               />
               {analysisImage && (
-                <Button
-                  onClick={handleAnalyse}
-                  disabled={isAnalysing}
-                  className="mt-2"
-                >
+                <Button onClick={handleAnalyse} disabled={isAnalysing} className="mt-2">
                   {isAnalysing ? (
                     <>
                       <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -198,58 +217,110 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
               )}
             </div>
           )}
+
+          {retakeReason && (
+            <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-muted/40">
+              <RefreshCw className="h-4 w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+              <div className="space-y-1">
+                <p className="text-sm font-medium">Let's try another photo</p>
+                <p className="text-sm text-muted-foreground">{retakeReason}</p>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Results */}
-        {analysis && (
+        {isValidAnalysis && analysis && (
           <div className="space-y-6 pt-4 border-t border-border">
-            {/* Season & tone summary */}
-            <div className="flex flex-wrap gap-3">
-              <Badge variant="secondary" className="text-sm px-3 py-1.5">
-                <Palette className="h-3.5 w-3.5 mr-1.5" />
-                {analysis.seasonal_type}
-              </Badge>
+            <div className="flex flex-wrap gap-2">
+              {analysis.season && (
+                <Badge variant="secondary" className="text-sm px-3 py-1.5">
+                  <Palette className="h-3.5 w-3.5 mr-1.5" />
+                  {analysis.season}
+                </Badge>
+              )}
+              {analysis.secondary_season && (
+                <Badge variant="outline" className="text-sm px-3 py-1.5">
+                  Secondary: {analysis.secondary_season}
+                </Badge>
+              )}
+              {analysis.confidence && (
+                <Badge variant={confidenceVariant(analysis.confidence) as any} className="text-sm px-3 py-1.5 capitalize">
+                  {analysis.confidence} confidence
+                </Badge>
+              )}
               <Badge variant="outline" className="text-sm px-3 py-1.5 capitalize">
                 Skin: {analysis.skin_tone}
               </Badge>
-              <Badge variant="outline" className="text-sm px-3 py-1.5 capitalize">
-                Undertone: {analysis.undertone}
-              </Badge>
+              {undertoneVerdict && (
+                <Badge variant="outline" className="text-sm px-3 py-1.5 capitalize">
+                  Undertone: {undertoneVerdict}
+                </Badge>
+              )}
             </div>
 
-            {/* Best colours */}
+            {(undertoneObj?.evidence || analysis.value?.evidence || analysis.chroma?.evidence) && (
+              <div className="grid gap-3 sm:grid-cols-3">
+                {undertoneObj?.evidence && (
+                  <div className="rounded-xl border border-border p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Undertone · <span className="capitalize">{undertoneObj.verdict}</span>
+                    </p>
+                    <p className="text-sm mt-1 leading-relaxed">{undertoneObj.evidence}</p>
+                  </div>
+                )}
+                {analysis.value?.evidence && (
+                  <div className="rounded-xl border border-border p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Value · <span className="capitalize">{analysis.value.verdict}</span>
+                    </p>
+                    <p className="text-sm mt-1 leading-relaxed">{analysis.value.evidence}</p>
+                  </div>
+                )}
+                {analysis.chroma?.evidence && (
+                  <div className="rounded-xl border border-border p-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Chroma · <span className="capitalize">{analysis.chroma.verdict}</span>
+                    </p>
+                    <p className="text-sm mt-1 leading-relaxed">{analysis.chroma.evidence}</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div>
               <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-primary" />
                 Your Best Colours
               </h4>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {analysis.best_colours.map((colour) => (
-                  <ColourSwatch key={colour} colour={colour} variant="best" />
+                {bestColours.map((c, i) => (
+                  <ColourSwatch key={`${c.name}-${i}`} colour={c} variant="best" />
                 ))}
               </div>
             </div>
 
-            {/* Colours to avoid */}
-            <div>
-              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
-                Colours to Avoid
-              </h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {analysis.colours_to_avoid.map((colour) => (
-                  <ColourSwatch key={colour} colour={colour} variant="avoid" />
-                ))}
+            {avoidColours.length > 0 && (
+              <div>
+                <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                  <AlertCircle className="h-3.5 w-3.5 text-muted-foreground" />
+                  Colours to Avoid
+                </h4>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {avoidColours.map((c, i) => (
+                    <ColourSwatch key={`${c.name}-${i}`} colour={c} variant="avoid" />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Styling advice */}
-            <div className="bg-muted/50 rounded-xl p-4">
-              <h4 className="font-semibold text-sm mb-2">Styling Advice</h4>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                {analysis.styling_advice}
-              </p>
-            </div>
+            {(analysis.summary || analysis.styling_advice) && (
+              <div className="bg-muted/50 rounded-xl p-4">
+                <h4 className="font-semibold text-sm mb-2">Styling Advice</h4>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {analysis.summary || analysis.styling_advice}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
