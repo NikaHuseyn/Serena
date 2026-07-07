@@ -1,6 +1,11 @@
 import { pipeline, env } from '@huggingface/transformers';
 import imageCompression from 'browser-image-compression';
-import ColorThief from 'colorthief';
+// The published types point to the Node build (Buffer-based static functions),
+// but at runtime the browser bundle exports a class constructor. Cast to any
+// so TS accepts `new ColorThief()` with HTMLImageElement inputs.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+import ColorThiefImport from 'colorthief';
+const ColorThief = ColorThiefImport as any;
 
 // Configure transformers.js
 env.allowLocalModels = false;
