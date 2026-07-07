@@ -16,11 +16,12 @@ import ConversationHistoryDialog from '@/components/chat/ConversationHistoryDial
 
 const IndexContent = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
-  const { messages, isLoading, sendMessage, clearChat, startAnchoredConversation } = useStylingChat();
+  const { messages, isLoading, sendMessage, clearChat, startAnchoredConversation, loadConversation } = useStylingChat();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const routerLocation = useLocation();
   const [nudgeDismissed, setNudgeDismissed] = useState(() => sessionStorage.getItem('guest_nudge_dismissed') === 'true');
+  const [historyOpen, setHistoryOpen] = useState(false);
 
   // "Style this" entry point from wardrobe: start a fresh anchored chat.
   const anchorHandledRef = useRef(false);
