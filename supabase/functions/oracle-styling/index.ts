@@ -902,12 +902,14 @@ async function runBuySearch(query: string, tier: string): Promise<any[]> {
       searchGoogleShopping(variant, maxPrice),
       searchShopStyle(variant, maxPrice),
     ]);
-    gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), 8);
-    if (gathered.length >= 4) break;
+    // Gather a wider candidate pool so the menswear filter can drop a
+    // handful of items and still leave at least 3 usable buy options.
+    gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), 16);
+    if (gathered.length >= 8) break;
   }
 
-  let realResults = cleanProductResults(prioritizeRetailers(gathered), 4);
-  if (realResults.length < 3) {
+  let realResults = cleanProductResults(prioritizeRetailers(gathered), 12);
+  if (realResults.length < 6) {
     const retailerPool = (BUY_RETAILERS_BY_TIER[tier] || BUY_RETAILERS_BY_TIER.mid_range).slice(0, 4);
     const [webResults, firecrawlResults] = await Promise.all([
       Promise.all(retailerPool.map((r) => searchSerperRetailer(variants[1] || query, r))),
@@ -916,7 +918,7 @@ async function runBuySearch(query: string, tier: string): Promise<any[]> {
     const merged = [...gathered, ...realResults, ...webResults.filter(Boolean), ...firecrawlResults.filter(Boolean)];
     realResults = cleanProductResults(
       prioritizeRetailers(preferGoogleThumbnails(merged)),
-      4,
+      12,
     );
   } else {
     realResults = preferGoogleThumbnails(realResults);
