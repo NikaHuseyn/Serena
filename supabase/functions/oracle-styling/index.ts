@@ -1012,16 +1012,41 @@ function enforceGenderInQuery(query: string, isMenswear: boolean): string {
 }
 
 // Result-side guard: drop obvious menswear listings from womenswear searches.
-// "Men" / "Men's" / "Mens" as whole words in the title, never matching
-// "women" or "womens".
+// Checks the title, the product URL (for /men/, /mens/, /men-, /mens-,
+// "menswear" path segments), and any displayed source / retailer /
+// breadcrumb / category text. "Men" / "Men's" / "Mens" match as whole
+// words only, never matching "women" or "womens".
 function filterOutMenswear(results: any[], isMenswear: boolean): any[] {
   if (isMenswear) return results;
-  const menRe = /(^|[^a-z])(men'?s?|mens)([^a-z]|$)/i;
+  const menWordRe = /(^|[^a-z])(men'?s?|mens)([^a-z]|$)/i;
+  // URL path segments that unambiguously indicate a men's department.
+  const menUrlRe = /(\/men\/|\/mens\/|\/men-|\/mens-|menswear)/i;
+  const stripWomen = (s: string) => s.replace(/wom[ae]n'?s?/ig, '');
   return results.filter((r) => {
-    const title = String(r?.product_name || '');
-    // Remove women-substrings first so "women's" doesn't trip the men regex.
-    const stripped = title.replace(/wom[ae]n'?s?/ig, '');
-    return !menRe.test(stripped);
+    const title = stripWomen(String(r?.product_name || ''));
+    if (menWordRe.test(title)) return false;
+
+    const url = String(r?.product_url || '');
+    // Strip "women" substrings from the URL so "/womens-" etc don't match.
+    const strippedUrl = url.replace(/wom[ae]ns?/ig, '');
+    if (menUrlRe.test(strippedUrl)) return false;
+
+    // Displayed source / retailer / breadcrumb / category text.
+    const extras = [
+      r?.retailer,
+      r?.source_label,
+      r?.breadcrumb,
+      r?.breadcrumbs,
+      r?.category,
+      r?.department,
+    ]
+      .flat()
+      .filter((x) => typeof x === 'string')
+      .map((x: string) => stripWomen(x))
+      .join(' ');
+    if (extras && (menWordRe.test(extras) || /menswear/i.test(extras))) return false;
+
+    return true;
   });
 }
 
