@@ -3,6 +3,12 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "overrides": {
+    "protobufjs": "^7.5.3"
+  },
+  "resolutions": {
+    "protobufjs": "^7.5.3"
+  },
   "scripts": {
     "dev": "vite",
     "build": "vite build",
