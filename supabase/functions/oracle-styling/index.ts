@@ -993,6 +993,38 @@ function enforceHonestBuyRules(results: any[], limit = 4): any[] {
   return out;
 }
 
+// Womenswear-by-default guarantees. The system prompt tells the model to
+// include "women's" in every query, but we enforce it in code too so a
+// stray menswear query can never leak through to Serper/ShopStyle.
+const WOMEN_TERMS_RE = /\b(women'?s?|woman'?s?|ladies|female|womens)\b/i;
+const MEN_TERMS_RE = /\b(men'?s?|man'?s?|male|mens)\b/i;
+
+function enforceGenderInQuery(query: string, isMenswear: boolean): string {
+  const q = (query || '').trim();
+  if (!q) return q;
+  if (isMenswear) {
+    return MEN_TERMS_RE.test(q) || WOMEN_TERMS_RE.test(q) ? q : `men's ${q}`;
+  }
+  // Womenswear (default): strip any men's terms, then ensure women's is present.
+  let out = q.replace(MEN_TERMS_RE, '').replace(/\s+/g, ' ').trim();
+  if (!WOMEN_TERMS_RE.test(out)) out = `women's ${out}`;
+  return out;
+}
+
+// Result-side guard: drop obvious menswear listings from womenswear searches.
+// "Men" / "Men's" / "Mens" as whole words in the title, never matching
+// "women" or "womens".
+function filterOutMenswear(results: any[], isMenswear: boolean): any[] {
+  if (isMenswear) return results;
+  const menRe = /(^|[^a-z])(men'?s?|mens)([^a-z]|$)/i;
+  return results.filter((r) => {
+    const title = String(r?.product_name || '');
+    // Remove women-substrings first so "women's" doesn't trip the men regex.
+    const stripped = title.replace(/wom[ae]n'?s?/ig, '');
+    return !menRe.test(stripped);
+  });
+}
+
 async function searchItemsForOption(
   supabase: any,
   items: any[],
