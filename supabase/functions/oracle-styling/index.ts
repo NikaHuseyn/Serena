@@ -200,7 +200,7 @@ const provideStylingResponseTool = {
       "that happens in a separate step after the user confirms interest.",
     parameters: {
       type: "object",
-      required: ["mode", "outfit_options", "reply_text"],
+      required: ["mode", "outfit_options", "reply_text", "styling_category"],
       properties: {
         mode: {
           type: "string",
