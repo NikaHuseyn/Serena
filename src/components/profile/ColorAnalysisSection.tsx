@@ -239,10 +239,10 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
             />
           </div>
 
-          {(previewUrl || profile?.analysis_image_url) && (
+          {(previewUrl || storedSignedUrl) && (
             <div className="flex items-start gap-4">
               <img
-                src={previewUrl || profile?.analysis_image_url}
+                src={previewUrl || storedSignedUrl || ''}
                 alt="Analysis photo"
                 className="w-24 h-24 rounded-xl object-cover border border-border"
               />
