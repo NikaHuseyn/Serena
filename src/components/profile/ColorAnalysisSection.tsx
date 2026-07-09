@@ -83,7 +83,32 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
   const queryClient = useQueryClient();
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [storedSignedUrl, setStoredSignedUrl] = useState<string | null>(null);
   const [retakeReason, setRetakeReason] = useState<string | null>(null);
+
+  // Generate a signed URL for the stored analysis image path on render.
+  React.useEffect(() => {
+    let cancelled = false;
+    const path = profile?.analysis_image_url;
+    if (!path) {
+      setStoredSignedUrl(null);
+      return;
+    }
+    // If it's already a full URL (legacy), just use it.
+    if (/^https?:\/\//i.test(path)) {
+      setStoredSignedUrl(path);
+      return;
+    }
+    supabase.storage
+      .from('profile-photos')
+      .createSignedUrl(path, 60 * 15)
+      .then(({ data }) => {
+        if (!cancelled) setStoredSignedUrl(data?.signedUrl ?? null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile?.analysis_image_url]);
 
   const analysis = profile?.color_analysis as ColorAnalysis | null;
   const isValidAnalysis = !!analysis && analysis.status !== 'retake' && Array.isArray(analysis.best_colours);
