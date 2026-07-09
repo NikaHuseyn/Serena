@@ -145,12 +145,16 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
 
       if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
+      const { data: signedData, error: signedErr } = await supabase.storage
         .from('profile-photos')
-        .getPublicUrl(filePath);
+        .createSignedUrl(filePath, 60 * 15);
+
+      if (signedErr || !signedData?.signedUrl) {
+        throw signedErr || new Error('Could not create signed URL');
+      }
 
       const { data, error } = await supabase.functions.invoke('color-analysis', {
-        body: { imageUrl: publicUrl },
+        body: { imageUrl: signedData.signedUrl },
       });
 
       if (error) throw error;
@@ -159,12 +163,29 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
       const result: ColorAnalysis = data.analysis;
 
       if (result.status === 'retake') {
+        // Delete the just-uploaded photo since it was rejected.
+        await supabase.storage.from('profile-photos').remove([filePath]);
         setRetakeReason(result.retake_reason || 'Please try a clearer photo in even natural light.');
         toast({
           title: 'Photo needs a retake',
           description: result.retake_reason || 'Please try again with better lighting.',
         });
         return;
+      }
+
+      // Success: delete older color-analysis-* files, keeping only the latest.
+      try {
+        const { data: listed } = await supabase.storage
+          .from('profile-photos')
+          .list(user.id, { limit: 100 });
+        const stale = (listed || [])
+          .filter((f) => f.name.startsWith('color-analysis-') && f.name !== filePath.split('/').pop())
+          .map((f) => `${user.id}/${f.name}`);
+        if (stale.length > 0) {
+          await supabase.storage.from('profile-photos').remove(stale);
+        }
+      } catch (cleanupErr) {
+        console.warn('Cleanup of old analysis photos failed:', cleanupErr);
       }
 
       toast({
