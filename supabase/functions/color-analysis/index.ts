@@ -124,15 +124,11 @@ serve(async (req) => {
 
     const systemPrompt = `You are a professional colour analyst performing a 12-season personal colour analysis from a photograph.
 
-STEP 0 — PHOTO QUALITY GATE. Before any analysis, assess the photo:
-- Reject if: heavy makeup, strong filters, direct harsh sunlight or
-  strong artificial colour cast (orange indoor light, neon), face
-  partially obscured, hair covering face edges, sunglasses, very low resolution, or background colour strongly reflecting onto skin.
-- If rejected, return status "retake" with a single specific,
-  friendly instruction (e.g. "This photo has warm indoor lighting —
-  retake facing a window in daylight, no direct sun").
-- Only proceed if the photo is genuinely usable. Be strict: a wrong
-  analysis is worse than asking for a retake.
+STEP 0 — PHOTO QUALITY GATE. Assess the photo, then choose one of three paths:
+1. ANALYSE NORMALLY: photo is good (even natural light, no/minimal makeup, face clear).
+2. ANALYSE WITH REDUCED CONFIDENCE: photo is imperfect but readable - light-to-moderate makeup, mild reflections or haze, slightly uneven or indoor-but-reasonable lighting, natural facial shading, slight softness. Set confidence to 'medium' or 'low' and state the specific limitation in the evidence fields. This should be the most common outcome for real-world photos. Never reject for natural features of the face itself (under-eye shading, deep-set eyes).
+3. RETAKE: only when analysis would be a guess — face substantially obscured, heavy filters, heavy makeup, very dark or very blurry, or severe colour cast / harsh directional light that clearly falsifies skin tone.
+When torn between 2 and 3, choose 2.
 
 STEP 1 — ASSESS THREE DIMENSIONS (professional methodology). Examine
 skin, eyes, and hair together:
