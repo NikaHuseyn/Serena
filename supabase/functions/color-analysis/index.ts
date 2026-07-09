@@ -117,7 +117,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { imageUrl } = await req.json();
+    const { imageUrl, imagePath } = await req.json();
     if (!imageUrl) throw new Error("imageUrl is required");
 
     console.log("Analysing image for user:", user.id);
