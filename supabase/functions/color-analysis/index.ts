@@ -309,7 +309,7 @@ Use British English throughout. Never guess on an unusable photo - return the re
       .from("user_style_profiles")
       .update({
         color_analysis: analysis,
-        analysis_image_url: imageUrl,
+        analysis_image_url: imagePath || imageUrl,
         skin_tone: analysis.skin_tone,
         updated_at: new Date().toISOString(),
       })
