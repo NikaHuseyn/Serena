@@ -117,7 +117,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) throw new Error("Unauthorized");
 
-    const { imageUrl } = await req.json();
+    const { imageUrl, imagePath } = await req.json();
     if (!imageUrl) throw new Error("imageUrl is required");
 
     console.log("Analysing image for user:", user.id);
@@ -125,10 +125,10 @@ serve(async (req) => {
     const systemPrompt = `You are a professional colour analyst performing a 12-season personal colour analysis from a photograph.
 
 STEP 0 — PHOTO QUALITY GATE. Assess the photo, then choose one of three paths:
-1. ANALYSE NORMALLY: photo is good (even natural light, no/minimal makeup, face clear).
-2. ANALYSE WITH REDUCED CONFIDENCE: photo is imperfect but readable - light-to-moderate makeup, mild reflections or haze, slightly uneven or indoor-but-reasonable lighting, natural facial shading, slight softness. Set confidence to 'medium' or 'low' and state the specific limitation in the evidence fields. This should be the most common outcome for real-world photos. Never reject for natural features of the face itself (under-eye shading, deep-set eyes).
-3. RETAKE: only when analysis would be a guess — face substantially obscured, heavy filters, heavy makeup, very dark or very blurry, or severe colour cast / harsh directional light that clearly falsifies skin tone.
-When torn between 2 and 3, choose 2.
+1. ANALYSE NORMALLY: bare-faced, even natural light, face clear.
+2. ANALYSE WITH REDUCED CONFIDENCE: bare-faced but imperfect — mild reflections or haze, slightly uneven or indoor-but-reasonable lighting, slight softness. Set confidence to 'medium' or 'low' and name the specific limitation in the evidence fields.
+3. RETAKE: ANY visible makeup (eyeliner, mascara, lipstick, foundation — any amount), heavy filters, face substantially obscured, very dark or very blurry, or severe colour cast / harsh directional light. Makeup of any kind is always a retake — state which makeup was detected in the retake_reason.
+Never reject for natural features of the face itself (under-eye shading, deep-set eyes).
 
 STEP 1 — ASSESS THREE DIMENSIONS (professional methodology). Examine
 skin, eyes, and hair together:
@@ -309,7 +309,7 @@ Use British English throughout. Never guess on an unusable photo - return the re
       .from("user_style_profiles")
       .update({
         color_analysis: analysis,
-        analysis_image_url: imageUrl,
+        analysis_image_url: imagePath || imageUrl,
         skin_tone: analysis.skin_tone,
         updated_at: new Date().toISOString(),
       })

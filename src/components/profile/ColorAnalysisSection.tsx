@@ -154,7 +154,7 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
       }
 
       const { data, error } = await supabase.functions.invoke('color-analysis', {
-        body: { imageUrl: signedData.signedUrl },
+        body: { imageUrl: signedData.signedUrl, imagePath: filePath },
       });
 
       if (error) throw error;
