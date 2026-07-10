@@ -516,9 +516,9 @@ serve(async (req) => {
 
 STEP 0 — PHOTO QUALITY GATE. Assess the photo, then choose one of three paths:
 1. ANALYSE NORMALLY: bare-faced, even natural light, face clear.
-2. ANALYSE WITH REDUCED CONFIDENCE: bare-faced but imperfect — mild reflections or haze, slightly uneven or indoor-but-reasonable lighting, slight softness. Set confidence to 'medium' or 'low' and name the specific limitation in the evidence fields.
-3. RETAKE: ANY visible makeup (eyeliner, mascara, lipstick, foundation — any amount), heavy filters, face substantially obscured, very dark or very blurry, or severe colour cast / harsh directional light. Makeup of any kind is always a retake — state which makeup was detected in the retake_reason.
-Never reject for natural features of the face itself (under-eye shading, deep-set eyes).
+2. ANALYSE WITH REDUCED CONFIDENCE: bare-faced but imperfect — mild reflections or haze, slightly uneven or indoor-but-reasonable lighting, slight softness; OR makeup is merely possible or subtle (defined lashes/brows, or natural-looking lip colour that MIGHT be product) and cannot be ruled out. Cap confidence at 'medium' (use 'low' if also poorly lit) and name the specific limitation in the evidence fields — including a note that subtle makeup could not be ruled out, when relevant.
+3. RETAKE: clearly visible or heavy makeup (obvious foundation, bold eye looks such as strong eyeliner/eyeshadow/heavy mascara, strong or bold lipstick), heavy filters, face substantially obscured, very dark or very blurry, or severe colour cast / harsh directional light that clearly falsifies skin tone. When rejecting for makeup, state which makeup was detected in the retake_reason.
+Never reject for natural features of the face itself (under-eye shading, deep-set eyes, natural dark lashes, full brows, natural lip pigmentation — these are features, not makeup).
 
 STEP 1 — ASSESS THREE DIMENSIONS (professional methodology). Examine
 skin, eyes, and hair together:
