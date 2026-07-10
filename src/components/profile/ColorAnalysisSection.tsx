@@ -217,7 +217,7 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
       });
 
       // Refresh the profile query so results update in place.
-      await queryClient.invalidateQueries({ queryKey: ['userStyleProfile'] });
+      await queryClient.refetchQueries({ queryKey: ['userStyleProfile'], type: 'active' });
       onAnalysisImageChange(null);
       setPreviewUrl(null);
     } catch (error: any) {
