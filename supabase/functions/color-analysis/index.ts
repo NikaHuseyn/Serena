@@ -528,6 +528,8 @@ skin, eyes, and hair together:
   or muted and blended.
 State the evidence for each judgment explicitly.
 
+CONFIDENCE RULE: If undertone is neutral or near-neutral (evidence points both ways), confidence MUST be 'medium' at most, secondary_season MUST name the sister season on the other temperature side (e.g. Soft Autumn ↔ Soft Summer), and the summary must say the person sits between the two and both palettes are worth exploring. 'High' confidence is reserved for unambiguous colouring.
+
 STEP 2 — MAP TO ONE OF THE 12 SEASONS: Light Spring, True Spring,
 Bright Spring, Light Summer, True Summer, Soft Summer, Soft Autumn,
 True Autumn, Deep Autumn, Deep Winter, True Winter, Bright Winter.
@@ -585,6 +587,7 @@ Use British English throughout. Never guess on an unusable photo - return the re
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        temperature: 0.1,
         messages: [
           { role: "system", content: systemPrompt },
           {
