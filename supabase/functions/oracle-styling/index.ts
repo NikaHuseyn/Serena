@@ -913,25 +913,29 @@ function preferGoogleThumbnails(results: any[]): any[] {
   });
 }
 
-async function runBuySearch(query: string, tier: string): Promise<any[]> {
+async function runBuySearch(query: string, tier: string, deep = false): Promise<any[]> {
   const maxPrice = priceTierMax(tier);
   const variants = buildProductQueryVariants(query);
   let gathered: any[] = [];
+
+  const candidateTarget = deep ? 20 : 8;
+  const poolCap = deep ? 32 : 16;
+  const finalCap = deep ? 24 : 12;
 
   for (const variant of variants) {
     const [g, s] = await Promise.all([
       searchGoogleShopping(variant, maxPrice),
       searchShopStyle(variant, maxPrice),
     ]);
-    // Gather a wider candidate pool so the menswear filter can drop a
-    // handful of items and still leave at least 3 usable buy options.
-    gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), 16);
-    if (gathered.length >= 8) break;
+    // Gather a wider candidate pool so the menswear/colour filters can
+    // drop a handful of items and still leave at least 3 usable buy options.
+    gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), poolCap);
+    if (gathered.length >= candidateTarget) break;
   }
 
-  let realResults = cleanProductResults(prioritizeRetailers(gathered), 12);
-  if (realResults.length < 6) {
-    const retailerPool = (BUY_RETAILERS_BY_TIER[tier] || BUY_RETAILERS_BY_TIER.mid_range).slice(0, 4);
+  let realResults = cleanProductResults(prioritizeRetailers(gathered), finalCap);
+  if (deep || realResults.length < 6) {
+    const retailerPool = (BUY_RETAILERS_BY_TIER[tier] || BUY_RETAILERS_BY_TIER.mid_range).slice(0, deep ? 6 : 4);
     const [webResults, firecrawlResults] = await Promise.all([
       Promise.all(retailerPool.map((r) => searchSerperRetailer(variants[1] || query, r))),
       Promise.all(retailerPool.map((r) => searchFirecrawlRetailer(variants[1] || query, r))),
@@ -939,7 +943,7 @@ async function runBuySearch(query: string, tier: string): Promise<any[]> {
     const merged = [...gathered, ...realResults, ...webResults.filter(Boolean), ...firecrawlResults.filter(Boolean)];
     realResults = cleanProductResults(
       prioritizeRetailers(preferGoogleThumbnails(merged)),
-      12,
+      finalCap,
     );
   } else {
     realResults = preferGoogleThumbnails(realResults);
