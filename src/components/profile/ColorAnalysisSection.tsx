@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -89,31 +89,51 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
   const [storedSignedUrl, setStoredSignedUrl] = useState<string | null>(null);
   const [retakeReason, setRetakeReason] = useState<string | null>(null);
 
+  // Read the freshest style-profile row directly so analysis results and the
+  // stored image path always reflect the latest DB state, independent of the
+  // parent's local state.
+  const { data: liveProfile } = useQuery({
+    queryKey: ['userStyleProfile'],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('user_style_profiles')
+        .select('*')
+        .eq('user_id', user.id)
+        .single();
+      if (error && error.code !== 'PGRST116') throw error;
+      return data;
+    },
+  });
+
+  const effectiveProfile: StyleProfile | null = (liveProfile as any) || profile || null;
+  const storedPath = effectiveProfile?.analysis_image_url;
+
   // Generate a signed URL for the stored analysis image path on render.
   React.useEffect(() => {
     let cancelled = false;
-    const path = profile?.analysis_image_url;
-    if (!path) {
+    if (!storedPath) {
       setStoredSignedUrl(null);
       return;
     }
     // If it's already a full URL (legacy), just use it.
-    if (/^https?:\/\//i.test(path)) {
-      setStoredSignedUrl(path);
+    if (/^https?:\/\//i.test(storedPath)) {
+      setStoredSignedUrl(storedPath);
       return;
     }
     supabase.storage
       .from('profile-photos')
-      .createSignedUrl(path, 60 * 15)
+      .createSignedUrl(storedPath, 60 * 15)
       .then(({ data }) => {
         if (!cancelled) setStoredSignedUrl(data?.signedUrl ?? null);
       });
     return () => {
       cancelled = true;
     };
-  }, [profile?.analysis_image_url]);
+  }, [storedPath]);
 
-  const analysis = profile?.color_analysis as ColorAnalysis | null;
+  const analysis = effectiveProfile?.color_analysis as ColorAnalysis | null;
   const isValidAnalysis = !!analysis && analysis.status !== 'retake' && Array.isArray(analysis.best_colours);
 
   const undertoneObj = typeof analysis?.undertone === 'object' ? analysis?.undertone as Dimension : undefined;
@@ -197,7 +217,7 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
       });
 
       // Refresh the profile query so results update in place.
-      await queryClient.invalidateQueries({ queryKey: ['userStyleProfile'] });
+      await queryClient.refetchQueries({ queryKey: ['userStyleProfile'], type: 'active' });
       onAnalysisImageChange(null);
       setPreviewUrl(null);
     } catch (error: any) {
