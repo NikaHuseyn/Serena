@@ -234,10 +234,9 @@ Use British English throughout. Never guess on an unusable photo - return the re
                   "undertone",
                   "value",
                   "chroma",
-                  "best_colours",
-                  "avoid_colours",
                   "summary",
                 ],
+
                 additionalProperties: false,
               },
             },
