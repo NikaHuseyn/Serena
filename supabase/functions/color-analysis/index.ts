@@ -284,7 +284,28 @@ Use British English throughout. Never guess on an unusable photo - return the re
       );
     }
 
-    // Validate & sanitise hex codes.
+    // Canonical per-season palette lookup — best/avoid colours come from
+    // SEASON_PALETTES, not the AI. Fall back to the AI's own colours if the
+    // returned season name is not in the map.
+    const seasonKey = typeof raw.season === "string" ? raw.season.trim() : "";
+    const palette = SEASON_PALETTES[seasonKey];
+    let bestColours: Array<{ name: string; hex: string; group?: string }>;
+    let avoidColours: Array<{ name: string; hex: string }>;
+    if (palette) {
+      bestColours = [
+        ...palette.neutrals.map((c) => ({ ...c, group: "neutral" as const })),
+        ...palette.accents.map((c) => ({ ...c, group: "accent" as const })),
+        ...palette.statements.map((c) => ({ ...c, group: "statement" as const })),
+      ];
+      avoidColours = palette.avoid.map((c) => ({ name: c.name, hex: c.hex }));
+    } else {
+      console.warn(
+        `Season "${seasonKey}" not found in SEASON_PALETTES — falling back to AI-generated colours.`,
+      );
+      bestColours = sanitiseColourList(raw.best_colours);
+      avoidColours = sanitiseColourList(raw.avoid_colours);
+    }
+
     const analysis = {
       status: "ok" as const,
       retake_reason: null,
@@ -295,10 +316,11 @@ Use British English throughout. Never guess on an unusable photo - return the re
       undertone: raw.undertone,
       value: raw.value,
       chroma: raw.chroma,
-      best_colours: sanitiseColourList(raw.best_colours),
-      avoid_colours: sanitiseColourList(raw.avoid_colours),
+      best_colours: bestColours,
+      avoid_colours: avoidColours,
       summary: raw.summary,
     };
+
 
     // Save to profile
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
