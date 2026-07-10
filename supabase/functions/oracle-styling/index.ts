@@ -1167,13 +1167,31 @@ async function searchItemsForOption(
   // Run every item's buy + rent lookups fully in parallel.
   return await Promise.all(
     items.map(async (item: any) => {
-      const keywords = Array.isArray(item?.search_keywords) && item.search_keywords.length > 0
-        ? item.search_keywords.filter((k: any) => typeof k === 'string' && k.trim()).join(' ')
+      const keywordsList = Array.isArray(item?.search_keywords)
+        ? item.search_keywords.filter((k: any) => typeof k === 'string' && k.trim())
+        : [];
+      const keywords = keywordsList.length > 0
+        ? keywordsList.join(' ')
         : (typeof item?.name === 'string' ? item.name : '');
       const garmentType = typeof item?.garment_type === 'string' ? item.garment_type : '';
-      const includeGarment = garmentType && !keywords.toLowerCase().includes(garmentType.toLowerCase());
-      const rawQuery = [keywords, includeGarment ? garmentType : '']
-        .filter(Boolean).join(' ').trim();
+      // Detect a colour anywhere in the item's stated identity (keywords or name).
+      const colourSource = `${keywords} ${typeof item?.name === 'string' ? item.name : ''}`;
+      const requestedColour = detectColourInText(colourSource);
+      // Lead the retailer query with colour + garment when a colour is
+      // named, e.g. "sage green midi dress" → "sage midi dress" first.
+      let rawQuery: string;
+      if (requestedColour && garmentType) {
+        const rest = keywords
+          .toLowerCase()
+          .replace(new RegExp(`\\b${requestedColour.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '')
+          .replace(new RegExp(`\\b${garmentType.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}s?\\b`, 'i'), '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        rawQuery = [requestedColour, garmentType, rest].filter(Boolean).join(' ').trim();
+      } else {
+        const includeGarment = garmentType && !keywords.toLowerCase().includes(garmentType.toLowerCase());
+        rawQuery = [keywords, includeGarment ? garmentType : ''].filter(Boolean).join(' ').trim();
+      }
       const baseQuery = enforceGenderInQuery(rawQuery, isMenswear);
       const tier = item?.price_tier || 'mid_range';
       const wantBuy = rentalPreference !== 'rent_only';
@@ -1187,10 +1205,34 @@ async function searchItemsForOption(
           ? cachedSearch(supabase, baseQuery, tier, 'rent', () => runRentSearch(baseQuery))
           : Promise.resolve([]),
       ]);
-      const buyFiltered = filterOutMenswear(buyRaw, isMenswear);
-      const rentFiltered = filterOutMenswear(rentRaw, isMenswear);
-      const buy = enforceHonestBuyRules(filterByGarmentType(buyFiltered, garmentType), 4);
-      const rent = filterByGarmentType(rentFiltered, garmentType).slice(0, 2);
+
+      const applyBuyFilters = (raw: any[]) => {
+        const m = filterOutMenswear(raw, isMenswear);
+        const g = filterByGarmentType(m, garmentType);
+        const c = filterByColour(g, requestedColour);
+        return c;
+      };
+
+      let buyFiltered = applyBuyFilters(buyRaw);
+      // If garment/colour filter thinned results below 3, fetch a deeper
+      // candidate pool via the existing search-depth mechanism and retry.
+      if (wantBuy && baseQuery && buyFiltered.length < 3) {
+        const deepRaw = await cachedSearch(
+          supabase,
+          `${baseQuery} __deep`,
+          tier,
+          'buy',
+          () => runBuySearch(baseQuery, tier, true),
+        );
+        buyFiltered = applyBuyFilters(deepRaw);
+      }
+      const buy = enforceHonestBuyRules(buyFiltered, 4);
+
+      const rentFiltered = filterByColour(
+        filterByGarmentType(filterOutMenswear(rentRaw, isMenswear), garmentType),
+        requestedColour,
+      );
+      const rent = rentFiltered.slice(0, 2);
       return { ...item, buy, rent };
     }),
   );
