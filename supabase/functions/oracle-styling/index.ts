@@ -1004,6 +1004,86 @@ function filterByGarmentType(results: any[], garmentType: string | undefined): a
   return results.filter((r) => re.test(String(r?.product_name || '')));
 }
 
+// -----------------------------------------------------------------------
+// Colour matching — palette or overridden, the query follows the item's
+// stated colour. Neighbouring shades (sage/olive/khaki, terracotta/rust,
+// navy/dark blue) count as compatible; titles naming no colour always pass.
+// -----------------------------------------------------------------------
+const COLOUR_WORDS = [
+  'black','white','ivory','cream','off-white','beige','tan','camel','nude','stone','sand',
+  'grey','gray','charcoal','silver','gold','champagne','bronze','copper',
+  'navy','dark blue','midnight','blue','sky','cobalt','denim','indigo',
+  'green','sage','olive','khaki','emerald','forest','mint','teal',
+  'red','burgundy','wine','maroon','crimson','scarlet',
+  'pink','blush','rose','fuchsia','magenta','coral',
+  'orange','terracotta','rust',
+  'yellow','mustard','ochre',
+  'purple','lilac','lavender','plum','violet',
+  'brown','chocolate','mocha',
+];
+
+const COLOUR_NEIGHBOUR_GROUPS: string[][] = [
+  ['sage','olive','khaki'],
+  ['terracotta','rust'],
+  ['navy','dark blue','midnight','indigo'],
+  ['beige','tan','camel','nude','stone','sand','cream','ivory','off-white'],
+  ['burgundy','wine','maroon'],
+  ['pink','blush','rose'],
+  ['grey','gray','charcoal'],
+  ['red','crimson','scarlet'],
+  ['blue','sky','cobalt','denim'],
+  ['green','emerald','forest','mint','teal'],
+  ['yellow','mustard','ochre'],
+  ['purple','lilac','lavender','plum','violet'],
+  ['brown','chocolate','mocha'],
+  ['orange','coral'],
+  ['white','ivory','cream','off-white'],
+  ['gold','champagne','bronze','copper'],
+];
+
+function detectColourInText(text: string): string | null {
+  const lower = ` ${String(text || '').toLowerCase()} `;
+  // longest-first so "dark blue" beats "blue"
+  const sorted = [...COLOUR_WORDS].sort((a, b) => b.length - a.length);
+  for (const c of sorted) {
+    const re = new RegExp(`(^|[^a-z])${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`, 'i');
+    if (re.test(lower)) return c;
+  }
+  return null;
+}
+
+function coloursCompatible(requested: string, found: string): boolean {
+  const a = requested.toLowerCase();
+  const b = found.toLowerCase();
+  if (a === b) return true;
+  for (const group of COLOUR_NEIGHBOUR_GROUPS) {
+    if (group.includes(a) && group.includes(b)) return true;
+  }
+  return false;
+}
+
+// Drop results whose title contains a clearly contradicting colour word,
+// UNLESS the title also contains the requested colour. Titles with no
+// colour word always pass.
+function filterByColour(results: any[], requestedColour: string | null): any[] {
+  if (!requestedColour) return results;
+  const req = requestedColour.toLowerCase();
+  return results.filter((r) => {
+    const title = String(r?.product_name || '');
+    if (!title) return true;
+    const lower = ` ${title.toLowerCase()} `;
+    // If the title contains the requested colour (or a neighbour), keep.
+    const found = detectColourInText(title);
+    if (!found) return true; // no colour named → pass
+    if (coloursCompatible(req, found)) return true;
+    // Title names some colour, but incompatible. Still keep if the
+    // requested colour appears anywhere in the title too.
+    const reqRe = new RegExp(`(^|[^a-z])${req.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`, 'i');
+    return reqRe.test(lower);
+  });
+}
+
+
 // Buy cards must be real, specific products with a price. Allow at most one
 // price-missing card, and only when fewer than 3 priced results exist.
 function enforceHonestBuyRules(results: any[], limit = 4): any[] {
