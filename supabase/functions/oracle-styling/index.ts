@@ -393,6 +393,17 @@ const provideStylingResponseTool = {
             "when the user says so in her own words at any point — track " +
             "this across turns via accumulated context, do not ask.",
         },
+        colour_override: {
+          type: "boolean",
+          description:
+            "Default false. Set true when the user has explicitly asked " +
+            "for a specific colour outside her colour analysis palette, or " +
+            "asked (in any wording) to ignore/step outside her palette. " +
+            "When true, every item's search_keywords MUST contain the " +
+            "actual colour word she requested, so the product search " +
+            "follows her wish rather than the palette default. Sticky for " +
+            "the conversation until she indicates otherwise.",
+        },
         reply_text: {
           type: "string",
           description:
