@@ -231,7 +231,7 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
               Upload a well-lit photo of your face for AI colour analysis
             </Label>
             <p className="text-xs text-muted-foreground mt-1 mb-3">
-              Natural lighting works best — avoid heavy filters or makeup
+              For the most accurate result: no makeup, daylight facing a window, hair back, no filters.
             </p>
             <Input
               id="analysis_image"
