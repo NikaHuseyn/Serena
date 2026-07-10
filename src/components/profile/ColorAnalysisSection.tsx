@@ -54,8 +54,9 @@ interface ColorAnalysisSectionProps {
 
 function normaliseColour(c: ColourItem | string): ColourItem {
   if (typeof c === 'string') return { name: c, hex: '' };
-  return { name: c?.name || '', hex: c?.hex || '' };
+  return { name: c?.name || '', hex: c?.hex || '', group: (c as any)?.group };
 }
+
 
 const ColourSwatch: React.FC<{ colour: ColourItem; variant?: 'best' | 'avoid' }> = ({ colour, variant = 'best' }) => {
   const hex = colour.hex && /^#[0-9a-fA-F]{6}$/.test(colour.hex) ? colour.hex : null;
