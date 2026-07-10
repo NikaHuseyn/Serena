@@ -1587,6 +1587,7 @@ export type Database = {
         Args: { event_data?: Json; event_type: string }
         Returns: undefined
       }
+      purge_user_data: { Args: { target_user: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never

@@ -14,7 +14,9 @@ import { cn } from '@/lib/utils';
 interface ColourItem {
   name: string;
   hex: string;
+  group?: 'neutral' | 'accent' | 'statement' | string;
 }
+
 
 interface Dimension {
   verdict: string;
@@ -52,8 +54,9 @@ interface ColorAnalysisSectionProps {
 
 function normaliseColour(c: ColourItem | string): ColourItem {
   if (typeof c === 'string') return { name: c, hex: '' };
-  return { name: c?.name || '', hex: c?.hex || '' };
+  return { name: c?.name || '', hex: c?.hex || '', group: (c as any)?.group };
 }
+
 
 const ColourSwatch: React.FC<{ colour: ColourItem; variant?: 'best' | 'avoid' }> = ({ colour, variant = 'best' }) => {
   const hex = colour.hex && /^#[0-9a-fA-F]{6}$/.test(colour.hex) ? colour.hex : null;
@@ -333,17 +336,53 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
               </div>
             )}
 
-            <div>
-              <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-primary" />
-                Your Best Colours
-              </h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {bestColours.map((c, i) => (
-                  <ColourSwatch key={`${c.name}-${i}`} colour={c} variant="best" />
-                ))}
-              </div>
-            </div>
+            {(() => {
+              const neutrals = bestColours.filter((c) => c.group === 'neutral');
+              const accents = bestColours.filter((c) => c.group === 'accent');
+              const statements = bestColours.filter((c) => c.group === 'statement');
+              const ungrouped = bestColours.filter(
+                (c) => c.group !== 'neutral' && c.group !== 'accent' && c.group !== 'statement',
+              );
+              const hasGroups = neutrals.length + accents.length + statements.length > 0;
+
+              const renderGroup = (label: string, list: ColourItem[]) =>
+                list.length > 0 && (
+                  <div>
+                    <h5 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">
+                      {label}
+                    </h5>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {list.map((c, i) => (
+                        <ColourSwatch key={`${label}-${c.name}-${i}`} colour={c} variant="best" />
+                      ))}
+                    </div>
+                  </div>
+                );
+
+              return (
+                <div>
+                  <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary" />
+                    Your Best Colours
+                  </h4>
+                  {hasGroups ? (
+                    <div className="space-y-4">
+                      {renderGroup('Neutrals', neutrals)}
+                      {renderGroup('Accents', accents)}
+                      {renderGroup('Statement Colours', statements)}
+                      {ungrouped.length > 0 && renderGroup('Other', ungrouped)}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {ungrouped.map((c, i) => (
+                        <ColourSwatch key={`${c.name}-${i}`} colour={c} variant="best" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
 
             {avoidColours.length > 0 && (
               <div>
