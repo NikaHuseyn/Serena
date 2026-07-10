@@ -122,6 +122,16 @@ fit preference and body type, budget, who she's with, venue atmosphere.
 Weave these into each item's reasoning with specifics ("emerald suits your
 cool undertone") — if you didn't use a signal, don't fake having used it.
 
+The colour analysis is a helpful default, never a restriction. If the user
+asks for a specific colour, or asks to ignore/step outside her palette (in
+any wording), her request ALWAYS wins — style and search exactly what she
+asked for, without lecturing or warning her about her palette. At most one
+light, warm styling note is allowed (e.g. how to wear the requested colour
+well), never framed as a mistake. This override is sticky for the
+conversation until she says otherwise. When it applies, set colour_override
+true AND put the ACTUAL requested colour word into each item's
+search_keywords (and name, if natural) so product search follows her wish.
+
 ## STYLING CATEGORY
 Default to womenswear — this is a women-focused community. Override only if
 her profile indicates otherwise, she says so, or the request in any wording
@@ -382,6 +392,17 @@ const provideStylingResponseTool = {
             "Sticky for the conversation. Defaults to both. Switches only " +
             "when the user says so in her own words at any point — track " +
             "this across turns via accumulated context, do not ask.",
+        },
+        colour_override: {
+          type: "boolean",
+          description:
+            "Default false. Set true when the user has explicitly asked " +
+            "for a specific colour outside her colour analysis palette, or " +
+            "asked (in any wording) to ignore/step outside her palette. " +
+            "When true, every item's search_keywords MUST contain the " +
+            "actual colour word she requested, so the product search " +
+            "follows her wish rather than the palette default. Sticky for " +
+            "the conversation until she indicates otherwise.",
         },
         reply_text: {
           type: "string",
@@ -892,25 +913,29 @@ function preferGoogleThumbnails(results: any[]): any[] {
   });
 }
 
-async function runBuySearch(query: string, tier: string): Promise<any[]> {
+async function runBuySearch(query: string, tier: string, deep = false): Promise<any[]> {
   const maxPrice = priceTierMax(tier);
   const variants = buildProductQueryVariants(query);
   let gathered: any[] = [];
+
+  const candidateTarget = deep ? 20 : 8;
+  const poolCap = deep ? 32 : 16;
+  const finalCap = deep ? 24 : 12;
 
   for (const variant of variants) {
     const [g, s] = await Promise.all([
       searchGoogleShopping(variant, maxPrice),
       searchShopStyle(variant, maxPrice),
     ]);
-    // Gather a wider candidate pool so the menswear filter can drop a
-    // handful of items and still leave at least 3 usable buy options.
-    gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), 16);
-    if (gathered.length >= 8) break;
+    // Gather a wider candidate pool so the menswear/colour filters can
+    // drop a handful of items and still leave at least 3 usable buy options.
+    gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), poolCap);
+    if (gathered.length >= candidateTarget) break;
   }
 
-  let realResults = cleanProductResults(prioritizeRetailers(gathered), 12);
-  if (realResults.length < 6) {
-    const retailerPool = (BUY_RETAILERS_BY_TIER[tier] || BUY_RETAILERS_BY_TIER.mid_range).slice(0, 4);
+  let realResults = cleanProductResults(prioritizeRetailers(gathered), finalCap);
+  if (deep || realResults.length < 6) {
+    const retailerPool = (BUY_RETAILERS_BY_TIER[tier] || BUY_RETAILERS_BY_TIER.mid_range).slice(0, deep ? 6 : 4);
     const [webResults, firecrawlResults] = await Promise.all([
       Promise.all(retailerPool.map((r) => searchSerperRetailer(variants[1] || query, r))),
       Promise.all(retailerPool.map((r) => searchFirecrawlRetailer(variants[1] || query, r))),
@@ -918,7 +943,7 @@ async function runBuySearch(query: string, tier: string): Promise<any[]> {
     const merged = [...gathered, ...realResults, ...webResults.filter(Boolean), ...firecrawlResults.filter(Boolean)];
     realResults = cleanProductResults(
       prioritizeRetailers(preferGoogleThumbnails(merged)),
-      12,
+      finalCap,
     );
   } else {
     realResults = preferGoogleThumbnails(realResults);
@@ -982,6 +1007,86 @@ function filterByGarmentType(results: any[], garmentType: string | undefined): a
   const re = new RegExp(`\\b${escaped}s?\\b`, 'i');
   return results.filter((r) => re.test(String(r?.product_name || '')));
 }
+
+// -----------------------------------------------------------------------
+// Colour matching — palette or overridden, the query follows the item's
+// stated colour. Neighbouring shades (sage/olive/khaki, terracotta/rust,
+// navy/dark blue) count as compatible; titles naming no colour always pass.
+// -----------------------------------------------------------------------
+const COLOUR_WORDS = [
+  'black','white','ivory','cream','off-white','beige','tan','camel','nude','stone','sand',
+  'grey','gray','charcoal','silver','gold','champagne','bronze','copper',
+  'navy','dark blue','midnight','blue','sky','cobalt','denim','indigo',
+  'green','sage','olive','khaki','emerald','forest','mint','teal',
+  'red','burgundy','wine','maroon','crimson','scarlet',
+  'pink','blush','rose','fuchsia','magenta','coral',
+  'orange','terracotta','rust',
+  'yellow','mustard','ochre',
+  'purple','lilac','lavender','plum','violet',
+  'brown','chocolate','mocha',
+];
+
+const COLOUR_NEIGHBOUR_GROUPS: string[][] = [
+  ['sage','olive','khaki'],
+  ['terracotta','rust'],
+  ['navy','dark blue','midnight','indigo'],
+  ['beige','tan','camel','nude','stone','sand','cream','ivory','off-white'],
+  ['burgundy','wine','maroon'],
+  ['pink','blush','rose'],
+  ['grey','gray','charcoal'],
+  ['red','crimson','scarlet'],
+  ['blue','sky','cobalt','denim'],
+  ['green','emerald','forest','mint','teal'],
+  ['yellow','mustard','ochre'],
+  ['purple','lilac','lavender','plum','violet'],
+  ['brown','chocolate','mocha'],
+  ['orange','coral'],
+  ['white','ivory','cream','off-white'],
+  ['gold','champagne','bronze','copper'],
+];
+
+function detectColourInText(text: string): string | null {
+  const lower = ` ${String(text || '').toLowerCase()} `;
+  // longest-first so "dark blue" beats "blue"
+  const sorted = [...COLOUR_WORDS].sort((a, b) => b.length - a.length);
+  for (const c of sorted) {
+    const re = new RegExp(`(^|[^a-z])${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`, 'i');
+    if (re.test(lower)) return c;
+  }
+  return null;
+}
+
+function coloursCompatible(requested: string, found: string): boolean {
+  const a = requested.toLowerCase();
+  const b = found.toLowerCase();
+  if (a === b) return true;
+  for (const group of COLOUR_NEIGHBOUR_GROUPS) {
+    if (group.includes(a) && group.includes(b)) return true;
+  }
+  return false;
+}
+
+// Drop results whose title contains a clearly contradicting colour word,
+// UNLESS the title also contains the requested colour. Titles with no
+// colour word always pass.
+function filterByColour(results: any[], requestedColour: string | null): any[] {
+  if (!requestedColour) return results;
+  const req = requestedColour.toLowerCase();
+  return results.filter((r) => {
+    const title = String(r?.product_name || '');
+    if (!title) return true;
+    const lower = ` ${title.toLowerCase()} `;
+    // If the title contains the requested colour (or a neighbour), keep.
+    const found = detectColourInText(title);
+    if (!found) return true; // no colour named → pass
+    if (coloursCompatible(req, found)) return true;
+    // Title names some colour, but incompatible. Still keep if the
+    // requested colour appears anywhere in the title too.
+    const reqRe = new RegExp(`(^|[^a-z])${req.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`, 'i');
+    return reqRe.test(lower);
+  });
+}
+
 
 // Buy cards must be real, specific products with a price. Allow at most one
 // price-missing card, and only when fewer than 3 priced results exist.
@@ -1062,13 +1167,31 @@ async function searchItemsForOption(
   // Run every item's buy + rent lookups fully in parallel.
   return await Promise.all(
     items.map(async (item: any) => {
-      const keywords = Array.isArray(item?.search_keywords) && item.search_keywords.length > 0
-        ? item.search_keywords.filter((k: any) => typeof k === 'string' && k.trim()).join(' ')
+      const keywordsList = Array.isArray(item?.search_keywords)
+        ? item.search_keywords.filter((k: any) => typeof k === 'string' && k.trim())
+        : [];
+      const keywords = keywordsList.length > 0
+        ? keywordsList.join(' ')
         : (typeof item?.name === 'string' ? item.name : '');
       const garmentType = typeof item?.garment_type === 'string' ? item.garment_type : '';
-      const includeGarment = garmentType && !keywords.toLowerCase().includes(garmentType.toLowerCase());
-      const rawQuery = [keywords, includeGarment ? garmentType : '']
-        .filter(Boolean).join(' ').trim();
+      // Detect a colour anywhere in the item's stated identity (keywords or name).
+      const colourSource = `${keywords} ${typeof item?.name === 'string' ? item.name : ''}`;
+      const requestedColour = detectColourInText(colourSource);
+      // Lead the retailer query with colour + garment when a colour is
+      // named, e.g. "sage green midi dress" → "sage midi dress" first.
+      let rawQuery: string;
+      if (requestedColour && garmentType) {
+        const rest = keywords
+          .toLowerCase()
+          .replace(new RegExp(`\\b${requestedColour.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '')
+          .replace(new RegExp(`\\b${garmentType.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}s?\\b`, 'i'), '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        rawQuery = [requestedColour, garmentType, rest].filter(Boolean).join(' ').trim();
+      } else {
+        const includeGarment = garmentType && !keywords.toLowerCase().includes(garmentType.toLowerCase());
+        rawQuery = [keywords, includeGarment ? garmentType : ''].filter(Boolean).join(' ').trim();
+      }
       const baseQuery = enforceGenderInQuery(rawQuery, isMenswear);
       const tier = item?.price_tier || 'mid_range';
       const wantBuy = rentalPreference !== 'rent_only';
@@ -1082,10 +1205,34 @@ async function searchItemsForOption(
           ? cachedSearch(supabase, baseQuery, tier, 'rent', () => runRentSearch(baseQuery))
           : Promise.resolve([]),
       ]);
-      const buyFiltered = filterOutMenswear(buyRaw, isMenswear);
-      const rentFiltered = filterOutMenswear(rentRaw, isMenswear);
-      const buy = enforceHonestBuyRules(filterByGarmentType(buyFiltered, garmentType), 4);
-      const rent = filterByGarmentType(rentFiltered, garmentType).slice(0, 2);
+
+      const applyBuyFilters = (raw: any[]) => {
+        const m = filterOutMenswear(raw, isMenswear);
+        const g = filterByGarmentType(m, garmentType);
+        const c = filterByColour(g, requestedColour);
+        return c;
+      };
+
+      let buyFiltered = applyBuyFilters(buyRaw);
+      // If garment/colour filter thinned results below 3, fetch a deeper
+      // candidate pool via the existing search-depth mechanism and retry.
+      if (wantBuy && baseQuery && buyFiltered.length < 3) {
+        const deepRaw = await cachedSearch(
+          supabase,
+          `${baseQuery} __deep`,
+          tier,
+          'buy',
+          () => runBuySearch(baseQuery, tier, true),
+        );
+        buyFiltered = applyBuyFilters(deepRaw);
+      }
+      const buy = enforceHonestBuyRules(buyFiltered, 4);
+
+      const rentFiltered = filterByColour(
+        filterByGarmentType(filterOutMenswear(rentRaw, isMenswear), garmentType),
+        requestedColour,
+      );
+      const rent = rentFiltered.slice(0, 2);
       return { ...item, buy, rent };
     }),
   );
