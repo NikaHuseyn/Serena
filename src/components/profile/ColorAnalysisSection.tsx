@@ -14,7 +14,9 @@ import { cn } from '@/lib/utils';
 interface ColourItem {
   name: string;
   hex: string;
+  group?: 'neutral' | 'accent' | 'statement' | string;
 }
+
 
 interface Dimension {
   verdict: string;
