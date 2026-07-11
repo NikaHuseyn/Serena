@@ -529,6 +529,32 @@ function parseToolCall(gatewayJson: any): any {
   return parsed;
 }
 
+// Strip stray non-Latin/junk characters from AI-generated names and labels.
+// Keeps basic Latin letters, numbers, spaces, and a small set of punctuation.
+function sanitizeText(text: unknown): string {
+  if (typeof text !== "string") return "";
+  return text
+    .replace(/[^A-Za-z0-9\s\-&',.\/]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sanitizeParsedResponse(parsed: any) {
+  if (!parsed || typeof parsed !== "object") return;
+  if (Array.isArray(parsed.outfit_options)) {
+    for (const opt of parsed.outfit_options) {
+      if (!opt || typeof opt !== "object") continue;
+      opt.option_label = sanitizeText(opt.option_label);
+      if (Array.isArray(opt.items)) {
+        for (const item of opt.items) {
+          if (!item || typeof item !== "object") continue;
+          item.name = sanitizeText(item.name);
+        }
+      }
+    }
+  }
+}
+
 // -----------------------------------------------------------------------
 // Product search helpers — ported UNCHANGED from generate-ai-recommendations
 // -----------------------------------------------------------------------
