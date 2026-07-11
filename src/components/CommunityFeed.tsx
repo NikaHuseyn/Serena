@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Camera, Users, UserCircle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Camera, Users, UserCircle, Lightbulb, X } from 'lucide-react';
 import { useSocialPosts } from '@/hooks/useSocialPosts';
 import PostCreationForm from './community/PostCreationForm';
 import PostCard from './community/PostCard';
