@@ -56,7 +56,7 @@ const CommunityFeed = () => {
   };
 
   const hasUserPosted = currentUserId ? posts.some(p => p.user_id === currentUserId) : true;
-  const showHint = Boolean(currentUserId) && !hasUserPosted && !hintDismissed;
+  const showHint = Boolean(currentUserId) && posts.length > 0 && !hasUserPosted && !hintDismissed;
 
   const fetchCommunityStats = useCallback(async () => {
     try {
