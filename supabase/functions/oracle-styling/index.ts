@@ -1824,6 +1824,7 @@ serve(async (req) => {
             if (retryJson) {
               try {
                 const retryParsed = parseToolCall(retryJson);
+                sanitizeParsedResponse(retryParsed);
                 runWardrobeValidation(retryParsed);
                 if (anchorSatisfied(retryParsed, effectiveAnchorId)) {
                   parsed = retryParsed;
