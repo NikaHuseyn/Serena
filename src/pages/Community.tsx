@@ -12,7 +12,7 @@ const Community = () => {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">Community</h1>
           <p className="text-muted-foreground">
-            Share your outfit options, get honest feedback from other women, and discover what works for every occasion
+            Share your outfit, say where you're going, and get honest feedback from women who get it. This is where "which one should I wear?" gets answered.
           </p>
         </div>
 
