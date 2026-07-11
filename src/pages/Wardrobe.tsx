@@ -37,6 +37,7 @@ const Wardrobe = () => {
 
           {activeTab === 'items' ? <WardrobeManager /> : <CapsuleManager />}
         </main>
+        <BottomNav />
       </div>
     </AuthGuard>
   );
