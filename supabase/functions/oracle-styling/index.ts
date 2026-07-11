@@ -1711,6 +1711,7 @@ serve(async (req) => {
                 const secondParsed = parseToolCall(secondJson);
                 // Ignore any research_request on the second pass (no loops).
                 secondParsed.research_request = null;
+                sanitizeParsedResponse(secondParsed);
                 parsed = secondParsed;
               } catch (err) {
                 console.error("Research second-pass parse failed; keeping first response:", err);
