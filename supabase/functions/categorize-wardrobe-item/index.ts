@@ -1,11 +1,10 @@
-import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 interface CategorizationRequest {
@@ -16,169 +15,177 @@ interface CategorizationRequest {
   extractedColors?: string[];
 }
 
+// Legacy response shape kept intact so the client form doesn't need to change.
 interface CategorizationResult {
-  category: string;
-  subcategory?: string;
+  category: string;          // lowercase enum: dress/top/bottom/shoes/outerwear/accessory
+  subcategory?: string;      // used by the client to build the item name
   suggestedBrand?: string;
-  colors: string[];
-  tags: string[];
+  colors: string[];          // plain colour word (not hex)
+  tags: string[];            // notes as tags
   confidence: number;
   reasoning: string;
 }
 
+const CATEGORY_ENUM = ["dress", "top", "bottom", "shoes", "outerwear", "accessory"] as const;
+
+function fallback(reason: string, extras: Partial<CategorizationResult> = {}): CategorizationResult {
+  return {
+    category: "",
+    subcategory: "",
+    suggestedBrand: "",
+    colors: [],
+    tags: [],
+    confidence: 0,
+    reasoning: reason,
+    ...extras,
+  };
+}
+
 serve(async (req) => {
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { itemName, description, imageBase64, dominantColor, extractedColors }: CategorizationRequest = await req.json();
+    const { itemName, description, imageBase64 }: CategorizationRequest = await req.json();
 
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key not configured');
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    if (!imageBase64 && !itemName && !description) {
+      throw new Error("An image, item name or description is required");
     }
 
-    if (!itemName && !description && !imageBase64) {
-      throw new Error('At least item name, description, or image must be provided');
-    }
+    const systemPrompt = `You are a fashion garment recogniser. Look at the photo and identify the single main garment.
 
-    // Build the prompt for AI categorization
-    let prompt = `You are a fashion expert AI that categorizes clothing items. Analyze the provided information and return a JSON response with the following structure:
-
+Return STRICT JSON only, no prose, matching exactly:
 {
-  "category": "one of: Tops, Bottoms, Dresses, Outerwear, Shoes, Accessories, Activewear, Formal, Undergarments",
-  "subcategory": "specific type like T-Shirt, Jeans, Sneakers, etc.",
-  "suggestedBrand": "brand name if identifiable from description/name",
-  "colors": ["array", "of", "color", "names"],
-  "tags": ["relevant", "style", "tags"],
-  "confidence": 0.0-1.0,
-  "reasoning": "brief explanation of categorization"
+  "name": string,       // short descriptive name, e.g. "Black slip dress", "Cream cable-knit jumper"
+  "category": "dress" | "top" | "bottom" | "shoes" | "outerwear" | "accessory",
+  "colour": string,     // plain English colour word only ("black", "navy", "sage"), never a hex code
+  "brand": string | null,
+  "notes": string | null // brief fabric/style details visible in the photo, or null
 }
 
-Available categories:
-- Tops: T-shirts, Blouses, Sweaters, Tank tops, Shirts, Hoodies
-- Bottoms: Jeans, Pants, Shorts, Skirts, Leggings
-- Dresses: Casual dresses, Formal dresses, Maxi dresses, Mini dresses
-- Outerwear: Jackets, Coats, Blazers, Cardigans, Vests
-- Shoes: Sneakers, Boots, Heels, Flats, Sandals, Loafers
-- Accessories: Bags, Jewelry, Belts, Hats, Scarves, Sunglasses
-- Activewear: Gym clothes, Sports bras, Athletic shorts, Yoga pants
-- Formal: Business attire, Evening wear, Suits
-- Undergarments: Bras, Underwear, Shapewear, Socks
+Hard rules:
+- A dress (including slip, mini, midi, maxi, shirt, wrap, bodycon dress) MUST be "dress", NEVER "top".
+- Skirts, trousers, jeans, shorts => "bottom".
+- Jackets, coats, blazers, cardigans => "outerwear".
+- T-shirts, blouses, shirts, jumpers, sweaters, tanks => "top".
+- Bags, belts, hats, scarves, jewellery, sunglasses => "accessory".
+- If the image genuinely cannot be read, return every field as null.
+- Never invent a brand — if you cannot see a clear logo, brand must be null.`;
 
-Information to analyze:`;
-
-    if (itemName) {
-      prompt += `\nItem Name: "${itemName}"`;
-    }
-    
-    if (description) {
-      prompt += `\nDescription: "${description}"`;
-    }
-    
-    if (dominantColor) {
-      prompt += `\nDominant Color: ${dominantColor}`;
-    }
-    
-    if (extractedColors && extractedColors.length > 0) {
-      prompt += `\nExtracted Colors: ${extractedColors.join(', ')}`;
-    }
-
-    prompt += `\n\nProvide accurate categorization with high confidence when the information is clear, lower confidence when ambiguous. Use descriptive color names (e.g., "Navy Blue" instead of just "Blue").`;
-
-    const messages: any[] = [
-      { 
-        role: 'system', 
-        content: 'You are a fashion categorization expert. Always respond with valid JSON only.' 
-      },
-      { 
-        role: 'user', 
-        content: prompt 
-      }
-    ];
-
-    // Add image if provided
+    const userContent: any[] = [];
     if (imageBase64) {
-      messages[1].content = [
-        { type: 'text', text: prompt },
-        {
-          type: 'image_url',
-          image_url: {
-            url: `data:image/jpeg;base64,${imageBase64}`,
-            detail: 'low'
-          }
-        }
-      ];
+      userContent.push({ type: "text", text: "Identify this garment." });
+      userContent.push({
+        type: "image_url",
+        image_url: { url: `data:image/jpeg;base64,${imageBase64}` },
+      });
+    } else {
+      userContent.push({
+        type: "text",
+        text: `Identify this garment from text only.\nName: ${itemName || "(none)"}\nDescription: ${description || "(none)"}`,
+      });
     }
 
-    console.log('Sending request to OpenAI for categorization');
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
-        'Content-Type': 'application/json',
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: 'gpt-4.1-2025-04-14',
-        messages: messages,
-        max_completion_tokens: 500,
-        response_format: { type: 'json_object' }
+        model: "google/gemini-2.5-flash",
+        temperature: 0.1,
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userContent },
+        ],
+        response_format: { type: "json_object" },
       }),
     });
 
     if (!response.ok) {
-      const errorData = await response.text();
-      console.error('OpenAI API error:', errorData);
-      throw new Error(`OpenAI API error: ${response.status} ${errorData}`);
+      const errText = await response.text();
+      console.error("AI gateway error:", response.status, errText);
+      return new Response(
+        JSON.stringify(fallback(`AI gateway error ${response.status}`)),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
     }
 
     const data = await response.json();
-    console.log('OpenAI response received:', JSON.stringify(data));
-
-    if (!data.choices || data.choices.length === 0) {
-      throw new Error('No response from AI model');
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) {
+      return new Response(JSON.stringify(fallback("No content in AI response")), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    let result: CategorizationResult;
+    let parsed: any;
     try {
-      result = JSON.parse(data.choices[0].message.content);
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', data.choices[0].message.content);
-      throw new Error('Invalid response format from AI model');
+      const cleaned = String(content).replace(/^```(?:json)?\s*/i, "").replace(/```$/, "").trim();
+      parsed = JSON.parse(cleaned);
+    } catch (e) {
+      console.error("Failed to parse AI JSON:", content);
+      return new Response(JSON.stringify(fallback("Invalid JSON from AI")), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    // Validate the result
-    const validCategories = ['Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 'Accessories', 'Activewear', 'Formal', 'Undergarments'];
-    if (!validCategories.includes(result.category)) {
-      result.category = 'Tops'; // Default fallback
-      result.confidence = Math.max(0, (result.confidence || 0.5) - 0.3);
+    const rawName: string | null = typeof parsed.name === "string" ? parsed.name.trim() : null;
+    const rawCategory: string | null =
+      typeof parsed.category === "string" ? parsed.category.toLowerCase().trim() : null;
+    const rawColour: string | null =
+      typeof parsed.colour === "string" ? parsed.colour.trim() : (typeof parsed.color === "string" ? parsed.color.trim() : null);
+    const rawBrand: string | null = typeof parsed.brand === "string" ? parsed.brand.trim() : null;
+    const rawNotes: string | null = typeof parsed.notes === "string" ? parsed.notes.trim() : null;
+
+    const category =
+      rawCategory && (CATEGORY_ENUM as readonly string[]).includes(rawCategory) ? rawCategory : "";
+
+    // Strip a hex code if the model slipped one in.
+    const colour = rawColour && !rawColour.startsWith("#") ? rawColour.toLowerCase() : "";
+
+    // Derive subcategory: the descriptive part of the name minus the colour prefix,
+    // so the client's buildItemName reproduces the full name ("black" + "slip dress").
+    let subcategory = "";
+    if (rawName) {
+      let s = rawName;
+      if (colour) {
+        const re = new RegExp(`^\\s*${colour.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\$&")}\\s+`, "i");
+        s = s.replace(re, "");
+      }
+      subcategory = s.trim();
+    }
+    // Guarantee dress category yields a dress-typed subcategory
+    if (category === "dress" && subcategory && !/dress/i.test(subcategory)) {
+      subcategory = `${subcategory} dress`.trim();
+    }
+    if (!subcategory && category) {
+      subcategory = category === "accessory" ? "accessory" : category;
     }
 
-    // Ensure confidence is within valid range
-    result.confidence = Math.max(0, Math.min(1, result.confidence || 0.5));
-
-    console.log('Categorization result:', JSON.stringify(result));
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
-  } catch (error) {
-    console.error('Error in categorize-wardrobe-item function:', error);
-    
-    // Return a fallback result instead of an error
-    const fallbackResult: CategorizationResult = {
-      category: 'Tops',
-      colors: [],
-      tags: [],
-      confidence: 0.1,
-      reasoning: `Auto-categorization failed: ${error.message}. Using default category.`
+    const result: CategorizationResult = {
+      category,
+      subcategory,
+      suggestedBrand: rawBrand || "",
+      colors: colour ? [colour] : [],
+      tags: rawNotes ? [rawNotes] : [],
+      confidence: rawName || category ? 0.9 : 0,
+      reasoning: rawName ? `Detected: ${rawName}` : "Image could not be read",
     };
 
-    return new Response(JSON.stringify(fallbackResult), {
-      status: 200, // Return 200 with fallback instead of error
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    return new Response(JSON.stringify(result), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Error in categorize-wardrobe-item:", error);
+    return new Response(JSON.stringify(fallback(`Failed: ${(error as Error).message}`)), {
+      status: 200,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
