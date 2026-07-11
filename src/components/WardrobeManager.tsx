@@ -426,7 +426,7 @@ const WardrobeManager = () => {
                 </div>
               </div>
 
-              </div>
+
               <div className="flex gap-2">
                 <Button type="submit" className="bg-gradient-to-r from-rose-500 to-pink-600">
                   Add to Wardrobe
