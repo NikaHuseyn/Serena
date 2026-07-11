@@ -143,11 +143,11 @@ const CommunityFeed = () => {
       <div className="lg:col-span-2 space-y-6">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-2xl font-bold text-foreground flex items-center">
-              <Users className="h-6 w-6 mr-2" />
-              Community Feed
-            </h2>
-            <p className="text-muted-foreground">Get inspired by the community and share your style</p>
+          <h2 className="text-2xl font-bold text-foreground flex items-center">
+            <Users className="h-6 w-6 mr-2" />
+            Feed
+          </h2>
+          <p className="text-muted-foreground">Let's get inspired, share our styles and support each other</p>
           </div>
           <div className="flex items-center gap-2">
             {currentUserId && (
