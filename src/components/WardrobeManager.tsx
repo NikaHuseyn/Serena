@@ -76,53 +76,100 @@ const WardrobeManager = () => {
     }
   };
 
-  const handleAICategorization = async () => {
-    if (!newItem.name.trim()) {
-      toast.error('Please enter an item name before using AI categorization');
-      return;
-    }
-
-    const result = await categorizeFromText(newItem.name, newItem.notes);
-    if (result) {
-      setAISuggestions(result);
-      toast.success('AI categorization complete!');
-    }
+  const CATEGORY_MAP: { [key: string]: string } = {
+    'Tops': 'Tops', 'Bottoms': 'Bottoms', 'Dresses': 'Dresses', 'Outerwear': 'Outerwear',
+    'Shoes': 'Shoes', 'Accessories': 'Accessories', 'Activewear': 'Activewear',
+    'Formal': 'Formal', 'Undergarments': 'Undergarments',
+    'top': 'Tops', 'bottom': 'Bottoms', 'dress': 'Dresses', 'outerwear': 'Outerwear',
+    'shoes': 'Shoes', 'accessory': 'Accessories',
   };
 
-  const handleImageCategorization = async (imageBase64: string, dominantColor?: string, colors?: string[]) => {
-    const result = await categorizeFromImageData(
-      imageBase64,
-      dominantColor,
-      colors,
-      newItem.name,
-      newItem.notes
-    );
-    
-    if (result) {
-      setAISuggestions(result);
-      toast.success('Image analysis complete!');
-    }
+  const stripHex = (s: string) => (s && !s.startsWith('#') ? s : '');
+
+  const buildItemName = (color: string, subcategory: string | undefined, category: string) => {
+    const cat = subcategory || (category ? category.replace(/s$/, '') : '');
+    const parts = [color, cat].filter(Boolean).map(p => p.trim()).filter(Boolean);
+    return parts.join(' ');
   };
 
-  const applySuggestions = () => {
-    if (!aiSuggestions) return;
+  const handlePhotoSelected = async (file: File) => {
+    setIsAutoFilling(true);
+    setAutoFillDone(false);
+    setMissingFields(new Set());
+    try {
+      // Show preview immediately
+      const previewReader = new FileReader();
+      previewReader.onload = () => setPhotoPreview(previewReader.result as string);
+      previewReader.readAsDataURL(file);
 
-    setNewItem(prev => ({
-      ...prev,
-      category: aiSuggestions.category,
-      brand: aiSuggestions.suggestedBrand || prev.brand,
-      color: aiSuggestions.colors.length > 0 ? aiSuggestions.colors.join(', ') : prev.color,
-      notes: aiSuggestions.tags.length > 0 ? aiSuggestions.tags.join(', ') : prev.notes
-    }));
+      // Silent compression + colour extraction (no UI)
+      const processed = await ImageProcessor.processImage(file, {
+        compress: true,
+        extractColors: true,
+        removeBackground: false,
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1920,
+      });
+      const finalBlob = processed.compressedBlob || processed.originalBlob;
+      setPhotoBlob(finalBlob);
 
-    toast.success('AI suggestions applied!');
+      // Convert to base64 for AI
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve((r.result as string).split(',')[1]);
+        r.onerror = reject;
+        r.readAsDataURL(finalBlob);
+      });
+
+      const result = await categorizeFromImageData(
+        base64,
+        processed.dominantColor,
+        processed.colors,
+      );
+
+      const missing = new Set<string>();
+      if (result) {
+        const colorWord = stripHex(result.colors?.[0] || '');
+        const mappedCategory = CATEGORY_MAP[result.category] || result.category || '';
+        const derivedName = buildItemName(colorWord, result.subcategory, mappedCategory);
+        const brand = result.suggestedBrand || '';
+        const notes = (result.tags && result.tags.length > 0) ? result.tags.join(', ') : '';
+
+        if (!derivedName) missing.add('name');
+        if (!mappedCategory) missing.add('category');
+        if (!colorWord) missing.add('color');
+        if (!brand) missing.add('brand');
+
+        setNewItem(prev => ({
+          ...prev,
+          name: derivedName || prev.name,
+          category: mappedCategory || prev.category,
+          color: colorWord || prev.color,
+          brand: brand || prev.brand,
+          notes: notes || prev.notes,
+        }));
+      } else {
+        missing.add('name'); missing.add('category'); missing.add('color'); missing.add('brand');
+      }
+      setMissingFields(missing);
+      setAutoFillDone(true);
+    } catch (err) {
+      console.error('Auto-fill failed:', err);
+      toast.error('Could not auto-detect details — please fill them in');
+      setMissingFields(new Set(['name', 'category', 'color', 'brand']));
+      setAutoFillDone(true);
+    } finally {
+      setIsAutoFilling(false);
+    }
   };
 
   const resetForm = () => {
     setNewItem({ name: '', category: '', color: '', brand: '', size: '', notes: '' });
-    setAISuggestions(null);
-    setImageFile(null);
-    setShowImageUpload(false);
+    setPhotoPreview(null);
+    setPhotoBlob(null);
+    setIsAutoFilling(false);
+    setAutoFillDone(false);
+    setMissingFields(new Set());
   };
 
   const handleAddItem = async (e: React.FormEvent) => {
