@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Camera, Users, UserCircle } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Camera, Users, UserCircle, Lightbulb, X } from 'lucide-react';
 import { useSocialPosts } from '@/hooks/useSocialPosts';
 import PostCreationForm from './community/PostCreationForm';
 import PostCard from './community/PostCard';
@@ -25,6 +26,7 @@ const CommunityFeed = () => {
   const { markAsRead } = useCommunityNotifications();
   const { requireAuth } = useGuestNudge();
   const [showPostForm, setShowPostForm] = useState(false);
+  const [hintDismissed, setHintDismissed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [stats, setStats] = useState({
     totalPosts: 0,
@@ -41,6 +43,20 @@ const CommunityFeed = () => {
     });
     markAsRead();
   }, [markAsRead]);
+
+  // One-time hint for users who haven't posted yet
+  useEffect(() => {
+    const dismissed = localStorage.getItem('community-hint-dismissed') === 'true';
+    setHintDismissed(dismissed);
+  }, []);
+
+  const dismissHint = () => {
+    localStorage.setItem('community-hint-dismissed', 'true');
+    setHintDismissed(true);
+  };
+
+  const hasUserPosted = currentUserId ? posts.some(p => p.user_id === currentUserId) : true;
+  const showHint = Boolean(currentUserId) && posts.length > 0 && !hasUserPosted && !hintDismissed;
 
   const fetchCommunityStats = useCallback(async () => {
     try {
@@ -156,6 +172,24 @@ const CommunityFeed = () => {
             onCreatePost={handleCreatePost}
             onClose={() => setShowPostForm(false)}
           />
+        )}
+
+        {showHint && (
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="p-4 flex items-start gap-3">
+              <Lightbulb className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <p className="flex-1 text-sm text-foreground">
+                Can't decide what to wear? Ask. Someone's deciding too — help her back.
+              </p>
+              <button
+                onClick={dismissHint}
+                className="text-muted-foreground hover:text-foreground"
+                aria-label="Dismiss hint"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </CardContent>
+          </Card>
         )}
 
         <div className="space-y-6">

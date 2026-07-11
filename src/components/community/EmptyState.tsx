@@ -10,8 +10,7 @@ const EmptyState = ({ onShareClick }: EmptyStateProps) => {
   return (
     <div className="text-center py-12">
       <Users className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-      <h3 className="text-lg font-medium text-foreground mb-2">No outfits shared yet</h3>
-      <p className="text-muted-foreground mb-4">Be the first to ask the community for feedback on your next look</p>
+      <h3 className="text-lg font-medium text-foreground mb-2">Can't decide what to wear? Ask. Someone's deciding too — help her back.</h3>
       {onShareClick && (
         <button
           onClick={onShareClick}
