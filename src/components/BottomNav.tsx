@@ -1,10 +1,11 @@
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Sparkles, Users, User } from 'lucide-react';
+import { Sparkles, Shirt, Users, User } from 'lucide-react';
 import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
 
 const tabs = [
   { path: '/app', label: 'Oracle', icon: Sparkles },
+  { path: '/wardrobe', label: 'Wardrobe', icon: Shirt },
   { path: '/community', label: 'Community', icon: Users },
   { path: '/profile', label: 'Me', icon: User },
 ];
