@@ -1630,6 +1630,7 @@ serve(async (req) => {
 
       try {
         parsed = parseToolCall(gatewayJson);
+        sanitizeParsedResponse(parsed);
         break;
       } catch (err) {
         lastError = err;
