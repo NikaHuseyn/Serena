@@ -529,6 +529,32 @@ function parseToolCall(gatewayJson: any): any {
   return parsed;
 }
 
+// Strip stray non-Latin/junk characters from AI-generated names and labels.
+// Keeps basic Latin letters, numbers, spaces, and a small set of punctuation.
+function sanitizeText(text: unknown): string {
+  if (typeof text !== "string") return "";
+  return text
+    .replace(/[^A-Za-z0-9\s\-&',.\/]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function sanitizeParsedResponse(parsed: any) {
+  if (!parsed || typeof parsed !== "object") return;
+  if (Array.isArray(parsed.outfit_options)) {
+    for (const opt of parsed.outfit_options) {
+      if (!opt || typeof opt !== "object") continue;
+      opt.option_label = sanitizeText(opt.option_label);
+      if (Array.isArray(opt.items)) {
+        for (const item of opt.items) {
+          if (!item || typeof item !== "object") continue;
+          item.name = sanitizeText(item.name);
+        }
+      }
+    }
+  }
+}
+
 // -----------------------------------------------------------------------
 // Product search helpers — ported UNCHANGED from generate-ai-recommendations
 // -----------------------------------------------------------------------
@@ -753,9 +779,31 @@ const productScore = (result: any): number => {
   return score;
 };
 
+// Result-side guard: drop results that point to a US/non-UK storefront.
+// Only applies when at least one UK-looking result remains, so a search
+// that returns only US pages is still surfaced rather than emptied.
+function filterOutNonUkStorefronts(results: any[]): any[] {
+  const filtered = results.filter((r: any) => {
+    const url = String(r?.product_url || '').toLowerCase();
+    if (url.includes('/us/')) return false;
+    if (url.includes('.com/us')) return false;
+    if (/https?:\/\/us\./i.test(url)) return false;
+
+    const title = String(r?.product_name || '');
+    const retailer = String(r?.retailer || '');
+    const combined = `${title} ${retailer}`.toLowerCase();
+    if (/\|\s*[^|]*us\b/i.test(combined)) return false;
+    if (retailer.toLowerCase().endsWith(' us')) return false;
+    if (/\b(m&s|marks?\s*&?\s*spencer)\s+us\b/i.test(combined)) return false;
+
+    return true;
+  });
+  return filtered.length > 0 ? filtered : results;
+}
+
 const cleanProductResults = (results: any[], limit: number): any[] => {
   const seen = new Set<string>();
-  return results
+  return filterOutNonUkStorefronts(results)
     .filter((r: any) => r && isValidProductUrl(r.product_url) && !isGoogleSearchFallback(r))
     .map((r: any) => ({ ...r, image_url: normalizeImageUrl(r.image_url) }))
     .sort((a: any, b: any) => productScore(b) - productScore(a))
@@ -1604,6 +1652,7 @@ serve(async (req) => {
 
       try {
         parsed = parseToolCall(gatewayJson);
+        sanitizeParsedResponse(parsed);
         break;
       } catch (err) {
         lastError = err;
@@ -1684,6 +1733,7 @@ serve(async (req) => {
                 const secondParsed = parseToolCall(secondJson);
                 // Ignore any research_request on the second pass (no loops).
                 secondParsed.research_request = null;
+                sanitizeParsedResponse(secondParsed);
                 parsed = secondParsed;
               } catch (err) {
                 console.error("Research second-pass parse failed; keeping first response:", err);
@@ -1796,6 +1846,7 @@ serve(async (req) => {
             if (retryJson) {
               try {
                 const retryParsed = parseToolCall(retryJson);
+                sanitizeParsedResponse(retryParsed);
                 runWardrobeValidation(retryParsed);
                 if (anchorSatisfied(retryParsed, effectiveAnchorId)) {
                   parsed = retryParsed;
