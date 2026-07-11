@@ -44,6 +44,20 @@ const CommunityFeed = () => {
     markAsRead();
   }, [markAsRead]);
 
+  // One-time hint for users who haven't posted yet
+  useEffect(() => {
+    const dismissed = localStorage.getItem('community-hint-dismissed') === 'true';
+    setHintDismissed(dismissed);
+  }, []);
+
+  const dismissHint = () => {
+    localStorage.setItem('community-hint-dismissed', 'true');
+    setHintDismissed(true);
+  };
+
+  const hasUserPosted = currentUserId ? posts.some(p => p.user_id === currentUserId) : true;
+  const showHint = Boolean(currentUserId) && !hasUserPosted && !hintDismissed;
+
   const fetchCommunityStats = useCallback(async () => {
     try {
       const [postsRes, likesRes, commentsRes, usersRes] = await Promise.all([
