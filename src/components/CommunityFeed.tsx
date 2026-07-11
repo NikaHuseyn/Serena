@@ -26,6 +26,7 @@ const CommunityFeed = () => {
   const { markAsRead } = useCommunityNotifications();
   const { requireAuth } = useGuestNudge();
   const [showPostForm, setShowPostForm] = useState(false);
+  const [hintDismissed, setHintDismissed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [stats, setStats] = useState({
     totalPosts: 0,
