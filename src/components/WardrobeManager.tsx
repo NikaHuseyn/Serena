@@ -297,124 +297,59 @@ const WardrobeManager = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAddItem} className="space-y-6">
-              {/* AI Categorization Section */}
-              <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-100">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-gray-800 flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-purple-600" />
-                    AI Auto-Categorization
-                  </h4>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowImageUpload(!showImageUpload)}
-                  >
-                    {showImageUpload ? 'Hide' : 'Add Image'}
-                  </Button>
-                </div>
-                
-                <div className="flex gap-2 mb-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAICategorization}
-                    disabled={isAnalyzing || !newItem.name.trim()}
-                  >
-                    {isAnalyzing ? (
-                      <Loader2 className="h-3 w-3 mr-1 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3 w-3 mr-1" />
-                    )}
-                    Analyse Text
-                  </Button>
-                  
-                  {aiSuggestions && (
-                    <Button
-                      type="button"
-                      variant="default"
-                      size="sm"
-                      onClick={applySuggestions}
-                    >
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Apply Suggestions
-                    </Button>
-                  )}
-                </div>
-
-                {/* Image Upload Section */}
-                {showImageUpload && (
-                  <div className="mt-4 p-4 bg-white rounded-lg border">
-                    <EnhancedImageUpload
-                      onImageProcessed={(result) => {
-                        if (result.dominantColor || result.colors) {
-                          // Convert processed image to base64 for AI analysis
-                          const reader = new FileReader();
-                          reader.onload = () => {
-                            const base64 = reader.result as string;
-                            const imageBase64 = base64.split(',')[1]; // Remove data URL prefix
-                            handleImageCategorization(imageBase64, result.dominantColor, result.colors);
-                          };
-                          reader.readAsDataURL(result.originalBlob);
-                        }
+              {/* Photo picker */}
+              <div className="rounded-lg border border-dashed p-4">
+                {!photoPreview ? (
+                  <label className="flex flex-col items-center justify-center gap-2 cursor-pointer py-6 text-center">
+                    <ImagePlus className="h-8 w-8 text-muted-foreground" />
+                    <span className="text-sm font-medium">Add a photo</span>
+                    <span className="text-xs text-muted-foreground">
+                      We'll auto-fill the details — you can edit anything before saving.
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) handlePhotoSelected(f);
                       }}
-                      maxSize={5 * 1024 * 1024} // 5MB
-                      showEditor={false}
                     />
-                  </div>
-                )}
-
-                {/* AI Suggestions Display */}
-                {aiSuggestions && (
-                  <div className="mt-4 p-4 bg-white rounded-lg border space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h5 className="font-medium text-gray-800">AI Suggestions</h5>
-                      <Badge className={getConfidenceColor(aiSuggestions.confidence)}>
-                        {getConfidenceLevel(aiSuggestions.confidence)} Confidence
-                      </Badge>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <label className="font-medium text-gray-600">Category:</label>
-                        <p className="text-gray-800">{aiSuggestions.category}</p>
-                      </div>
-                      {aiSuggestions.subcategory && (
-                        <div>
-                          <label className="font-medium text-gray-600">Type:</label>
-                          <p className="text-gray-800">{aiSuggestions.subcategory}</p>
+                  </label>
+                ) : (
+                  <div className="flex gap-4 items-start">
+                    <img
+                      src={photoPreview}
+                      alt="Item"
+                      className="w-24 h-24 object-cover rounded-md border"
+                    />
+                    <div className="flex-1 text-sm">
+                      {(isAutoFilling || isAnalyzing) && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Reading your photo…</span>
                         </div>
                       )}
-                      {aiSuggestions.suggestedBrand && (
-                        <div>
-                          <label className="font-medium text-gray-600">Brand:</label>
-                          <p className="text-gray-800">{aiSuggestions.suggestedBrand}</p>
+                      {autoFillDone && !isAnalyzing && (
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span>Auto-filled — review below and edit anything.</span>
                         </div>
                       )}
-                      {aiSuggestions.colors.length > 0 && (
-                        <div>
-                          <label className="font-medium text-gray-600">Colors:</label>
-                          <p className="text-gray-800">{aiSuggestions.colors.join(', ')}</p>
-                        </div>
-                      )}
-                    </div>
-                    
-                    {aiSuggestions.tags.length > 0 && (
-                      <div>
-                        <label className="font-medium text-gray-600">Suggested Tags:</label>
-                        <div className="flex flex-wrap gap-1 mt-1">
-                          {aiSuggestions.tags.map((tag: string, index: number) => (
-                            <Badge key={index} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="text-xs text-gray-600 italic">
-                      {aiSuggestions.reasoning}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 px-0 h-auto text-xs"
+                        onClick={() => {
+                          setPhotoPreview(null);
+                          setPhotoBlob(null);
+                          setAutoFillDone(false);
+                          setMissingFields(new Set());
+                        }}
+                      >
+                        Replace photo
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -427,9 +362,12 @@ const WardrobeManager = () => {
                   <Input
                     value={newItem.name}
                     onChange={(e) => setNewItem({ ...newItem, name: e.target.value })}
-                    placeholder="e.g., Blue Cotton T-Shirt"
+                    placeholder="e.g., Black slip dress"
                     required
                   />
+                  {autoFillDone && missingFields.has('name') && (
+                    <p className="text-xs text-muted-foreground mt-1">Couldn't auto-detect — please add.</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Category *</label>
@@ -444,6 +382,9 @@ const WardrobeManager = () => {
                       <option key={cat} value={cat}>{cat}</option>
                     ))}
                   </select>
+                  {autoFillDone && missingFields.has('category') && (
+                    <p className="text-xs text-muted-foreground mt-1">Couldn't auto-detect — please pick one.</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Brand</label>
@@ -452,14 +393,20 @@ const WardrobeManager = () => {
                     onChange={(e) => setNewItem({ ...newItem, brand: e.target.value })}
                     placeholder="e.g., Nike, Zara"
                   />
+                  {autoFillDone && missingFields.has('brand') && (
+                    <p className="text-xs text-muted-foreground mt-1">Couldn't auto-detect.</p>
+                  )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Color</label>
+                  <label className="block text-sm font-medium mb-1">Colour</label>
                   <Input
                     value={newItem.color}
                     onChange={(e) => setNewItem({ ...newItem, color: e.target.value })}
-                    placeholder="e.g., Navy Blue"
+                    placeholder="e.g., black"
                   />
+                  {autoFillDone && missingFields.has('color') && (
+                    <p className="text-xs text-muted-foreground mt-1">Couldn't auto-detect.</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1">Size</label>
@@ -477,6 +424,8 @@ const WardrobeManager = () => {
                     placeholder="Any additional notes"
                   />
                 </div>
+              </div>
+
               </div>
               <div className="flex gap-2">
                 <Button type="submit" className="bg-gradient-to-r from-rose-500 to-pink-600">
