@@ -482,6 +482,18 @@ const OutfitOptionCards: React.FC<OutfitOptionCardsProps> = ({
 }) => {
   if (!options || options.length === 0) return null;
 
+  // Guard: if the response has exactly one option whose only item is the
+  // anchor itself, don't render — she already chose that piece by anchoring.
+  if (
+    anchorItemId &&
+    options.length === 1 &&
+    (options[0].items?.length ?? 0) === 1 &&
+    options[0].items[0].source === 'from_wardrobe' &&
+    String(options[0].items[0].wardrobe_item_id ?? '') === String(anchorItemId)
+  ) {
+    return null;
+  }
+
   const enforcementFailed = anchorEnforced === false;
   const effectiveAnchorId = enforcementFailed ? null : anchorItemId;
 
