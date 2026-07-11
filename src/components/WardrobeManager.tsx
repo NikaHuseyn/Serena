@@ -36,11 +36,13 @@ const WardrobeManager = () => {
     size: '',
     notes: ''
   });
-  const [showImageUpload, setShowImageUpload] = useState(false);
-  const [aiSuggestions, setAISuggestions] = useState<any>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
+  const [isAutoFilling, setIsAutoFilling] = useState(false);
+  const [autoFillDone, setAutoFillDone] = useState(false);
+  const [missingFields, setMissingFields] = useState<Set<string>>(new Set());
   const { trackEvent } = useBehaviorAnalytics();
-  const { categorizeFromText, categorizeFromImageData, isAnalyzing, getConfidenceLevel, getConfidenceColor } = useAIItemCategorization();
+  const { categorizeFromImageData, isAnalyzing } = useAIItemCategorization();
 
   const categories = [
     'Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 
