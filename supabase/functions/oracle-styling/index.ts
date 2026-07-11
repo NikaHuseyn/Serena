@@ -779,9 +779,31 @@ const productScore = (result: any): number => {
   return score;
 };
 
+// Result-side guard: drop results that point to a US/non-UK storefront.
+// Only applies when at least one UK-looking result remains, so a search
+// that returns only US pages is still surfaced rather than emptied.
+function filterOutNonUkStorefronts(results: any[]): any[] {
+  const filtered = results.filter((r: any) => {
+    const url = String(r?.product_url || '').toLowerCase();
+    if (url.includes('/us/')) return false;
+    if (url.includes('.com/us')) return false;
+    if (/https?:\/\/us\./i.test(url)) return false;
+
+    const title = String(r?.product_name || '');
+    const retailer = String(r?.retailer || '');
+    const combined = `${title} ${retailer}`.toLowerCase();
+    if (/\|\s*[^|]*us\b/i.test(combined)) return false;
+    if (retailer.toLowerCase().endsWith(' us')) return false;
+    if (/\b(m&s|marks?\s*&?\s*spencer)\s+us\b/i.test(combined)) return false;
+
+    return true;
+  });
+  return filtered.length > 0 ? filtered : results;
+}
+
 const cleanProductResults = (results: any[], limit: number): any[] => {
   const seen = new Set<string>();
-  return results
+  return filterOutNonUkStorefronts(results)
     .filter((r: any) => r && isValidProductUrl(r.product_url) && !isGoogleSearchFallback(r))
     .map((r: any) => ({ ...r, image_url: normalizeImageUrl(r.image_url) }))
     .sort((a: any, b: any) => productScore(b) - productScore(a))
