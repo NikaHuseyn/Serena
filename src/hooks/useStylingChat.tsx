@@ -244,7 +244,31 @@ export const useStylingChat = () => {
         timeoutPromise,
       ]) as Awaited<typeof invokePromise>;
 
-      if (error) throw new Error(error.message || 'Failed to get recommendation');
+      if (error) {
+        // Try to surface a server-side friendly message (e.g. guest 429 rate limit).
+        let friendly: string | null = null;
+        try {
+          const ctx: any = (error as any)?.context;
+          if (ctx && typeof ctx.json === 'function') {
+            const payload = await ctx.json();
+            if (payload?.message && typeof payload.message === 'string') {
+              friendly = payload.message;
+            }
+          }
+        } catch { /* ignore */ }
+
+        if (friendly) {
+          const nudgeMsg: ChatMessage = {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: friendly,
+            timestamp: new Date(),
+          };
+          setMessages(prev => [...prev, nudgeMsg]);
+          return;
+        }
+        throw new Error(error.message || 'Failed to get recommendation');
+      }
 
       const parsed = resp?.data ?? resp ?? {};
 
