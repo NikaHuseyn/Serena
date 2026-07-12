@@ -55,7 +55,7 @@ const WelcomeStep: React.FC<{ onNext: () => void }> = ({ onNext }) => (
       </div>
     </div>
     <div className="space-y-4">
-      <h1 className="text-4xl font-bold gradient-text">Welcome to OutfitOracle</h1>
+      <h1 className="text-4xl font-bold gradient-text">Welcome to Serena</h1>
       <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
         Your personal AI-powered fashion assistant that creates perfect outfits for every occasion
       </p>
