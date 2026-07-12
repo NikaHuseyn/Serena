@@ -232,7 +232,7 @@ const provideStylingResponseTool = {
           type: "string",
           enum: ["womenswear", "menswear", "mixed"],
           description:
-            "Defaults to womenswear (OutfitOracle is a women-focused " +
+            "Defaults to womenswear (Serena is a women-focused " +
             "community). Override only when the user profile indicates " +
             "otherwise, the user states it, or the request clearly implies " +
             "it. Once set in a conversation, keep it — do not revert.",
