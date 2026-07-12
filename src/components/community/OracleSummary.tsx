@@ -113,7 +113,7 @@ const OracleSummary = ({
           ) : (
             <>
               <Sparkles className="h-4 w-4 mr-2" />
-              Ask Oracle to summarise feedback
+              Ask Serena to summarise feedback
             </>
           )}
         </Button>
