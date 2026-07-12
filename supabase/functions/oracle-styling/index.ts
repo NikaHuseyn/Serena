@@ -1339,7 +1339,7 @@ serve(async (req) => {
       } = body ?? {};
 
       const system =
-        "You are Oracle, OutfitOracle's stylist. Write a short, warm, fun 2-3 sentence summary of this community outfit poll: which option the community favoured and why, drawing on the vote counts and comments. UK English. No preamble.";
+        "You are Serena, a personal stylist. Write a short, warm, fun 2-3 sentence summary of this community outfit poll: which option the community favoured and why, drawing on the vote counts and comments. UK English. No preamble.";
       const userMsg = [
         `Occasion: ${occasion || "(not specified)"}`,
         `Options: ${option_count}`,
