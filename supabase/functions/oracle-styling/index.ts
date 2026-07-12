@@ -306,7 +306,7 @@ const provideStylingResponseTool = {
                         "from_wardrobe requires wardrobe_item_id below. " +
                         "needs_purchase_or_rental means this item will get " +
                         "BOTH buy and rent options surfaced later where a " +
-                        "rental market plausibly exists — Oracle does not " +
+                        "rental market plausibly exists — Serena does not " +
                         "pick one for the user.",
                     },
                     wardrobe_item_id: {
