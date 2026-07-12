@@ -312,7 +312,7 @@ const CompletionStep: React.FC<{
       </div>
 
       <p className="text-muted-foreground max-w-lg mx-auto">
-        Your first recommendation will already be personalised to you. Ask Oracle anything to get started.
+        Your first recommendation will already be personalised to you. Ask Serena anything to get started.
       </p>
 
       <Button onClick={onComplete} className="btn-fashion text-lg px-8 py-4 mt-6">

@@ -33,7 +33,7 @@ const MODEL = "google/gemini-3-flash-preview";
 // -----------------------------------------------------------------------
 // SYSTEM PROMPT — complete, verbatim. Do not merge or append.
 // -----------------------------------------------------------------------
-const ORACLE_SYSTEM_PROMPT = `You are Oracle, OutfitOracle's expert personal stylist. You speak like a
+const ORACLE_SYSTEM_PROMPT = `You are Serena, an expert personal stylist. You speak like a
 brilliant, warm, stylish friend — knowledgeable and opinionated, never
 lecturing, never form-like — but you are also the best stylist in the
 world: your taste is impeccable, your judgment is confident, and every
@@ -232,7 +232,7 @@ const provideStylingResponseTool = {
           type: "string",
           enum: ["womenswear", "menswear", "mixed"],
           description:
-            "Defaults to womenswear (OutfitOracle is a women-focused " +
+            "Defaults to womenswear (Serena is a women-focused " +
             "community). Override only when the user profile indicates " +
             "otherwise, the user states it, or the request clearly implies " +
             "it. Once set in a conversation, keep it — do not revert.",
@@ -243,7 +243,7 @@ const provideStylingResponseTool = {
           description:
             "not_applicable: shop_new mode with no wardrobe to check. " +
             "matches_found: wardrobe_only mode succeeded. no_matches: a " +
-            "wardrobe exists but nothing in it fit this occasion — Oracle " +
+            "wardrobe exists but nothing in it fit this occasion — Serena " +
             "should say so plainly in reply_text and mode should be " +
             "shop_new for this response.",
         },
@@ -269,7 +269,7 @@ const provideStylingResponseTool = {
               is_primary: {
                 type: "boolean",
                 description:
-                  "True for the option Oracle would lead with (strongest " +
+                  "True for the option Serena would lead with (strongest " +
                   "wardrobe match, or best fit to known/inferred taste). " +
                   "Exactly one true per response.",
               },
@@ -306,7 +306,7 @@ const provideStylingResponseTool = {
                         "from_wardrobe requires wardrobe_item_id below. " +
                         "needs_purchase_or_rental means this item will get " +
                         "BOTH buy and rent options surfaced later where a " +
-                        "rental market plausibly exists — Oracle does not " +
+                        "rental market plausibly exists — Serena does not " +
                         "pick one for the user.",
                     },
                     wardrobe_item_id: {
@@ -386,7 +386,7 @@ const provideStylingResponseTool = {
             "clearly signals she no longer wants to build around the " +
             "current anchor item (e.g. she pivots to a different piece, " +
             "asks for something totally unrelated, or says 'forget that " +
-            "one' / 'start fresh' in her own words). This is Oracle's " +
+            "one' / 'start fresh' in her own words). This is Serena's " +
             "judgment — not a keyword match. When true, the client will " +
             "stop sending anchor_item_id on subsequent turns.",
         },
@@ -1339,7 +1339,7 @@ serve(async (req) => {
       } = body ?? {};
 
       const system =
-        "You are Oracle, OutfitOracle's stylist. Write a short, warm, fun 2-3 sentence summary of this community outfit poll: which option the community favoured and why, drawing on the vote counts and comments. UK English. No preamble.";
+        "You are Serena, a personal stylist. Write a short, warm, fun 2-3 sentence summary of this community outfit poll: which option the community favoured and why, drawing on the vote counts and comments. UK English. No preamble.";
       const userMsg = [
         `Occasion: ${occasion || "(not specified)"}`,
         `Options: ${option_count}`,

@@ -73,7 +73,7 @@ const OracleSummary = ({
         .eq('id', postId);
 
       setSummary(generatedSummary);
-      toast.success('Oracle summary generated!');
+      toast.success('Serena summary generated!');
     } catch (err) {
       console.error('Error generating summary:', err);
       toast.error('Failed to generate summary');
@@ -113,7 +113,7 @@ const OracleSummary = ({
           ) : (
             <>
               <Sparkles className="h-4 w-4 mr-2" />
-              Ask Oracle to summarise feedback
+              Ask Serena to summarise feedback
             </>
           )}
         </Button>
@@ -127,7 +127,7 @@ const OracleSummary = ({
     <div className="mt-3 p-4 rounded-lg bg-accent/30 border border-border">
       <p className="text-sm font-medium text-foreground mb-2 flex items-center gap-1.5">
         <Sparkles className="h-4 w-4 text-primary" />
-        Oracle says:
+        Serena says:
       </p>
       <p className="text-sm text-foreground leading-relaxed">{summary}</p>
 
