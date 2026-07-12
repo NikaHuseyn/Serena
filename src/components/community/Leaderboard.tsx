@@ -83,9 +83,11 @@ const Leaderboard = () => {
                 </div>
               </div>
               <div className="text-right">
-                <Badge variant="outline" className="mb-1">
-                  {entry.score} points
-                </Badge>
+                {index === 0 && (
+                  <Badge variant="outline" className="mb-1">
+                    Top Stylist
+                  </Badge>
+                )}
                 {entry.badge_count > 0 && (
                   <div className="text-xs text-muted-foreground">
                     {entry.badge_count} badges
