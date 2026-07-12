@@ -3,23 +3,15 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Medal, Award } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 import { useLeaderboard } from '@/hooks/useLeaderboard';
 
 const Leaderboard = () => {
   const { leaderboard, loading, error } = useLeaderboard();
 
   const getRankIcon = (index: number) => {
-    switch (index) {
-      case 0:
-        return <Trophy className="h-5 w-5 text-yellow-500" />;
-      case 1:
-        return <Medal className="h-5 w-5 text-muted-foreground" />;
-      case 2:
-        return <Award className="h-5 w-5 text-amber-600" />;
-      default:
-        return <span className="text-sm font-bold text-muted-foreground">#{index + 1}</span>;
-    }
+    if (index === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
+    return <span className="text-sm font-bold text-muted-foreground">#{index + 1}</span>;
   };
 
   if (loading) {
@@ -91,9 +83,11 @@ const Leaderboard = () => {
                 </div>
               </div>
               <div className="text-right">
-                <Badge variant="outline" className="mb-1">
-                  {entry.score} points
-                </Badge>
+                {index === 0 && (
+                  <Badge variant="outline" className="mb-1">
+                    Top Stylist
+                  </Badge>
+                )}
                 {entry.badge_count > 0 && (
                   <div className="text-xs text-muted-foreground">
                     {entry.badge_count} badges
