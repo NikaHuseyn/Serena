@@ -51,7 +51,7 @@ const Header = () => {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <h1 className="text-2xl font-bold gradient-text">
-                StyleAI
+                Serena
               </h1>
             </div>
             <div className="animate-pulse">
