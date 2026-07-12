@@ -73,7 +73,7 @@ const OracleSummary = ({
         .eq('id', postId);
 
       setSummary(generatedSummary);
-      toast.success('Oracle summary generated!');
+      toast.success('Serena summary generated!');
     } catch (err) {
       console.error('Error generating summary:', err);
       toast.error('Failed to generate summary');
