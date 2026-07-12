@@ -290,7 +290,7 @@ const Auth = () => {
         <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">
-            Welcome to StyleAI
+            Welcome to Serena
           </CardTitle>
           <CardDescription>
             Sign in to access your personal wardrobe and style recommendations

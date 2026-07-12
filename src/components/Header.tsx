@@ -51,7 +51,7 @@ const Header = () => {
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center">
               <h1 className="text-2xl font-bold gradient-text">
-                StyleAI
+                Serena
               </h1>
             </div>
             <div className="animate-pulse">
@@ -72,7 +72,7 @@ const Header = () => {
               onClick={() => navigate('/')}
               className="text-2xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
             >
-              StyleAI
+              Serena
             </button>
           </div>
 
