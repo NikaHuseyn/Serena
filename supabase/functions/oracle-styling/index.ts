@@ -269,7 +269,7 @@ const provideStylingResponseTool = {
               is_primary: {
                 type: "boolean",
                 description:
-                  "True for the option Oracle would lead with (strongest " +
+                  "True for the option Serena would lead with (strongest " +
                   "wardrobe match, or best fit to known/inferred taste). " +
                   "Exactly one true per response.",
               },
