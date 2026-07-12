@@ -271,6 +271,7 @@ const Auth = () => {
             </form>
           </CardContent>
         </Card>
+        </div>
       </div>
     );
   }
