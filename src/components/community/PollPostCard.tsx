@@ -42,7 +42,9 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
   const { badges } = useBadges(post.user_id);
   const isOwnPost = currentUserId === post.user_id;
   const optionCount = post.image_urls.length;
-  const { voteCounts, userVote, castVote, getWinnerText } = useOutfitVotes(post.id, optionCount);
+  const { voteCounts, userVote, totalVotes, castVote, getWinnerText } = useOutfitVotes(post.id, optionCount);
+  const hasVoted = userVote !== null;
+  const showResults = isOwnPost || hasVoted;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
