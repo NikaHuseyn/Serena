@@ -386,7 +386,7 @@ const provideStylingResponseTool = {
             "clearly signals she no longer wants to build around the " +
             "current anchor item (e.g. she pivots to a different piece, " +
             "asks for something totally unrelated, or says 'forget that " +
-            "one' / 'start fresh' in her own words). This is Oracle's " +
+            "one' / 'start fresh' in her own words). This is Serena's " +
             "judgment — not a keyword match. When true, the client will " +
             "stop sending anchor_item_id on subsequent turns.",
         },
