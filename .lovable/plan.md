@@ -1,71 +1,42 @@
-## Goal
+## Two changes to outfit polls
 
-Bring the community composer (and edit dialog) up to a modern social experience: emoji picker, @mentions for people, #hashtags, brand tags, and location tags. Display + filter on the feed where relevant.
+### 1. Post/Poll mode toggle in `PostCreationForm`
 
-## What you'll see
+Add a segmented toggle at the top of the form: **Post** (default) and **Which one? 👗**.
 
-**In the composer + edit dialog**
-- Emoji 😀 button next to the caption — opens a picker, inserts at cursor.
-- Typing `@` opens an autocomplete of community members (display name, avatar). Selecting inserts `@username`.
-- Typing `#` opens an autocomplete of recently used hashtags. Selecting inserts `#tag`.
-- A "Tag brands" chip-input below the caption — autocomplete from a curated brand list, multi-select.
-- An "Add location" button — free-text now (Google Places later if you connect it).
+**Post mode**: leave the entire existing UI and submit flow untouched (up to 10 photos, Main label on #1, `post_type: 'single'`, caption/brands/location/mentions).
 
-**On each post card**
-- Caption renders `@mentions` (link to profile), `#hashtags` (link to filtered feed), brand chips, and a small location pill above the caption.
-- Tapping a hashtag or brand filters the feed.
-- Mentioned users get a notification.
+**Poll mode**: render a completely separate section that replaces the multi-photo grid, caption, brand picker, location picker, and mentions block. It contains:
+- 2 to 4 fixed option slots, starting with 2. Each slot is a single-photo picker labelled "Option 1/2/3/4" with its own hidden `<input type="file">` (single, `accept="image/*"`). Selecting a photo compresses it via `ImageProcessor.compressImage` (same as today) and shows a preview with a remove (X) button.
+- "Add option" button, visible while option count < 4, appends an empty slot.
+- Remove-slot button on slots 3 and 4 (never removes below 2).
+- One optional single-line text input for the question, placeholder: `Ask a question or add context — e.g. 'Dinner with the girls on Friday…'`.
+- Submit button label: "Post poll". Enabled only when at least 2 slots have a photo.
+- On submit: upload the option photos in order (reusing `uploadFiles` pattern), then call `onCreatePost` with `post_type: 'poll'`, `image_urls` in option order, `poll_question` = trimmed text or `undefined` (skip empty), `caption: ''`, no brands/location/mentions.
 
-## Build steps
+State is kept per-mode; switching modes does not clear the other mode's state (but is cheap since the user is composing one post). Cleanup of object URLs on unmount/reset applies to both.
 
-1. **Database migration**
-   - Add columns to `posts`: `mentioned_user_ids uuid[]`, `brand_tags text[]`, `location text`. (`tags text[]` already exists for hashtags.)
-   - New table `public.brands(id, name, slug, logo_url)` with `GRANT SELECT` to anon/authenticated; seed ~80 popular fashion brands.
-   - Index `posts(tags)` and `posts(brand_tags)` (GIN) for filter performance.
-   - Notification insert trigger: when a post is created/updated with new `mentioned_user_ids`, insert a `mention` notification per user.
+Everything else in the form (header, cancel button behaviour, error handling) is shared.
 
-2. **Composer (`PostCreationForm` + `EditPostDialog`)**
-   - Install `emoji-picker-react` (lightweight, no backend).
-   - Build a reusable `RichCaptionInput` that wraps `Textarea`:
-     - Tracks cursor; detects `@foo` / `#foo` tokens; shows a floating autocomplete (`Command` from shadcn).
-     - `@` queries `social_profiles` by `display_name ilike`.
-     - `#` queries distinct recent `tags` from `posts`.
-     - On select, replaces the token and records the id (for mentions) / tag string.
-   - Brand chip-input: shadcn `Command` + `Badge`, queries `brands`.
-   - Location: simple text input with a pin icon (placeholder for Places later).
-   - Emoji button inserts at cursor position.
+### 2. Vote-reveal changes in `PollPostCard`
 
-3. **Hook updates (`useSocialPosts`)**
-   - Extend `CreatePostData` + `updatePost` with `tags`, `mentioned_user_ids`, `brand_tags`, `location`.
-   - Parse `#tags` and `@mentions` out of caption on submit (single source of truth = caption).
+In `PollPostCard`, derive:
+- `isAuthor = currentUserId === post.user_id`
+- `hasVoted = userVote !== null`
+- `showResults = isAuthor || hasVoted`
 
-4. **Display (`PostCard`)**
-   - New `CaptionRenderer` that tokenises caption and renders `@user` and `#tag` as `<Link>`s.
-   - Location pill above caption with map-pin icon.
-   - Brand chips row below caption, each linking to filtered feed.
+Changes:
+- **Vote-count chip** on each image: render only when `showResults`.
+- **Winner text** line: render only when `showResults`.
+- **Per-option results** (new, only when `showResults`): under the vote button of each option, show a thin percentage bar plus text `"{pct}% · {n} vote{s}"`. Percentage = `Math.round((count / totalVotes) * 100)` when `totalVotes > 0`, else `0% · 0 votes`. Use `bg-muted` track with `bg-primary` fill; width = `${pct}%`.
+- **Poll heading**: when `post.poll_question` is empty/nullish, render no `<h4>` (and no empty space). The existing "👗 Which one?" badge in the header stays.
+- **Guest behaviour**: unchanged — `userVote` is always `null` for guests, `isAuthor` is false, so `showResults` is false → counts hidden. Tapping vote still triggers the existing `requireAuth` nudge inside `castVote` (guests never mutate anything).
 
-5. **Feed filtering**
-   - Route params `?tag=summer` and `?brand=zara` on `/community`.
-   - `useSocialPosts` accepts optional filter; uses `.contains('tags', [tag])` / `.contains('brand_tags', [brand])`.
-   - Filter chip header with a "Clear" button.
+Real-time refetch, single-vote/change-vote logic, `PollCommentSection`, and `OracleSummary` are unchanged. `useOutfitVotes` needs no changes — `totalVotes` is already exposed; consume it in the card.
 
-6. **Notifications**
-   - Existing `notifications` table — add `'mention'` to allowed types in app code.
-   - Bell badge already wired via `useCommunityNotifications`.
+### Files touched
 
-## Technical details
+- `src/components/community/PostCreationForm.tsx` — add mode toggle + poll composer branch.
+- `src/components/community/PollPostCard.tsx` — gate counts/winner behind `showResults`, add per-option result bar, conditional heading.
 
-- **Mentions storage**: store `@displayname` text in caption AND `mentioned_user_ids uuid[]` separately, so renaming a user doesn't break old posts and notifications stay accurate.
-- **Hashtag normalisation**: lowercase, strip punctuation, max 30 chars, dedupe.
-- **Brand list source**: static seed migration (Zara, H&M, COS, Arket, Uniqlo, &Other Stories, Massimo Dutti, Mango, Reformation, Ganni, Aritzia, Madewell, Everlane, Nike, Adidas, New Balance, Nordstrom, Net-a-Porter, SSENSE, Farfetch, Vinted, Depop, etc.). Editable later.
-- **Location**: free-text v1 (e.g., "London, UK"). Add Google Places autocomplete in v2 if you want — needs a Places API key.
-- **Bundle impact**: `emoji-picker-react` is ~150KB gzipped; lazy-loaded only when the picker opens.
-- **RLS**: `brands` is public-read; `posts` policies already cover the new columns.
-
-## Out of scope (flag for follow-up)
-
-- Google Places autocomplete (needs API key).
-- Brand verification / brand pages.
-- Mention notifications via email/push (in-app only for v1).
-
-Shall I build it?
+No DB, hook, edge function, or other component changes.

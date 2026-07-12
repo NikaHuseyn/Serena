@@ -42,7 +42,9 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
   const { badges } = useBadges(post.user_id);
   const isOwnPost = currentUserId === post.user_id;
   const optionCount = post.image_urls.length;
-  const { voteCounts, userVote, castVote, getWinnerText } = useOutfitVotes(post.id, optionCount);
+  const { voteCounts, userVote, totalVotes, castVote, getWinnerText } = useOutfitVotes(post.id, optionCount);
+  const hasVoted = userVote !== null;
+  const showResults = isOwnPost || hasVoted;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
@@ -131,9 +133,11 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
         )}
 
         {/* Poll question */}
-        <h4 className="text-lg font-semibold text-foreground mb-4">
-          {post.poll_question || 'Which one?'}
-        </h4>
+        {post.poll_question && (
+          <h4 className="text-lg font-semibold text-foreground mb-4">
+            {post.poll_question}
+          </h4>
+        )}
 
         {/* Carousel */}
         <div className="relative mb-3">
@@ -142,7 +146,10 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
               className="flex transition-transform duration-300 ease-in-out"
               style={{ transform: `translateX(-${currentSlide * 100}%)` }}
             >
-              {post.image_urls.map((url, index) => (
+              {post.image_urls.map((url, index) => {
+                const count = voteCounts[index] || 0;
+                const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+                return (
                 <div key={index} className="w-full flex-shrink-0 relative">
                   <div className="relative aspect-[3/4]">
                     <img
@@ -157,15 +164,17 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
                         Option {index + 1}
                       </span>
                     </div>
-                    {/* Vote count */}
-                    <div className="absolute bottom-3 right-3">
-                      <span className="bg-background/80 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded">
-                        {voteCounts[index] || 0} vote{(voteCounts[index] || 0) !== 1 ? 's' : ''}
-                      </span>
-                    </div>
+                    {/* Vote count — only visible after voting or to author */}
+                    {showResults && (
+                      <div className="absolute bottom-3 right-3">
+                        <span className="bg-background/80 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded">
+                          {count} vote{count !== 1 ? 's' : ''}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   {/* Vote button */}
-                  <div className="p-3">
+                  <div className="p-3 space-y-2">
                     <Button
                       onClick={() => castVote(index)}
                       variant={userVote === index ? 'default' : 'outline'}
@@ -181,11 +190,26 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
                         `Vote for Option ${index + 1} 👗`
                       )}
                     </Button>
+                    {showResults && (
+                      <div>
+                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full bg-primary transition-all"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {pct}% · {count} vote{count !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
+
 
           {/* Navigation arrows */}
           {currentSlide > 0 && (
@@ -221,10 +245,12 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
           ))}
         </div>
 
-        {/* Winner text */}
-        <p className="text-sm text-muted-foreground text-center mb-4">
-          {getWinnerText()}
-        </p>
+        {/* Winner text — only visible after voting or to author */}
+        {showResults && (
+          <p className="text-sm text-muted-foreground text-center mb-4">
+            {getWinnerText()}
+          </p>
+        )}
 
         {/* Caption */}
         {post.caption && (
