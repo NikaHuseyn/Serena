@@ -208,7 +208,16 @@ const Auth = () => {
   if (isPasswordReset) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-rose-50 via-white to-pink-50 flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <div className="w-full max-w-md">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors mb-4"
+          >
+            <ArrowLeft className="h-4 w-4 mr-1.5" />
+            Continue browsing
+          </button>
+          <Card className="w-full max-w-md">
           <CardHeader className="text-center">
             <CardTitle className="text-2xl font-bold bg-gradient-to-r from-rose-600 via-pink-600 to-purple-600 bg-clip-text text-transparent">
               Set New Password
