@@ -245,10 +245,12 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
           ))}
         </div>
 
-        {/* Winner text */}
-        <p className="text-sm text-muted-foreground text-center mb-4">
-          {getWinnerText()}
-        </p>
+        {/* Winner text — only visible after voting or to author */}
+        {showResults && (
+          <p className="text-sm text-muted-foreground text-center mb-4">
+            {getWinnerText()}
+          </p>
+        )}
 
         {/* Caption */}
         {post.caption && (
