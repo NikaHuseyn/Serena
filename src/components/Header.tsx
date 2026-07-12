@@ -72,7 +72,7 @@ const Header = () => {
               onClick={() => navigate('/')}
               className="text-2xl font-bold bg-gradient-to-r from-rose-600 to-pink-600 bg-clip-text text-transparent hover:opacity-80 transition-opacity"
             >
-              StyleAI
+              Serena
             </button>
           </div>
 
