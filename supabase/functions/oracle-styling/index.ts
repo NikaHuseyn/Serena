@@ -243,7 +243,7 @@ const provideStylingResponseTool = {
           description:
             "not_applicable: shop_new mode with no wardrobe to check. " +
             "matches_found: wardrobe_only mode succeeded. no_matches: a " +
-            "wardrobe exists but nothing in it fit this occasion — Oracle " +
+            "wardrobe exists but nothing in it fit this occasion — Serena " +
             "should say so plainly in reply_text and mode should be " +
             "shop_new for this response.",
         },
