@@ -10,16 +10,8 @@ const Leaderboard = () => {
   const { leaderboard, loading, error } = useLeaderboard();
 
   const getRankIcon = (index: number) => {
-    switch (index) {
-      case 0:
-        return <Trophy className="h-5 w-5 text-yellow-500" />;
-      case 1:
-        return <Medal className="h-5 w-5 text-muted-foreground" />;
-      case 2:
-        return <Award className="h-5 w-5 text-amber-600" />;
-      default:
-        return <span className="text-sm font-bold text-muted-foreground">#{index + 1}</span>;
-    }
+    if (index === 0) return <Trophy className="h-5 w-5 text-yellow-500" />;
+    return <span className="text-sm font-bold text-muted-foreground">#{index + 1}</span>;
   };
 
   if (loading) {
