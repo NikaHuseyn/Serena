@@ -11,7 +11,7 @@ import PollPostCard from './community/PollPostCard';
 import EmptyState from './community/EmptyState';
 import LoadingState from './community/LoadingState';
 import ErrorState from './community/ErrorState';
-import CommunityStats from './community/CommunityStats';
+
 import Leaderboard from './community/Leaderboard';
 import GuestNudgeBanner from './community/GuestNudgeBanner';
 import { supabase } from '@/integrations/supabase/client';
