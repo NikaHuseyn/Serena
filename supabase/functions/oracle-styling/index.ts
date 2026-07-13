@@ -2,18 +2,19 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-// CORS — restricted to the production/preview/local origins for this project.
-const ALLOWED_ORIGINS = [
-  "https://style-savvy-scheduler-she.lovable.app",
-  "https://preview--style-savvy-scheduler-she.lovable.app",
-  "http://localhost:8080",
+// CORS — allow Lovable preview/published origins and local dev.
+const ALLOWED_ORIGIN_PATTERNS: RegExp[] = [
+  /^https:\/\/([a-z0-9-]+\.)*lovable\.app$/i,
+  /^https:\/\/([a-z0-9-]+\.)*lovableproject\.com$/i,
+  /^https:\/\/([a-z0-9-]+\.)*lovable\.dev$/i,
+  /^http:\/\/localhost(:\d+)?$/i,
 ];
 
 function corsHeadersFor(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
-  const allowed = ALLOWED_ORIGINS.includes(origin)
+  const allowed = ALLOWED_ORIGIN_PATTERNS.some((re) => re.test(origin))
     ? origin
-    : ALLOWED_ORIGINS[0];
+    : "*";
   return {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Headers":
@@ -22,6 +23,7 @@ function corsHeadersFor(req: Request) {
     "Vary": "Origin",
   };
 }
+
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
