@@ -19,6 +19,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
 import { useGuestNudge } from '@/hooks/useGuestNudge';
 
+// Feature flag: hide Style Leaderboard while community is small. Component and data remain intact.
+const SHOW_LEADERBOARD = false;
+
 const CommunityFeed = () => {
   const { posts, loading, loadingMore, error, hasMore, createPost, toggleLike, deletePost, updatePost, loadMore } = useSocialPosts();
   const { toast } = useToast();
@@ -138,9 +141,9 @@ const CommunityFeed = () => {
   if (error) return <ErrorState error={error} />;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className={`grid grid-cols-1 gap-6 ${SHOW_LEADERBOARD ? 'lg:grid-cols-3' : ''}`}>
       {/* Main Feed */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className={`space-y-6 ${SHOW_LEADERBOARD ? 'lg:col-span-2' : ''}`}>
         <div className="flex items-center justify-between">
           <div>
           <h2 className="text-2xl font-bold text-foreground flex items-center">
@@ -256,9 +259,11 @@ const CommunityFeed = () => {
 
 
       {/* Sidebar */}
-      <div className="space-y-6">
-        <Leaderboard />
-      </div>
+      {SHOW_LEADERBOARD && (
+        <div className="space-y-6">
+          <Leaderboard />
+        </div>
+      )}
     </div>
   );
 };
