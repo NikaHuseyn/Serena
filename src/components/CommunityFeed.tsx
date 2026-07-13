@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,7 +10,7 @@ import PollPostCard from './community/PollPostCard';
 import EmptyState from './community/EmptyState';
 import LoadingState from './community/LoadingState';
 import ErrorState from './community/ErrorState';
-import CommunityStats from './community/CommunityStats';
+
 import Leaderboard from './community/Leaderboard';
 import GuestNudgeBanner from './community/GuestNudgeBanner';
 import { supabase } from '@/integrations/supabase/client';
@@ -31,13 +30,6 @@ const CommunityFeed = () => {
   const [showPostForm, setShowPostForm] = useState(false);
   const [hintDismissed, setHintDismissed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
-  const [stats, setStats] = useState({
-    totalPosts: 0,
-    totalLikes: 0,
-    totalComments: 0,
-    activeUsers: 0
-  });
-  const prevPostsLength = useRef(posts.length);
 
   // Fetch current user once & mark notifications as read
   useEffect(() => {
@@ -60,33 +52,6 @@ const CommunityFeed = () => {
 
   const hasUserPosted = currentUserId ? posts.some(p => p.user_id === currentUserId) : true;
   const showHint = Boolean(currentUserId) && posts.length > 0 && !hasUserPosted && !hintDismissed;
-
-  const fetchCommunityStats = useCallback(async () => {
-    try {
-      const [postsRes, likesRes, commentsRes, usersRes] = await Promise.all([
-        supabase.from('posts').select('*', { count: 'exact', head: true }),
-        supabase.from('likes').select('*', { count: 'exact', head: true }),
-        supabase.from('comments').select('*', { count: 'exact', head: true }),
-        supabase.from('social_profiles').select('*', { count: 'exact', head: true }).gt('posts_count', 0),
-      ]);
-
-      setStats({
-        totalPosts: postsRes.count || 0,
-        totalLikes: likesRes.count || 0,
-        totalComments: commentsRes.count || 0,
-        activeUsers: usersRes.count || 0,
-      });
-    } catch {
-      // silent
-    }
-  }, []);
-
-  useEffect(() => {
-    if (posts.length !== prevPostsLength.current || prevPostsLength.current === 0) {
-      prevPostsLength.current = posts.length;
-      fetchCommunityStats();
-    }
-  }, [posts.length, fetchCommunityStats]);
 
   const handleShare = async (postId: string) => {
     try {
@@ -167,8 +132,6 @@ const CommunityFeed = () => {
         </div>
 
         {!currentUserId && <GuestNudgeBanner />}
-
-        <CommunityStats stats={stats} />
 
         {showPostForm && (
           <PostCreationForm
