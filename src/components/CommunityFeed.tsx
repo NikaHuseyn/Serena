@@ -141,9 +141,9 @@ const CommunityFeed = () => {
   if (error) return <ErrorState error={error} />;
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className={`grid grid-cols-1 gap-6 ${SHOW_LEADERBOARD ? 'lg:grid-cols-3' : ''}`}>
       {/* Main Feed */}
-      <div className="lg:col-span-2 space-y-6">
+      <div className={`space-y-6 ${SHOW_LEADERBOARD ? 'lg:col-span-2' : ''}`}>
         <div className="flex items-center justify-between">
           <div>
           <h2 className="text-2xl font-bold text-foreground flex items-center">
@@ -259,9 +259,11 @@ const CommunityFeed = () => {
 
 
       {/* Sidebar */}
-      <div className="space-y-6">
-        <Leaderboard />
-      </div>
+      {SHOW_LEADERBOARD && (
+        <div className="space-y-6">
+          <Leaderboard />
+        </div>
+      )}
     </div>
   );
 };
