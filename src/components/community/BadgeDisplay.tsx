@@ -36,7 +36,7 @@ const BadgeDisplay = ({ badges, showDescription = false, limit }: BadgeDisplayPr
   };
 
   if (badges.length === 0) {
-    return <div className="text-sm text-muted-foreground">No badges earned yet</div>;
+    return null;
   }
 
   return (
