@@ -302,20 +302,35 @@ export const useStylingChat = () => {
         persistMessage(activeConvId, 'assistant', finalContent, parsed.outfit_options);
       }
     } catch (error: any) {
+      // Rich diagnostics: log the raw error, any FunctionsHttpError context,
+      // and the response body if available.
       console.error('[useStylingChat] sendMessage failed:', error);
-      const hint = error?.name || error?.message
-        ? ` (${error?.name || 'Error'}: ${String(error?.message ?? error).slice(0, 140)})`
-        : '';
-      const isDev = typeof import.meta !== 'undefined' && (import.meta as any)?.env?.DEV;
-      toast.error(`Something went wrong. Please try again.${isDev ? hint : ''}`);
+      try {
+        const ctx: any = (error as any)?.context;
+        if (ctx) {
+          console.error('[useStylingChat] error.context:', {
+            status: ctx.status,
+            statusText: ctx.statusText,
+            url: ctx.url,
+          });
+          if (typeof ctx.text === 'function') {
+            const body = await ctx.text().catch(() => null);
+            if (body) console.error('[useStylingChat] error.context body:', body);
+          }
+        }
+      } catch { /* ignore */ }
+
+      const reason = String(error?.message ?? error ?? 'unknown').slice(0, 160);
+      toast.error(`Something went wrong: ${reason}`);
 
       const errorMsg: ChatMessage = {
         id: `error-${Date.now()}`,
         role: 'assistant',
-        content: "I'm sorry, I couldn't process your request. Please try again or rephrase your question.",
+        content: `I'm sorry, I couldn't process your request (${reason}). Please try again or rephrase your question.`,
         timestamp: new Date(),
       };
       setMessages(prev => [...prev, errorMsg]);
+
     } finally {
       setIsLoading(false);
     }
