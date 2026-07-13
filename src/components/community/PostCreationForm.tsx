@@ -346,7 +346,7 @@ const PostCreationForm = ({ onCreatePost, onClose }: PostCreationFormProps) => {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              Which one? 👗
+              Poll 👗
             </button>
           </div>
 
