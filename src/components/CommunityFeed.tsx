@@ -168,7 +168,7 @@ const CommunityFeed = () => {
 
         {!currentUserId && <GuestNudgeBanner />}
 
-        <CommunityStats stats={stats} />
+        
 
         {showPostForm && (
           <PostCreationForm
