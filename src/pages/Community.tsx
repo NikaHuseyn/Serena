@@ -9,8 +9,8 @@ const Community = () => {
     <div className="min-h-screen bg-background pt-14">
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <p className="text-muted-foreground">
+        <div className="mb-5">
+          <p className="text-sm text-muted-foreground max-w-[65ch]">
             Share your outfit, say where you're going, and get honest feedback from women who get it. This is where "which one should I wear?" gets answered.
           </p>
         </div>
