@@ -19,6 +19,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
 import { useGuestNudge } from '@/hooks/useGuestNudge';
 
+// Feature flag: hide Style Leaderboard while community is small. Component and data remain intact.
+const SHOW_LEADERBOARD = false;
+
 const CommunityFeed = () => {
   const { posts, loading, loadingMore, error, hasMore, createPost, toggleLike, deletePost, updatePost, loadMore } = useSocialPosts();
   const { toast } = useToast();
