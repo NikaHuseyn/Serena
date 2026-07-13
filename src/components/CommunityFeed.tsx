@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -53,7 +52,6 @@ const CommunityFeed = () => {
 
   const hasUserPosted = currentUserId ? posts.some(p => p.user_id === currentUserId) : true;
   const showHint = Boolean(currentUserId) && posts.length > 0 && !hasUserPosted && !hintDismissed;
-
 
   const handleShare = async (postId: string) => {
     try {
@@ -134,8 +132,6 @@ const CommunityFeed = () => {
         </div>
 
         {!currentUserId && <GuestNudgeBanner />}
-
-        
 
         {showPostForm && (
           <PostCreationForm
