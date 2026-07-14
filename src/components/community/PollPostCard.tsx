@@ -309,6 +309,12 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
           </AlertDialogContent>
         </AlertDialog>
       )}
+      <ImageLightbox
+        images={post.image_urls.map((url, i) => ({ url, label: `Option ${i + 1}` }))}
+        startIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </Card>
   );
 };
