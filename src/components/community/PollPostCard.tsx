@@ -27,6 +27,7 @@ import BadgeDisplay from './BadgeDisplay';
 import ReportPostDialog from './ReportPostDialog';
 import PollCommentSection from './PollCommentSection';
 import OracleSummary from './OracleSummary';
+import ImageLightbox from './ImageLightbox';
 import { useBadges } from '@/hooks/useBadges';
 import { useOutfitVotes } from '@/hooks/useOutfitVotes';
 import type { SocialPost } from '@/hooks/useSocialPosts';
