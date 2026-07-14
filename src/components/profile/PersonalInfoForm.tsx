@@ -229,29 +229,28 @@ const PersonalInfoForm = ({ profile, onUpdate }: PersonalInfoFormProps) => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="height_cm">Height (cm)</Label>
+              <Label htmlFor="height_cm">Height, cm <span className="text-sm text-gray-500">(optional)</span></Label>
               <Input
                 id="height_cm"
                 type="number"
                 {...register('height_cm')}
-                placeholder="170"
                 min="100"
                 max="250"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="weight_kg">Weight (kg)</Label>
+              <Label htmlFor="weight_kg">Weight, kg <span className="text-sm text-gray-500">(optional)</span></Label>
               <Input
                 id="weight_kg"
                 type="number"
                 step="0.1"
                 {...register('weight_kg')}
-                placeholder="70.5"
                 min="30"
                 max="200"
               />
             </div>
+
 
             <div className="space-y-2">
               <Label htmlFor="face_shape">Face Shape <span className="text-sm text-gray-500">(Optional)</span></Label>
