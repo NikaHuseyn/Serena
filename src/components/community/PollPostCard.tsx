@@ -48,6 +48,8 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
   const showResults = isOwnPost || hasVoted;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const formattedDate = useMemo(() =>
     new Date(post.created_at).toLocaleDateString('en-US', {
