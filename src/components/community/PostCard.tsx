@@ -28,6 +28,7 @@ import BadgeDisplay from './BadgeDisplay';
 import ReportPostDialog from './ReportPostDialog';
 import EditPostDialog from './EditPostDialog';
 import CaptionRenderer from './CaptionRenderer';
+import ImageLightbox from './ImageLightbox';
 import { MapPin, Tag as TagIcon } from 'lucide-react';
 import { useBadges } from '@/hooks/useBadges';
 
