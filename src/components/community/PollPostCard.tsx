@@ -176,7 +176,7 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
                     </div>
                     {/* Vote count — only visible after voting or to author */}
                     {showResults && (
-                      <div className="absolute bottom-3 right-3">
+                      <div className="absolute bottom-3 right-3 pointer-events-none">
                         <span className="bg-background/80 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded">
                           {count} vote{count !== 1 ? 's' : ''}
                         </span>
