@@ -27,6 +27,7 @@ import BadgeDisplay from './BadgeDisplay';
 import ReportPostDialog from './ReportPostDialog';
 import PollCommentSection from './PollCommentSection';
 import OracleSummary from './OracleSummary';
+import ImageLightbox from './ImageLightbox';
 import { useBadges } from '@/hooks/useBadges';
 import { useOutfitVotes } from '@/hooks/useOutfitVotes';
 import type { SocialPost } from '@/hooks/useSocialPosts';
@@ -47,6 +48,8 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
   const showResults = isOwnPost || hasVoted;
   const [currentSlide, setCurrentSlide] = useState(0);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const formattedDate = useMemo(() =>
     new Date(post.created_at).toLocaleDateString('en-US', {
@@ -152,21 +155,28 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
                 return (
                 <div key={index} className="w-full flex-shrink-0 relative">
                   <div className="relative aspect-[3/4]">
-                    <img
-                      src={url}
-                      alt={`Option ${index + 1}`}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => { setLightboxIndex(index); setLightboxOpen(true); }}
+                      className="absolute inset-0 w-full h-full cursor-zoom-in"
+                      aria-label={`Open Option ${index + 1} image`}
+                    >
+                      <img
+                        src={url}
+                        alt={`Option ${index + 1}`}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
                     {/* Option label */}
-                    <div className="absolute top-3 left-3">
+                    <div className="absolute top-3 left-3 pointer-events-none">
                       <span className="bg-background/80 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded">
                         Option {index + 1}
                       </span>
                     </div>
                     {/* Vote count — only visible after voting or to author */}
                     {showResults && (
-                      <div className="absolute bottom-3 right-3">
+                      <div className="absolute bottom-3 right-3 pointer-events-none">
                         <span className="bg-background/80 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded">
                           {count} vote{count !== 1 ? 's' : ''}
                         </span>
@@ -299,6 +309,12 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
           </AlertDialogContent>
         </AlertDialog>
       )}
+      <ImageLightbox
+        images={post.image_urls.map((url, i) => ({ url, label: `Option ${i + 1}` }))}
+        startIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </Card>
   );
 };

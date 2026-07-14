@@ -28,6 +28,7 @@ import BadgeDisplay from './BadgeDisplay';
 import ReportPostDialog from './ReportPostDialog';
 import EditPostDialog from './EditPostDialog';
 import CaptionRenderer from './CaptionRenderer';
+import ImageLightbox from './ImageLightbox';
 import { MapPin, Tag as TagIcon } from 'lucide-react';
 import { useBadges } from '@/hooks/useBadges';
 
@@ -74,6 +75,8 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
   const isOwnPost = currentUserId === post.user_id;
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const formattedDate = useMemo(() => 
     new Date(post.created_at).toLocaleDateString('en-US', {
@@ -153,7 +156,13 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
             post.image_urls.length === 1 ? '' : 'grid grid-cols-2 gap-2'
           }`}>
             {post.image_urls.slice(0, 4).map((url, index) => (
-              <div key={index} className="relative aspect-square">
+              <button
+                type="button"
+                key={index}
+                onClick={() => { setLightboxIndex(index); setLightboxOpen(true); }}
+                className="relative aspect-square block w-full overflow-hidden cursor-zoom-in"
+                aria-label={`Open image ${index + 1}`}
+              >
                 <img
                   src={url}
                   alt={`Post image ${index + 1}`}
@@ -167,7 +176,7 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
                     </span>
                   </div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         )}
@@ -276,6 +285,12 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
           </AlertDialogContent>
         </AlertDialog>
       )}
+      <ImageLightbox
+        images={(post.image_urls || []).map((url, i) => ({ url, label: undefined }))}
+        startIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </Card>
   );
 };
