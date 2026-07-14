@@ -155,14 +155,21 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
                 return (
                 <div key={index} className="w-full flex-shrink-0 relative">
                   <div className="relative aspect-[3/4]">
-                    <img
-                      src={url}
-                      alt={`Option ${index + 1}`}
-                      loading="lazy"
-                      className="w-full h-full object-cover"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => { setLightboxIndex(index); setLightboxOpen(true); }}
+                      className="absolute inset-0 w-full h-full cursor-zoom-in"
+                      aria-label={`Open Option ${index + 1} image`}
+                    >
+                      <img
+                        src={url}
+                        alt={`Option ${index + 1}`}
+                        loading="lazy"
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
                     {/* Option label */}
-                    <div className="absolute top-3 left-3">
+                    <div className="absolute top-3 left-3 pointer-events-none">
                       <span className="bg-background/80 backdrop-blur-sm text-foreground text-xs font-medium px-2 py-1 rounded">
                         Option {index + 1}
                       </span>
