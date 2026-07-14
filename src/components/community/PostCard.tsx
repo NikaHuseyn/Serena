@@ -156,7 +156,13 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
             post.image_urls.length === 1 ? '' : 'grid grid-cols-2 gap-2'
           }`}>
             {post.image_urls.slice(0, 4).map((url, index) => (
-              <div key={index} className="relative aspect-square">
+              <button
+                type="button"
+                key={index}
+                onClick={() => { setLightboxIndex(index); setLightboxOpen(true); }}
+                className="relative aspect-square block w-full overflow-hidden cursor-zoom-in"
+                aria-label={`Open image ${index + 1}`}
+              >
                 <img
                   src={url}
                   alt={`Post image ${index + 1}`}
@@ -170,7 +176,7 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
                     </span>
                   </div>
                 )}
-              </div>
+              </button>
             ))}
           </div>
         )}
