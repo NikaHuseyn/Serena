@@ -75,6 +75,8 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
   const isOwnPost = currentUserId === post.user_id;
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   const formattedDate = useMemo(() => 
     new Date(post.created_at).toLocaleDateString('en-US', {
