@@ -285,6 +285,12 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
           </AlertDialogContent>
         </AlertDialog>
       )}
+      <ImageLightbox
+        images={(post.image_urls || []).map((url, i) => ({ url, label: undefined }))}
+        startIndex={lightboxIndex}
+        open={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+      />
     </Card>
   );
 };
