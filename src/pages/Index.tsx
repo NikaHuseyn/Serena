@@ -66,6 +66,28 @@ const IndexContent = () => {
     return <OnboardingFlow onComplete={completeOnboarding} />;
   }
 
+  if (!chatEnabled) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col pt-14">
+        <main className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto">
+          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+            <Sparkles className="h-7 w-7 text-primary" />
+          </div>
+          <h1 className="text-2xl font-semibold text-foreground mb-3">
+            Serena is getting ready ✨
+          </h1>
+          <p className="text-muted-foreground mb-8">
+            Your personal stylist launches in a later stage — watch this space.
+          </p>
+          <Button onClick={() => navigate('/community')}>
+            Back to Community
+          </Button>
+        </main>
+        <BottomNav />
+      </div>
+    );
+  }
+
   const hasMessages = messages.length > 0;
 
   return (
