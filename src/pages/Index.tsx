@@ -186,10 +186,29 @@ const IndexContent = () => {
             onSend={sendMessage}
             isLoading={isLoading}
             disabled={previewMode}
-            placeholder={previewMode ? "Serena is getting ready — chat launches soon ✨" : hasMessages ? "Ask me to adjust, add something, or try a different style..." : "Describe your event or ask for styling advice..."}
+            placeholder={hasMessages ? "Ask me to adjust, add something, or try a different style..." : "Describe your event or ask for styling advice..."}
           />
         </div>
-      </main>
+        </main>
+        {previewMode && (
+          <div className="absolute inset-0 z-20 flex items-center justify-center p-4 pointer-events-auto">
+            <Card className="w-full max-w-sm bg-white rounded-2xl shadow-xl border-0 text-center">
+              <CardContent className="p-8 flex flex-col items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Sparkles className="h-7 w-7 text-primary" />
+                </div>
+                <h2 className="text-xl font-semibold text-foreground">Serena is getting ready ✨</h2>
+                <p className="text-sm text-muted-foreground">
+                  Your personal stylist launches in a later stage — watch this space.
+                </p>
+                <Button onClick={() => navigate('/community')} className="w-full rounded-full bg-primary hover:bg-primary/90">
+                  Back to Community
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
       <ConversationHistoryDialog
         open={historyOpen}
         onOpenChange={setHistoryOpen}
