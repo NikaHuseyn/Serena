@@ -6,9 +6,10 @@ interface ChatInputProps {
   onSend: (message: string) => void;
   isLoading?: boolean;
   placeholder?: string;
+  disabled?: boolean;
 }
 
-const ChatInput = ({ onSend, isLoading, placeholder = "Describe your event or ask for styling advice..." }: ChatInputProps) => {
+const ChatInput = ({ onSend, isLoading, placeholder = "Describe your event or ask for styling advice...", disabled }: ChatInputProps) => {
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
