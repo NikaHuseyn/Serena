@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { cn } from "@/lib/utils";
 
 import BottomNav from '@/components/BottomNav';
 import ChatMessage from '@/components/chat/ChatMessage';
