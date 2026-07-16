@@ -32,7 +32,7 @@ const Auth = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session && !isReset) {
-        navigate('/');
+        navigate('/community');
       }
     };
     checkAuth();
@@ -47,7 +47,7 @@ const Auth = () => {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`
+          emailRedirectTo: `${window.location.origin}/app`
         }
       });
 
@@ -85,7 +85,7 @@ const Auth = () => {
         }
       } else {
         toast.success('Welcome back!');
-        navigate('/');
+        navigate('/community');
       }
     } catch (error) {
       toast.error('An unexpected error occurred');

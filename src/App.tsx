@@ -3,7 +3,7 @@ import React, { Suspense } from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import ErrorBoundary from '@/components/ErrorBoundary';
 import QueryProvider from '@/components/QueryProvider';
 import SecurityProvider from '@/components/SecurityProvider';
@@ -29,7 +29,8 @@ const UserProfile = React.lazy(() => import("./pages/UserProfile"));
 const AppRoutes = () => (
   <Suspense fallback={<LoadingState message="Loading page..." />}>
     <Routes>
-      <Route path="/" element={<Index />} />
+      {/* Default landing → Community while Serena chat is in coming-soon mode */}
+      <Route path="/" element={<Navigate to="/community" replace />} />
       <Route path="/app" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/wardrobe" element={<AuthGuard><Wardrobe /></AuthGuard>} />
