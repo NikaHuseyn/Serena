@@ -76,15 +76,8 @@ const IndexContent = () => {
     <div className="min-h-screen bg-background flex flex-col pt-14">
       
       
-      <main className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4">
-        {previewMode && (
-          <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center">
-            <p className="text-sm text-foreground">
-              <span className="font-semibold">Serena is getting ready ✨</span>{' '}
-              Your personal stylist launches in a later stage — watch this space.
-            </p>
-          </div>
-        )}
+      <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 relative">
+        <main className={cn("flex-1 flex flex-col", previewMode && "blur-[6px] opacity-60 pointer-events-none select-none transition-all")}>
         {!hasMessages ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-6">
