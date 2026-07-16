@@ -23,6 +23,15 @@ const IndexContent = () => {
   const routerLocation = useLocation();
   const [nudgeDismissed, setNudgeDismissed] = useState(() => sessionStorage.getItem('guest_nudge_dismissed') === 'true');
   const [historyOpen, setHistoryOpen] = useState(false);
+  // Serena chat is disabled globally (see @/config/features). The wardrobe
+  // "Style this" flow still opens the live chat by passing an anchor item in
+  // router state — we latch this on mount so clearing the state doesn't hide
+  // the chat mid-session.
+  const [anchoredMode] = useState(() => {
+    const s = routerLocation.state as { anchorItemId?: string } | null;
+    return !!s?.anchorItemId;
+  });
+  const chatEnabled = SERENA_CHAT_ENABLED || anchoredMode;
 
   // "Style this" entry point from wardrobe: start a fresh anchored chat.
   const anchorHandledRef = useRef(false);
