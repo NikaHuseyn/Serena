@@ -269,19 +269,6 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
         {/* Comments */}
         <PollCommentSection postId={post.id} optionCount={optionCount} />
 
-        {/* Oracle Summary */}
-        <OracleSummary
-          postId={post.id}
-          postUserId={post.user_id}
-          currentUserId={currentUserId}
-          oracleSummary={post.oracle_summary}
-          oracleSummaryPublic={post.oracle_summary_public}
-          occasionContext={post.occasion_context}
-          pollQuestion={post.poll_question}
-          voteCounts={voteCounts}
-          optionCount={optionCount}
-        />
-
         {/* Date */}
         <div className="mt-4 text-xs text-muted-foreground">
           {formattedDate}
