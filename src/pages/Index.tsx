@@ -78,117 +78,117 @@ const IndexContent = () => {
       
       <div className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4 relative">
         <main className={cn("flex-1 flex flex-col", previewMode && "blur-[6px] opacity-60 pointer-events-none select-none transition-all")}>
-        {!hasMessages ? (
-          <div className="flex-1 flex flex-col items-center justify-center py-12">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-              <Sparkles className="h-6 w-6 text-primary" />
-            </div>
-            <h1 className="text-3xl font-semibold text-foreground mb-2 text-center">
-              What are you dressing for?
-            </h1>
-            <p className="text-muted-foreground text-center max-w-md mb-8">
-              Get AI styling advice for any occasion, share looks with friends, and build a wardrobe that works
-            </p>
-
-            <div className="grid grid-cols-3 gap-6 mb-10 max-w-lg w-full">
-              {[
-                { icon: Sparkles, label: 'Event-ready outfits', desc: 'Describe any occasion and get a complete look' },
-                { icon: Heart, label: 'Style together', desc: 'Share looks, get feedback from friends, and discover what works for you' },
-                { icon: MessageCircle, label: 'Refine until it\'s perfect', desc: 'Chat to adjust colors, formality, budget' },
-              ].map(({ icon: Icon, label, desc }) => (
-                <div key={label} className="flex flex-col items-center text-center gap-1.5">
-                  <Icon className="h-4 w-4 text-primary/70" />
-                  <span className="text-xs font-semibold text-foreground leading-tight">{label}</span>
-                  <span className="text-[11px] text-muted-foreground leading-snug">{desc}</span>
-                </div>
-              ))}
-            </div>
-
-            <p className="text-xs text-muted-foreground/60 mb-2">Try an example:</p>
-            <SuggestionChips suggestions={suggestions} onSelect={sendMessage} disabled={previewMode} />
-
-            {!user && !previewMode && (
-              <p className="text-sm text-muted-foreground mt-6 text-center">
-                ✨ Sign in to consult your AI stylist, share looks with friends, and build a wardrobe that works for your life.
+          {!hasMessages ? (
+            <div className="flex-1 flex flex-col items-center justify-center py-12">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+                <Sparkles className="h-6 w-6 text-primary" />
+              </div>
+              <h1 className="text-3xl font-semibold text-foreground mb-2 text-center">
+                What are you dressing for?
+              </h1>
+              <p className="text-muted-foreground text-center max-w-md mb-8">
+                Get AI styling advice for any occasion, share looks with friends, and build a wardrobe that works
               </p>
-            )}
-          </div>
 
-        ) : (
-          <div className="flex-1 py-4 overflow-y-auto">
-            <div className="space-y-0 divide-y divide-border">
-              {messages.map((message) => (
-                <ChatMessage
-                  key={message.id}
-                  role={message.role}
-                  content={message.content}
-                  outfit_options={message.outfit_options}
-                  mode={message.mode}
-                  rental_preference={message.rental_preference}
-                  anchor_item_id={message.anchor_item_id}
-                  anchor_enforced={message.anchor_enforced}
-                  onSendMessage={sendMessage}
-                />
-              ))}
-              {isLoading && <ChatMessage role="assistant" content="" isLoading />}
-              {/* Guest sign-up nudge: show once after first assistant response */}
-              {!user && !nudgeDismissed && messages.filter(m => m.role === 'assistant').length >= 1 && (
-                <div className="py-4 px-2">
-                  <Card className="border-primary/20 bg-primary/5">
-                    <CardContent className="p-4 flex items-center justify-between gap-4">
-                      <p className="text-sm text-foreground">
-                        ✨ Sign up to get recommendations from your own wardrobe and save your style preferences.
-                      </p>
-                      <div className="flex gap-2 shrink-0">
-                        <Button size="sm" variant="ghost" onClick={() => { setNudgeDismissed(true); sessionStorage.setItem('guest_nudge_dismissed', 'true'); }}>
-                          Maybe later
-                        </Button>
-                        <Button size="sm" onClick={() => navigate('/auth')}>
-                          Sign up
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
+              <div className="grid grid-cols-3 gap-6 mb-10 max-w-lg w-full">
+                {[
+                  { icon: Sparkles, label: 'Event-ready outfits', desc: 'Describe any occasion and get a complete look' },
+                  { icon: Heart, label: 'Style together', desc: 'Share looks, get feedback from friends, and discover what works for you' },
+                  { icon: MessageCircle, label: 'Refine until it\'s perfect', desc: 'Chat to adjust colors, formality, budget' },
+                ].map(({ icon: Icon, label, desc }) => (
+                  <div key={label} className="flex flex-col items-center text-center gap-1.5">
+                    <Icon className="h-4 w-4 text-primary/70" />
+                    <span className="text-xs font-semibold text-foreground leading-tight">{label}</span>
+                    <span className="text-[11px] text-muted-foreground leading-snug">{desc}</span>
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs text-muted-foreground/60 mb-2">Try an example:</p>
+              <SuggestionChips suggestions={suggestions} onSelect={sendMessage} disabled={previewMode} />
+
+              {!user && !previewMode && (
+                <p className="text-sm text-muted-foreground mt-6 text-center">
+                  ✨ Sign in to consult your AI stylist, share looks with friends, and build a wardrobe that works for your life.
+                </p>
               )}
             </div>
-            <div ref={messagesEndRef} />
-          </div>
-        )}
 
-        <div className="sticky bottom-0 bg-background pt-4 pb-6">
-          <div className="flex justify-center gap-2 mb-4">
-            {hasMessages && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearChat}
-                className="text-muted-foreground hover:text-foreground"
-              >
-                <RotateCcw className="h-4 w-4 mr-2" />
-                New conversation
-              </Button>
-            )}
-            {user && (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setHistoryOpen(true)}
-                className="text-muted-foreground hover:text-foreground"
-                aria-label="Conversation history"
-              >
-                <History className="h-4 w-4 mr-2" />
-                History
-              </Button>
-            )}
+          ) : (
+            <div className="flex-1 py-4 overflow-y-auto">
+              <div className="space-y-0 divide-y divide-border">
+                {messages.map((message) => (
+                  <ChatMessage
+                    key={message.id}
+                    role={message.role}
+                    content={message.content}
+                    outfit_options={message.outfit_options}
+                    mode={message.mode}
+                    rental_preference={message.rental_preference}
+                    anchor_item_id={message.anchor_item_id}
+                    anchor_enforced={message.anchor_enforced}
+                    onSendMessage={sendMessage}
+                  />
+                ))}
+                {isLoading && <ChatMessage role="assistant" content="" isLoading />}
+                {/* Guest sign-up nudge: show once after first assistant response */}
+                {!user && !nudgeDismissed && messages.filter(m => m.role === 'assistant').length >= 1 && (
+                  <div className="py-4 px-2">
+                    <Card className="border-primary/20 bg-primary/5">
+                      <CardContent className="p-4 flex items-center justify-between gap-4">
+                        <p className="text-sm text-foreground">
+                          ✨ Sign up to get recommendations from your own wardrobe and save your style preferences.
+                        </p>
+                        <div className="flex gap-2 shrink-0">
+                          <Button size="sm" variant="ghost" onClick={() => { setNudgeDismissed(true); sessionStorage.setItem('guest_nudge_dismissed', 'true'); }}>
+                            Maybe later
+                          </Button>
+                          <Button size="sm" onClick={() => navigate('/auth')}>
+                            Sign up
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+              </div>
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+
+          <div className="sticky bottom-0 bg-background pt-4 pb-6">
+            <div className="flex justify-center gap-2 mb-4">
+              {hasMessages && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearChat}
+                  className="text-muted-foreground hover:text-foreground"
+                >
+                  <RotateCcw className="h-4 w-4 mr-2" />
+                  New conversation
+                </Button>
+              )}
+              {user && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setHistoryOpen(true)}
+                  className="text-muted-foreground hover:text-foreground"
+                  aria-label="Conversation history"
+                >
+                  <History className="h-4 w-4 mr-2" />
+                  History
+                </Button>
+              )}
+            </div>
+            <ChatInput
+              onSend={sendMessage}
+              isLoading={isLoading}
+              disabled={previewMode}
+              placeholder={hasMessages ? "Ask me to adjust, add something, or try a different style..." : "Describe your event or ask for styling advice..."}
+            />
           </div>
-          <ChatInput
-            onSend={sendMessage}
-            isLoading={isLoading}
-            disabled={previewMode}
-            placeholder={hasMessages ? "Ask me to adjust, add something, or try a different style..." : "Describe your event or ask for styling advice..."}
-          />
-        </div>
         </main>
         {previewMode && (
           <div className="absolute inset-0 z-20 flex items-center justify-center p-4 pointer-events-auto">
