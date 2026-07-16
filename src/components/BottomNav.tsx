@@ -2,7 +2,7 @@ import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Sparkles, Shirt, Users, User } from 'lucide-react';
 import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
-import { SERENA_CHAT_ENABLED } from '@/config/features';
+
 
 const tabs = [
   { path: '/app', label: 'Serena', icon: Sparkles },
