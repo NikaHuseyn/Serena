@@ -1,6 +1,6 @@
 // Feature flags. Flip these to re-enable disabled surfaces cleanly.
-// SERENA_CHAT_ENABLED: when false, the Serena chat tab is greyed out in the
-// bottom nav, direct visits to /app or / show a "coming soon" placeholder,
-// and the default landing tab becomes Community. The wardrobe "Style this"
-// entry point (anchorItemId in router state) still opens the live chat.
+// SERENA_CHAT_ENABLED: when false, the Serena tab stays clickable but the
+// chat page renders a non-functional preview with a "coming soon" overlay.
+// The wardrobe "Style this" entry point (anchorItemId in router state) still
+// opens the live chat. When true, the full chat is restored.
 export const SERENA_CHAT_ENABLED = false;
