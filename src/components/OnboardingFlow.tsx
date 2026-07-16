@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Sparkles, Shirt, Users, User } from 'lucide-react';
+import { Shirt, Users, User } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -14,16 +15,12 @@ interface Slide {
   copy: string;
 }
 
+// 3 slides in bottom-nav order (Serena is in coming-soon mode; see @/config/features).
 const SLIDES: Slide[] = [
-  {
-    icon: Sparkles,
-    heading: 'Meet Serena',
-    copy: "Your personal stylist. Tell her the occasion — a wedding, an interview, brunch — and she'll build looks around you, with real pieces to buy or rent in the UK.",
-  },
   {
     icon: Shirt,
     heading: 'Your wardrobe',
-    copy: "Snap what you own. Tap 'Style this' on any piece and Serena builds outfits around it.",
+    copy: "Snap what you own — and tap 'Style this' on any piece for outfit ideas built around it.",
   },
   {
     icon: Users,
@@ -40,6 +37,7 @@ const SLIDES: Slide[] = [
 const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
   const [index, setIndex] = useState(0);
   const touchStartX = useRef<number | null>(null);
+  const navigate = useNavigate();
 
   const isLast = index === SLIDES.length - 1;
   const slide = SLIDES[index];
@@ -60,6 +58,7 @@ const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete }) => {
       console.error('Failed to mark onboarding complete', e);
     }
     onComplete();
+    navigate('/community');
   };
 
   const advance = () => {
