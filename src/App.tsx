@@ -29,7 +29,8 @@ const UserProfile = React.lazy(() => import("./pages/UserProfile"));
 const AppRoutes = () => (
   <Suspense fallback={<LoadingState message="Loading page..." />}>
     <Routes>
-      <Route path="/" element={<Index />} />
+      {/* Default landing → Community while Serena chat is in coming-soon mode */}
+      <Route path="/" element={<Navigate to="/community" replace />} />
       <Route path="/app" element={<Index />} />
       <Route path="/auth" element={<Auth />} />
       <Route path="/wardrobe" element={<AuthGuard><Wardrobe /></AuthGuard>} />
