@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button';
 import { BudgetProvider } from '@/components/chat/BudgetContext';
 import { Card, CardContent } from '@/components/ui/card';
 import ConversationHistoryDialog from '@/components/chat/ConversationHistoryDialog';
+import { SERENA_CHAT_ENABLED } from '@/config/features';
 
 const IndexContent = () => {
   const { shouldShowOnboarding, isLoading: onboardingLoading, user, completeOnboarding } = useOnboarding();
