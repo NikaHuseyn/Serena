@@ -44,14 +44,14 @@ const ChatInput = ({ onSend, isLoading, placeholder = "Describe your event or as
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          disabled={isLoading}
+          disabled={isLoading || disabled}
           rows={1}
-          className="flex-1 resize-none bg-transparent px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 max-h-[200px]"
+          className="flex-1 resize-none bg-transparent px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed max-h-[200px]"
         />
         <Button
           type="submit"
           size="icon"
-          disabled={!message.trim() || isLoading}
+          disabled={!message.trim() || isLoading || disabled}
           className="m-2 h-8 w-8 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40"
         >
           <ArrowUp className="h-4 w-4" />
