@@ -21,23 +21,16 @@ const BottomNav = () => {
       <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
         {tabs.map(({ path, label, icon: Icon }) => {
           const active = location.pathname === path;
-          const disabled = path === '/app' && !SERENA_CHAT_ENABLED;
           return (
             <button
               key={path}
-              onClick={() => { if (!disabled) navigate(path); }}
-              disabled={disabled}
-              aria-disabled={disabled}
+              onClick={() => navigate(path)}
               className={`relative flex flex-col items-center gap-0.5 px-4 py-1.5 transition-colors ${
-                disabled
-                  ? 'text-muted-foreground/40 cursor-not-allowed'
-                  : active
-                  ? 'text-primary'
-                  : 'text-muted-foreground hover:text-foreground'
+                active ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Icon className="h-5 w-5" strokeWidth={active && !disabled ? 2.5 : 2} />
-              <span className={`text-[11px] ${active && !disabled ? 'font-semibold' : 'font-medium'}`}>
+              <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
+              <span className={`text-[11px] ${active ? 'font-semibold' : 'font-medium'}`}>
                 {label}
               </span>
               {label === 'Community' && unreadCount > 0 && (
