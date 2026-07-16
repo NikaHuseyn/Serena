@@ -22,7 +22,7 @@ const ChatInput = ({ onSend, isLoading, placeholder = "Describe your event or as
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim() && !isLoading) {
+    if (message.trim() && !isLoading && !disabled) {
       onSend(message.trim());
       setMessage('');
     }
