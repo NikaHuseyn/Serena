@@ -191,7 +191,8 @@ const IndexContent = () => {
           <ChatInput
             onSend={sendMessage}
             isLoading={isLoading}
-            placeholder={hasMessages ? "Ask me to adjust, add something, or try a different style..." : "Describe your event or ask for styling advice..."}
+            disabled={previewMode}
+            placeholder={previewMode ? "Serena is getting ready — chat launches soon ✨" : hasMessages ? "Ask me to adjust, add something, or try a different style..." : "Describe your event or ask for styling advice..."}
           />
         </div>
       </main>
