@@ -6,9 +6,10 @@ interface ChatInputProps {
   onSend: (message: string) => void;
   isLoading?: boolean;
   placeholder?: string;
+  disabled?: boolean;
 }
 
-const ChatInput = ({ onSend, isLoading, placeholder = "Describe your event or ask for styling advice..." }: ChatInputProps) => {
+const ChatInput = ({ onSend, isLoading, placeholder = "Describe your event or ask for styling advice...", disabled }: ChatInputProps) => {
   const [message, setMessage] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -21,7 +22,7 @@ const ChatInput = ({ onSend, isLoading, placeholder = "Describe your event or as
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim() && !isLoading) {
+    if (message.trim() && !isLoading && !disabled) {
       onSend(message.trim());
       setMessage('');
     }
@@ -43,14 +44,14 @@ const ChatInput = ({ onSend, isLoading, placeholder = "Describe your event or as
           onChange={(e) => setMessage(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          disabled={isLoading}
+          disabled={isLoading || disabled}
           rows={1}
-          className="flex-1 resize-none bg-transparent px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 max-h-[200px]"
+          className="flex-1 resize-none bg-transparent px-4 py-3 text-foreground placeholder:text-muted-foreground focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed max-h-[200px]"
         />
         <Button
           type="submit"
           size="icon"
-          disabled={!message.trim() || isLoading}
+          disabled={!message.trim() || isLoading || disabled}
           className="m-2 h-8 w-8 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40"
         >
           <ArrowUp className="h-4 w-4" />

@@ -66,27 +66,8 @@ const IndexContent = () => {
     return <OnboardingFlow onComplete={completeOnboarding} />;
   }
 
-  if (!chatEnabled) {
-    return (
-      <div className="min-h-screen bg-background flex flex-col pt-14">
-        <main className="flex-1 flex flex-col items-center justify-center px-6 text-center max-w-md mx-auto">
-          <div className="w-14 h-14 rounded-full bg-primary/10 flex items-center justify-center mb-6">
-            <Sparkles className="h-7 w-7 text-primary" />
-          </div>
-          <h1 className="text-2xl font-semibold text-foreground mb-3">
-            Serena is getting ready ✨
-          </h1>
-          <p className="text-muted-foreground mb-8">
-            Your personal stylist launches in a later stage — watch this space.
-          </p>
-          <Button onClick={() => navigate('/community')}>
-            Back to Community
-          </Button>
-        </main>
-        <BottomNav />
-      </div>
-    );
-  }
+  const previewMode = !chatEnabled;
+
 
   const hasMessages = messages.length > 0;
 
@@ -95,6 +76,14 @@ const IndexContent = () => {
       
       
       <main className="flex-1 flex flex-col max-w-3xl mx-auto w-full px-4">
+        {previewMode && (
+          <div className="mt-4 rounded-2xl border border-primary/20 bg-primary/5 px-4 py-3 text-center">
+            <p className="text-sm text-foreground">
+              <span className="font-semibold">Serena is getting ready ✨</span>{' '}
+              Your personal stylist launches in a later stage — watch this space.
+            </p>
+          </div>
+        )}
         {!hasMessages ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12">
             <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mb-6">
@@ -122,14 +111,15 @@ const IndexContent = () => {
             </div>
 
             <p className="text-xs text-muted-foreground/60 mb-2">Try an example:</p>
-            <SuggestionChips suggestions={suggestions} onSelect={sendMessage} />
+            <SuggestionChips suggestions={suggestions} onSelect={sendMessage} disabled={previewMode} />
 
-            {!user && (
+            {!user && !previewMode && (
               <p className="text-sm text-muted-foreground mt-6 text-center">
                 ✨ Sign in to consult your AI stylist, share looks with friends, and build a wardrobe that works for your life.
               </p>
             )}
           </div>
+
         ) : (
           <div className="flex-1 py-4 overflow-y-auto">
             <div className="space-y-0 divide-y divide-border">
@@ -201,7 +191,8 @@ const IndexContent = () => {
           <ChatInput
             onSend={sendMessage}
             isLoading={isLoading}
-            placeholder={hasMessages ? "Ask me to adjust, add something, or try a different style..." : "Describe your event or ask for styling advice..."}
+            disabled={previewMode}
+            placeholder={previewMode ? "Serena is getting ready — chat launches soon ✨" : hasMessages ? "Ask me to adjust, add something, or try a different style..." : "Describe your event or ask for styling advice..."}
           />
         </div>
       </main>
