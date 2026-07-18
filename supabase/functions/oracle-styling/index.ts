@@ -2077,7 +2077,8 @@ serve(async (req) => {
               typeof parsed.rental_preference === "string" ? parsed.rental_preference : undefined,
               typeof parsed.styling_category === "string" ? parsed.styling_category : undefined,
             );
-            const byName = new Map(searched.map((s: any) => [s.name, s]));
+            const wrapped = wrapProductLinks(searched, user?.id ?? null, briefId);
+            const byName = new Map(wrapped.map((s: any) => [s.name, s]));
             primary.items = primary.items.map((it: any) => {
               if (it?.source === "from_wardrobe") return it;
               const enriched = byName.get(it?.name);
