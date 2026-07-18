@@ -146,8 +146,8 @@ const ProductCard = ({ product, label }: { product: ProductResult; label: 'Buy' 
 };
 
 const ItemProducts = ({ item }: { item: OutfitItem }) => {
-  const buyAll = usableProducts(item.buy);
-  const rent = usableProducts(item.rent).slice(0, 2);
+  const buyAll = productsWithUrl(item.buy);
+  const rent = productsWithUrl(item.rent).slice(0, 2);
   const [showAllBuy, setShowAllBuy] = useState(false);
   const buyVisible = showAllBuy ? buyAll : buyAll.slice(0, 2);
   const buyExtra = buyAll.length - buyVisible.length;
@@ -328,7 +328,7 @@ const OptionCard = ({
   const [expanded, setExpanded] = useState<boolean>(!!option.is_primary);
 
   const hasProductResults = items.some(
-    (it) => it.source !== 'from_wardrobe' && (usableProducts(it.buy).length + usableProducts(it.rent).length > 0),
+    (it) => it.source !== 'from_wardrobe' && (productsWithUrl(it.buy).length + productsWithUrl(it.rent).length > 0),
   );
   const hasSearchable = items.some((it) => it.source !== 'from_wardrobe');
 
