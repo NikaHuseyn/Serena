@@ -12,18 +12,14 @@ const ALLOWED_ORIGIN_PATTERNS: RegExp[] = [
 
 function corsHeadersFor(req: Request) {
   const origin = req.headers.get("Origin") ?? "";
-  const allowed = ALLOWED_ORIGIN_PATTERNS.some((re) => re.test(origin))
-    ? origin
-    : "*";
+  const allowed = ALLOWED_ORIGIN_PATTERNS.some((re) => re.test(origin)) ? origin : "*";
   return {
     "Access-Control-Allow-Origin": allowed,
-    "Access-Control-Allow-Headers":
-      "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Vary": "Origin",
+    Vary: "Origin",
   };
 }
-
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -202,7 +198,6 @@ rent-vs-buy for her. Never present placeholder or "to be decided" items.
 ## RESEARCH
 If the user names a specific venue or event you don't confidently know, or states the event's location where weather would genuinely shape the outfit, set research_request accordingly — once. You will be re-invoked with the findings attached; incorporate them and do not request research again.`;
 
-
 // -----------------------------------------------------------------------
 // TOOL SCHEMA — provide_styling_response (v2)
 // -----------------------------------------------------------------------
@@ -264,8 +259,8 @@ const provideStylingResponseTool = {
                 type: "string",
                 description:
                   "Short freeform description of this option's character " +
-                  "(e.g. \"Emerald silk, from your wardrobe\" or \"Sleek " +
-                  "column silhouette in champagne\"). NOT a fixed taxonomy " +
+                  '(e.g. "Emerald silk, from your wardrobe" or "Sleek ' +
+                  'column silhouette in champagne"). NOT a fixed taxonomy ' +
                   "— no forced classic/bold/minimalist labeling.",
               },
               is_primary: {
@@ -287,15 +282,7 @@ const provideStylingResponseTool = {
                   properties: {
                     category: {
                       type: "string",
-                      enum: [
-                        "dress",
-                        "full_look",
-                        "top",
-                        "bottom",
-                        "shoes",
-                        "outerwear",
-                        "accessory",
-                      ],
+                      enum: ["dress", "full_look", "top", "bottom", "shoes", "outerwear", "accessory"],
                     },
                     name: {
                       type: "string",
@@ -334,8 +321,8 @@ const provideStylingResponseTool = {
                       type: ["string", "null"],
                       description:
                         "One short framing line, e.g. \"versatile — you'd " +
-                        "likely wear this again\" or \"a one-off statement " +
-                        "piece\". Informational only — never a decision " +
+                        'likely wear this again" or "a one-off statement ' +
+                        'piece". Informational only — never a decision ' +
                         "made on the user's behalf.",
                     },
                     reasoning: {
@@ -466,7 +453,7 @@ async function callGateway(messages: unknown[]): Promise<Response> {
     return await fetch(AI_GATEWAY_URL, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${lovableApiKey}`,
+        Authorization: `Bearer ${lovableApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -493,12 +480,7 @@ async function callGateway(messages: unknown[]): Promise<Response> {
 }
 
 /** Race any promise against a timeout. On timeout, logs and resolves to `fallback`. */
-async function withTimeout<T>(
-  promise: Promise<T>,
-  ms: number,
-  label: string,
-  fallback: T,
-): Promise<T> {
+async function withTimeout<T>(promise: Promise<T>, ms: number, label: string, fallback: T): Promise<T> {
   let timer: number | undefined;
   const timeout = new Promise<T>((resolve) => {
     timer = setTimeout(() => {
@@ -560,20 +542,20 @@ function sanitizeParsedResponse(parsed: any) {
 // -----------------------------------------------------------------------
 // Product search helpers — ported UNCHANGED from generate-ai-recommendations
 // -----------------------------------------------------------------------
-const shopStyleApiKey = Deno.env.get('SHOPSTYLE_API_KEY');
-const serperApiKey = Deno.env.get('SERPER_API_KEY');
-const firecrawlApiKey = Deno.env.get('FIRECRAWL_API_KEY');
+const shopStyleApiKey = Deno.env.get("SHOPSTYLE_API_KEY");
+const serperApiKey = Deno.env.get("SERPER_API_KEY");
+const firecrawlApiKey = Deno.env.get("FIRECRAWL_API_KEY");
 
 const isValidProductUrl = (url: string | null | undefined): boolean => {
-  if (!url || typeof url !== 'string' || !url.startsWith('http')) return false;
+  if (!url || typeof url !== "string" || !url.startsWith("http")) return false;
   const blocked = [
-    'google.com/shopping',
-    'google.co.uk/shopping',
-    'google.com/search',
-    'googleapis.com',
-    'javascript:'
+    "google.com/shopping",
+    "google.co.uk/shopping",
+    "google.com/search",
+    "googleapis.com",
+    "javascript:",
   ];
-  return !blocked.some(b => url.includes(b));
+  return !blocked.some((b) => url.includes(b));
 };
 
 const extractRetailerUrl = (result: any): string | null => {
@@ -590,51 +572,60 @@ const searchShopStyle = async (query: string, maxPrice: number): Promise<any[]> 
     const url = `https://api.shopstyle.com/api/v2/products?pid=${shopStyleApiKey}&fts=${encoded}&offset=0&limit=5&fl=p0:${maxPrice}&fl=d0:GB&fl=b0:GBP`;
     console.log(`[ShopStyle] Searching: "${query}" (max £${maxPrice})`);
     const response = await fetch(url);
-    if (!response.ok) { console.warn('[ShopStyle] API error:', response.status); return []; }
+    if (!response.ok) {
+      console.warn("[ShopStyle] API error:", response.status);
+      return [];
+    }
     const data = await response.json();
     const products = (data.products || [])
       .map((p: any) => {
         const productUrl = extractRetailerUrl(p);
         return {
-          retailer: p.retailer?.name || p.brand?.name || 'Retailer',
-          product_name: p.name || p.brandedName || 'Product',
+          retailer: p.retailer?.name || p.brand?.name || "Retailer",
+          product_name: p.name || p.brandedName || "Product",
           price: p.priceLabel || (p.price ? `£${p.price}` : null),
           product_url: productUrl,
           image_url: p.image?.sizes?.Best?.url || p.image?.sizes?.Large?.url || p.image?.sizes?.Medium?.url || null,
-          source: 'shopstyle',
+          source: "shopstyle",
         };
       })
       .filter((p: any) => p.product_url);
     console.log(`[ShopStyle] Found ${products.length} products for "${query}"`);
     return products;
-  } catch (err) { console.warn('[ShopStyle] Error:', err); return []; }
+  } catch (err) {
+    console.warn("[ShopStyle] Error:", err);
+    return [];
+  }
 };
 
 const searchGoogleShopping = async (query: string, maxPrice: number): Promise<any[]> => {
   if (!serperApiKey) return [];
   try {
     console.log(`[Serper] Searching Google Shopping: "${query}"`);
-    const response = await fetch('https://google.serper.dev/shopping', {
-      method: 'POST',
-      headers: { 'X-API-KEY': serperApiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: query, gl: 'gb', hl: 'en', num: 8 }),
+    const response = await fetch("https://google.serper.dev/shopping", {
+      method: "POST",
+      headers: { "X-API-KEY": serperApiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: query, gl: "gb", hl: "en", num: 8 }),
     });
-    if (!response.ok) { console.warn('[Serper] API error:', response.status); return []; }
+    if (!response.ok) {
+      console.warn("[Serper] API error:", response.status);
+      return [];
+    }
     const data = await response.json();
     const results = (data.shopping || [])
       .map((r: any) => {
-        const priceStr = r.price || '';
-        const cleaned = priceStr.replace(/[^0-9.,]/g, '').replace(',', '.');
+        const priceStr = r.price || "";
+        const cleaned = priceStr.replace(/[^0-9.,]/g, "").replace(",", ".");
         const numericPrice = parseFloat(cleaned);
         const productUrl = extractRetailerUrl(r);
         return {
-          retailer: r.source || 'Retailer',
-          product_name: r.title || 'Product',
-          price: !isNaN(numericPrice) ? `£${numericPrice.toFixed(2)}` : (priceStr || null),
+          retailer: r.source || "Retailer",
+          product_name: r.title || "Product",
+          price: !isNaN(numericPrice) ? `£${numericPrice.toFixed(2)}` : priceStr || null,
           numericPrice: !isNaN(numericPrice) ? numericPrice : null,
           product_url: productUrl,
           image_url: r.imageUrl || null,
-          source: 'google_shopping',
+          source: "google_shopping",
         };
       })
       .filter((r: any) => r.product_url && (r.numericPrice === null || r.numericPrice <= maxPrice))
@@ -642,142 +633,213 @@ const searchGoogleShopping = async (query: string, maxPrice: number): Promise<an
       .map(({ numericPrice, ...rest }: any) => rest);
     console.log(`[Serper] Found ${results.length} products for "${query}"`);
     return results;
-  } catch (err) { console.warn('[Serper] Error:', err); return []; }
+  } catch (err) {
+    console.warn("[Serper] Error:", err);
+    return [];
+  }
 };
 
 type RetailerTarget = { name: string; domain: string; searchUrl: (encoded: string) => string };
 
 const BUY_RETAILERS_BY_TIER: Record<string, RetailerTarget[]> = {
   budget: [
-    { name: 'ASOS', domain: 'asos.com', searchUrl: (q) => `https://www.asos.com/search/?q=${q}` },
-    { name: 'H&M', domain: 'hm.com', searchUrl: (q) => `https://www2.hm.com/en_gb/search-results.html?q=${q}` },
-    { name: 'Zara', domain: 'zara.com', searchUrl: (q) => `https://www.zara.com/uk/en/search?searchTerm=${q}` },
+    { name: "ASOS", domain: "asos.com", searchUrl: (q) => `https://www.asos.com/search/?q=${q}` },
+    { name: "H&M", domain: "hm.com", searchUrl: (q) => `https://www2.hm.com/en_gb/search-results.html?q=${q}` },
+    { name: "Zara", domain: "zara.com", searchUrl: (q) => `https://www.zara.com/uk/en/search?searchTerm=${q}` },
   ],
   mid_range: [
-    { name: 'John Lewis', domain: 'johnlewis.com', searchUrl: (q) => `https://www.johnlewis.com/search?search-term=${q}` },
-    { name: 'Marks and Spencer', domain: 'marksandspencer.com', searchUrl: (q) => `https://www.marksandspencer.com/MSFindItemsByKeyword?searchTerm=${q}` },
-    { name: 'Reiss', domain: 'reiss.com', searchUrl: (q) => `https://www.reiss.com/uk/search?w=${q}` },
-    { name: 'Selfridges', domain: 'selfridges.com', searchUrl: (q) => `https://www.selfridges.com/GB/en/cat/?freeText=${q}` },
+    {
+      name: "John Lewis",
+      domain: "johnlewis.com",
+      searchUrl: (q) => `https://www.johnlewis.com/search?search-term=${q}`,
+    },
+    {
+      name: "Marks and Spencer",
+      domain: "marksandspencer.com",
+      searchUrl: (q) => `https://www.marksandspencer.com/MSFindItemsByKeyword?searchTerm=${q}`,
+    },
+    { name: "Reiss", domain: "reiss.com", searchUrl: (q) => `https://www.reiss.com/uk/search?w=${q}` },
+    {
+      name: "Selfridges",
+      domain: "selfridges.com",
+      searchUrl: (q) => `https://www.selfridges.com/GB/en/cat/?freeText=${q}`,
+    },
   ],
   luxury: [
-    { name: 'Net-a-Porter', domain: 'net-a-porter.com', searchUrl: (q) => `https://www.net-a-porter.com/en-gb/shop/search/${q}` },
-    { name: 'Selfridges', domain: 'selfridges.com', searchUrl: (q) => `https://www.selfridges.com/GB/en/cat/?freeText=${q}` },
-    { name: 'Harrods', domain: 'harrods.com', searchUrl: (q) => `https://www.harrods.com/en-gb/search?query=${q}` },
+    {
+      name: "Net-a-Porter",
+      domain: "net-a-porter.com",
+      searchUrl: (q) => `https://www.net-a-porter.com/en-gb/shop/search/${q}`,
+    },
+    {
+      name: "Selfridges",
+      domain: "selfridges.com",
+      searchUrl: (q) => `https://www.selfridges.com/GB/en/cat/?freeText=${q}`,
+    },
+    { name: "Harrods", domain: "harrods.com", searchUrl: (q) => `https://www.harrods.com/en-gb/search?query=${q}` },
   ],
 };
 
 const buildSearchUrls = (query: string, tier: string): any[] => {
   const encoded = encodeURIComponent(query);
   const retailers = BUY_RETAILERS_BY_TIER[tier] || BUY_RETAILERS_BY_TIER.mid_range;
-  return retailers.map(r => ({
+  return retailers.map((r) => ({
     retailer: r.name,
     product_name: `Browse ${r.name} for "${query}"`,
     price: null,
     product_url: r.searchUrl(encoded),
     image_url: null,
-    source: 'retailer_search',
+    source: "retailer_search",
   }));
 };
 
 const buildRentalSearchUrls = (query: string): any[] => {
   const encoded = encodeURIComponent(query);
   const platforms = [
-    { name: 'HURR', url: `https://www.hurr.com/search?query=${encoded}` },
-    { name: 'By Rotation', url: `https://byrotation.com/search?q=${encoded}` },
-    { name: 'My Wardrobe HQ', url: `https://www.mywardrobehq.com/search?q=${encoded}` },
+    { name: "HURR", url: `https://www.hurr.com/search?query=${encoded}` },
+    { name: "By Rotation", url: `https://byrotation.com/search?q=${encoded}` },
+    { name: "My Wardrobe HQ", url: `https://www.mywardrobehq.com/search?q=${encoded}` },
   ];
-  return platforms.map(p => ({
+  return platforms.map((p) => ({
     platform: p.name,
     product_name: `Browse ${p.name} for "${query}"`,
     price: null,
     product_url: p.url,
     image_url: null,
-    type: 'rental',
-    source: 'rental_search',
+    type: "rental",
+    source: "rental_search",
   }));
 };
 
-const searchFirecrawlPlatform = async (query: string, platform: { name: string; domain: string }, type: 'rental' | 'secondhand'): Promise<any> => {
+const searchFirecrawlPlatform = async (
+  query: string,
+  platform: { name: string; domain: string },
+  type: "rental" | "secondhand",
+): Promise<any> => {
   if (!firecrawlApiKey) return null;
   try {
-    const response = await fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${firecrawlApiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: `${query} site:${platform.domain}`, limit: 1, scrapeOptions: { formats: ['markdown'] } }),
+    const response = await fetch("https://api.firecrawl.dev/v1/search", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${firecrawlApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `${query} site:${platform.domain}`,
+        limit: 1,
+        scrapeOptions: { formats: ["markdown"] },
+      }),
     });
     if (!response.ok) return null;
     const searchData = await response.json();
     const result = (searchData?.data || [])[0];
     if (!result) return null;
-    const markdown = result.markdown || '';
+    const markdown = result.markdown || "";
     const imageUrl = result.metadata?.ogImage || result.metadata?.image || null;
-    if (type === 'rental') {
-      const rentalPriceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?\s*(?:\/\s*day|per\s*day|per\s*occasion|to\s*rent)/i)
-        || markdown.match(/(?:rent|rental|from)\s*£[\d,]+(?:\.\d{2})?/i)
-        || markdown.match(/£[\d,]+(?:\.\d{2})?/);
-      return { platform: platform.name, product_name: result.title || result.metadata?.title || 'Unknown product', price: rentalPriceMatch ? rentalPriceMatch[0] : null, product_url: result.url || '', image_url: imageUrl, type: 'rental', source: 'firecrawl' };
+    if (type === "rental") {
+      const rentalPriceMatch =
+        markdown.match(/£[\d,]+(?:\.\d{2})?\s*(?:\/\s*day|per\s*day|per\s*occasion|to\s*rent)/i) ||
+        markdown.match(/(?:rent|rental|from)\s*£[\d,]+(?:\.\d{2})?/i) ||
+        markdown.match(/£[\d,]+(?:\.\d{2})?/);
+      return {
+        platform: platform.name,
+        product_name: result.title || result.metadata?.title || "Unknown product",
+        price: rentalPriceMatch ? rentalPriceMatch[0] : null,
+        product_url: result.url || "",
+        image_url: imageUrl,
+        type: "rental",
+        source: "firecrawl",
+      };
     } else {
       const priceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?/);
-      const conditionMatch = markdown.match(/(?:condition|quality)[:\s]*(excellent|very good|good|fair|new with tags|like new|pristine)/i);
-      const condition = conditionMatch ? conditionMatch[1] : markdown.match(/\b(excellent|pristine|like new|new with tags)\b/i) ? 'excellent' : markdown.match(/\b(very good|great condition)\b/i) ? 'good' : null;
-      return { platform: platform.name, product_name: result.title || result.metadata?.title || 'Unknown product', price: priceMatch ? priceMatch[0] : null, product_url: result.url || '', image_url: imageUrl, condition: condition || 'good', type: 'secondhand', source: 'firecrawl' };
+      const conditionMatch = markdown.match(
+        /(?:condition|quality)[:\s]*(excellent|very good|good|fair|new with tags|like new|pristine)/i,
+      );
+      const condition = conditionMatch
+        ? conditionMatch[1]
+        : markdown.match(/\b(excellent|pristine|like new|new with tags)\b/i)
+          ? "excellent"
+          : markdown.match(/\b(very good|great condition)\b/i)
+            ? "good"
+            : null;
+      return {
+        platform: platform.name,
+        product_name: result.title || result.metadata?.title || "Unknown product",
+        price: priceMatch ? priceMatch[0] : null,
+        product_url: result.url || "",
+        image_url: imageUrl,
+        condition: condition || "good",
+        type: "secondhand",
+        source: "firecrawl",
+      };
     }
-  } catch (err) { return null; }
+  } catch (err) {
+    return null;
+  }
 };
 
 const PRIORITY_FASHION_RETAILERS = [
-  'ASOS', 'Zara', 'H&M', 'Net-a-Porter', 'Reiss', 'Mango',
-  'Other Stories', 'Whistles', 'Phase Eight', 'Ghost', 'Monsoon',
-  'John Lewis', 'Marks and Spencer', 'COS', 'Selfridges', 'Matches Fashion'
+  "ASOS",
+  "Zara",
+  "H&M",
+  "Net-a-Porter",
+  "Reiss",
+  "Mango",
+  "Other Stories",
+  "Whistles",
+  "Phase Eight",
+  "Ghost",
+  "Monsoon",
+  "John Lewis",
+  "Marks and Spencer",
+  "COS",
+  "Selfridges",
+  "Matches Fashion",
 ];
 
 const prioritizeRetailers = (results: any[]): any[] => {
   const fashion = results.filter((r: any) =>
-    PRIORITY_FASHION_RETAILERS.some(retailer =>
-      r.retailer?.toLowerCase().includes(retailer.toLowerCase())
-    )
+    PRIORITY_FASHION_RETAILERS.some((retailer) => r.retailer?.toLowerCase().includes(retailer.toLowerCase())),
   );
-  const other = results.filter((r: any) =>
-    !PRIORITY_FASHION_RETAILERS.some(retailer =>
-      r.retailer?.toLowerCase().includes(retailer.toLowerCase())
-    )
+  const other = results.filter(
+    (r: any) =>
+      !PRIORITY_FASHION_RETAILERS.some((retailer) => r.retailer?.toLowerCase().includes(retailer.toLowerCase())),
   );
   return [...fashion, ...other];
 };
 
-const SEARCH_CACHE_VERSION = 'oracle-product-search-v5';
+const SEARCH_CACHE_VERSION = "oracle-product-search-v5";
 
 const normalizeImageUrl = (url: string | null | undefined): string | null => {
-  if (!url || typeof url !== 'string') return null;
+  if (!url || typeof url !== "string") return null;
   const trimmed = url.trim();
-  if (trimmed.startsWith('//')) return `https:${trimmed}`;
-  if (!trimmed.startsWith('http')) return null;
+  if (trimmed.startsWith("//")) return `https:${trimmed}`;
+  if (!trimmed.startsWith("http")) return null;
   return trimmed;
 };
 
 const normalizeUrlForDedupe = (url: string): string => {
   try {
     const u = new URL(url);
-    ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'gclid', 'fbclid'].forEach((p) => u.searchParams.delete(p));
-    u.hash = '';
-    return u.toString().replace(/\/$/, '');
+    ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "gclid", "fbclid"].forEach((p) =>
+      u.searchParams.delete(p),
+    );
+    u.hash = "";
+    return u.toString().replace(/\/$/, "");
   } catch (_) {
     return url;
   }
 };
 
 const isGoogleSearchFallback = (result: any): boolean => {
-  const url = String(result?.product_url || '');
-  return url.includes('google.com/search') || url.includes('google.co.uk/search');
+  const url = String(result?.product_url || "");
+  return url.includes("google.com/search") || url.includes("google.co.uk/search");
 };
 
 const productScore = (result: any): number => {
   let score = 0;
-  if (result?.source === 'google_shopping' || result?.source === 'shopstyle') score += 6;
-  if (result?.source === 'firecrawl') score += 4;
+  if (result?.source === "google_shopping" || result?.source === "shopstyle") score += 6;
+  if (result?.source === "firecrawl") score += 4;
   if (result?.image_url) score += 3;
   if (result?.price) score += 2;
-  if (result?.source === 'retailer_search' || result?.source === 'rental_search') score -= 4;
+  if (result?.source === "retailer_search" || result?.source === "rental_search") score -= 4;
   return score;
 };
 
@@ -786,16 +848,16 @@ const productScore = (result: any): number => {
 // that returns only US pages is still surfaced rather than emptied.
 function filterOutNonUkStorefronts(results: any[]): any[] {
   const filtered = results.filter((r: any) => {
-    const url = String(r?.product_url || '').toLowerCase();
-    if (url.includes('/us/')) return false;
-    if (url.includes('.com/us')) return false;
+    const url = String(r?.product_url || "").toLowerCase();
+    if (url.includes("/us/")) return false;
+    if (url.includes(".com/us")) return false;
     if (/https?:\/\/us\./i.test(url)) return false;
 
-    const title = String(r?.product_name || '');
-    const retailer = String(r?.retailer || '');
+    const title = String(r?.product_name || "");
+    const retailer = String(r?.retailer || "");
     const combined = `${title} ${retailer}`.toLowerCase();
     if (/\|\s*[^|]*us\b/i.test(combined)) return false;
-    if (retailer.toLowerCase().endsWith(' us')) return false;
+    if (retailer.toLowerCase().endsWith(" us")) return false;
     if (/\b(m&s|marks?\s*&?\s*spencer)\s+us\b/i.test(combined)) return false;
 
     return true;
@@ -820,13 +882,44 @@ const cleanProductResults = (results: any[], limit: number): any[] => {
 
 const buildProductQueryVariants = (query: string): string[] => {
   const cleaned = query
-    .replace(/\b(floor[-\s]?length|full[-\s]?length|architectural|statement|modern|sleek|luminous|perfect|versatile)\b/gi, ' ')
-    .replace(/\s+/g, ' ')
+    .replace(
+      /\b(floor[-\s]?length|full[-\s]?length|architectural|statement|modern|sleek|luminous|perfect|versatile)\b/gi,
+      " ",
+    )
+    .replace(/\s+/g, " ")
     .trim();
   const lower = cleaned.toLowerCase();
-  const colours = ['black', 'navy', 'midnight navy', 'emerald', 'green', 'champagne', 'ivory', 'white', 'red', 'burgundy', 'pink', 'silver', 'gold', 'cream'];
-  const fabrics = ['silk', 'satin', 'velvet', 'crepe', 'lace', 'chiffon'];
-  const garments = ['gown', 'dress', 'jumpsuit', 'suit', 'blazer', 'trousers', 'skirt', 'coat', 'heels', 'sandals', 'clutch', 'bag'];
+  const colours = [
+    "black",
+    "navy",
+    "midnight navy",
+    "emerald",
+    "green",
+    "champagne",
+    "ivory",
+    "white",
+    "red",
+    "burgundy",
+    "pink",
+    "silver",
+    "gold",
+    "cream",
+  ];
+  const fabrics = ["silk", "satin", "velvet", "crepe", "lace", "chiffon"];
+  const garments = [
+    "gown",
+    "dress",
+    "jumpsuit",
+    "suit",
+    "blazer",
+    "trousers",
+    "skirt",
+    "coat",
+    "heels",
+    "sandals",
+    "clutch",
+    "bag",
+  ];
   const colour = colours.find((c) => lower.includes(c));
   const fabric = fabrics.find((f) => lower.includes(f));
   const garment = garments.find((g) => lower.includes(g));
@@ -834,10 +927,10 @@ const buildProductQueryVariants = (query: string): string[] => {
   const variants = [
     query.trim(),
     cleaned,
-    [colour, fabric, garment].filter(Boolean).join(' '),
-    [colour, garment].filter(Boolean).join(' '),
-    [fabric, garment].filter(Boolean).join(' '),
-    garment === 'gown' || garment === 'dress' ? `evening ${garment}` : garment || '',
+    [colour, fabric, garment].filter(Boolean).join(" "),
+    [colour, garment].filter(Boolean).join(" "),
+    [fabric, garment].filter(Boolean).join(" "),
+    garment === "gown" || garment === "dress" ? `evening ${garment}` : garment || "",
   ];
 
   return Array.from(new Set(variants.map((v) => v.trim()).filter(Boolean))).slice(0, 5);
@@ -846,16 +939,20 @@ const buildProductQueryVariants = (query: string): string[] => {
 const searchFirecrawlRetailer = async (query: string, retailer: RetailerTarget): Promise<any | null> => {
   if (!firecrawlApiKey) return null;
   try {
-    const response = await fetch('https://api.firecrawl.dev/v1/search', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${firecrawlApiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ query: `${query} site:${retailer.domain}`, limit: 1, scrapeOptions: { formats: ['markdown'] } }),
+    const response = await fetch("https://api.firecrawl.dev/v1/search", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${firecrawlApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `${query} site:${retailer.domain}`,
+        limit: 1,
+        scrapeOptions: { formats: ["markdown"] },
+      }),
     });
     if (!response.ok) return null;
     const searchData = await response.json();
     const result = (searchData?.data || [])[0];
     if (!result || !isValidProductUrl(result.url)) return null;
-    const markdown = result.markdown || '';
+    const markdown = result.markdown || "";
     const priceMatch = markdown.match(/£[\d,]+(?:\.\d{2})?/);
     return {
       retailer: retailer.name,
@@ -863,7 +960,7 @@ const searchFirecrawlRetailer = async (query: string, retailer: RetailerTarget):
       price: priceMatch ? priceMatch[0] : null,
       product_url: result.url,
       image_url: result.metadata?.ogImage || result.metadata?.image || null,
-      source: 'firecrawl',
+      source: "firecrawl",
     };
   } catch (_) {
     return null;
@@ -873,23 +970,23 @@ const searchFirecrawlRetailer = async (query: string, retailer: RetailerTarget):
 const searchSerperRetailer = async (query: string, retailer: RetailerTarget): Promise<any | null> => {
   if (!serperApiKey) return null;
   try {
-    const response = await fetch('https://google.serper.dev/search', {
-      method: 'POST',
-      headers: { 'X-API-KEY': serperApiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: `${query} site:${retailer.domain}`, gl: 'gb', hl: 'en', num: 3 }),
+    const response = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "X-API-KEY": serperApiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: `${query} site:${retailer.domain}`, gl: "gb", hl: "en", num: 3 }),
     });
     if (!response.ok) return null;
     const data = await response.json();
     const result = (data.organic || []).find((r: any) => isValidProductUrl(r.link));
     if (!result) return null;
-    const priceMatch = `${result.title || ''} ${result.snippet || ''}`.match(/£[\d,]+(?:\.\d{2})?/);
+    const priceMatch = `${result.title || ""} ${result.snippet || ""}`.match(/£[\d,]+(?:\.\d{2})?/);
     return {
       retailer: retailer.name,
       product_name: result.title || `Result from ${retailer.name}`,
       price: priceMatch ? priceMatch[0] : null,
       product_url: result.link,
       image_url: result.imageUrl || result.thumbnail || null,
-      source: 'serper_web',
+      source: "serper_web",
     };
   } catch (_) {
     return null;
@@ -903,42 +1000,42 @@ const searchSerperRetailer = async (query: string, retailer: RetailerTarget): Pr
 // lower(trim(query)) + '|' + price_tier + '|' + kind.
 // -----------------------------------------------------------------------
 const RENTAL_PLATFORMS = [
-  { name: 'HURR', domain: 'hurr.com' },
-  { name: 'By Rotation', domain: 'byrotation.com' },
-  { name: 'My Wardrobe HQ', domain: 'mywardrobehq.com' },
+  { name: "HURR", domain: "hurr.com" },
+  { name: "By Rotation", domain: "byrotation.com" },
+  { name: "My Wardrobe HQ", domain: "mywardrobehq.com" },
 ];
 
-const priceTierMax = (tier: string): number =>
-  tier === 'budget' ? 100 : tier === 'luxury' ? 2000 : 300;
+const priceTierMax = (tier: string): number => (tier === "budget" ? 100 : tier === "luxury" ? 2000 : 300);
 
 async function cachedSearch(
   supabase: any,
   query: string,
   tier: string,
-  kind: 'buy' | 'rent',
+  kind: "buy" | "rent",
   run: () => Promise<any[]>,
 ): Promise<any[]> {
   const key = `${SEARCH_CACHE_VERSION}|${query.trim().toLowerCase()}|${tier}|${kind}`;
   try {
     const { data } = await supabase
-      .from('search_cache')
-      .select('results, created_at')
-      .eq('query_key', key)
+      .from("search_cache")
+      .select("results, created_at")
+      .eq("query_key", key)
       .maybeSingle();
     if (data?.created_at && Array.isArray(data.results)) {
       const ageMs = Date.now() - new Date(data.created_at).getTime();
-        if (ageMs < 24 * 3600 * 1000) return cleanProductResults(data.results as any[], kind === 'buy' ? 4 : 2);
+      if (ageMs < 24 * 3600 * 1000) return cleanProductResults(data.results as any[], kind === "buy" ? 4 : 2);
     }
-  } catch (_) { /* cache miss on error */ }
+  } catch (_) {
+    /* cache miss on error */
+  }
   const results = await run();
   try {
     await supabase
-      .from('search_cache')
-      .upsert(
-        { query_key: key, results, created_at: new Date().toISOString() },
-        { onConflict: 'query_key' },
-      );
-  } catch (_) { /* non-fatal */ }
+      .from("search_cache")
+      .upsert({ query_key: key, results, created_at: new Date().toISOString() }, { onConflict: "query_key" });
+  } catch (_) {
+    /* non-fatal */
+  }
   return results;
 }
 
@@ -951,19 +1048,18 @@ async function cachedSearch(
 function preferGoogleThumbnails(results: any[]): any[] {
   const googleByRetailer = new Map<string, string>();
   for (const r of results) {
-    if (r?.source === 'google_shopping' && r.image_url && r.retailer) {
+    if (r?.source === "google_shopping" && r.image_url && r.retailer) {
       const key = String(r.retailer).toLowerCase();
       if (!googleByRetailer.has(key)) googleByRetailer.set(key, r.image_url);
     }
   }
   return results.map((r: any) => {
-    if (r?.source === 'google_shopping' || !r?.retailer) return r;
+    if (r?.source === "google_shopping" || !r?.retailer) return r;
     const key = String(r.retailer).toLowerCase();
     const googleImg = googleByRetailer.get(key);
     if (!googleImg) return r;
     const currentIsRetailerCdn =
-      !r.image_url ||
-      (typeof r.image_url === 'string' && !/googleusercontent|gstatic/.test(r.image_url));
+      !r.image_url || (typeof r.image_url === "string" && !/googleusercontent|gstatic/.test(r.image_url));
     return currentIsRetailerCdn ? { ...r, image_url: googleImg } : r;
   });
 }
@@ -978,10 +1074,7 @@ async function runBuySearch(query: string, tier: string, deep = false): Promise<
   const finalCap = deep ? 24 : 12;
 
   for (const variant of variants) {
-    const [g, s] = await Promise.all([
-      searchGoogleShopping(variant, maxPrice),
-      searchShopStyle(variant, maxPrice),
-    ]);
+    const [g, s] = await Promise.all([searchGoogleShopping(variant, maxPrice), searchShopStyle(variant, maxPrice)]);
     // Gather a wider candidate pool so the menswear/colour filters can
     // drop a handful of items and still leave at least 3 usable buy options.
     gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), poolCap);
@@ -996,10 +1089,7 @@ async function runBuySearch(query: string, tier: string, deep = false): Promise<
       Promise.all(retailerPool.map((r) => searchFirecrawlRetailer(variants[1] || query, r))),
     ]);
     const merged = [...gathered, ...realResults, ...webResults.filter(Boolean), ...firecrawlResults.filter(Boolean)];
-    realResults = cleanProductResults(
-      prioritizeRetailers(preferGoogleThumbnails(merged)),
-      finalCap,
-    );
+    realResults = cleanProductResults(prioritizeRetailers(preferGoogleThumbnails(merged)), finalCap);
   } else {
     realResults = preferGoogleThumbnails(realResults);
   }
@@ -1010,26 +1100,24 @@ async function runBuySearch(query: string, tier: string, deep = false): Promise<
 
 // Rental lookups now use Serper web search restricted by site: (Firecrawl was
 // too slow for an interactive tap). We parse title/link/price where present.
-async function searchSerperRental(
-  query: string,
-  platform: { name: string; domain: string },
-): Promise<any | null> {
+async function searchSerperRental(query: string, platform: { name: string; domain: string }): Promise<any | null> {
   if (!serperApiKey) return null;
   try {
-    const res = await fetch('https://google.serper.dev/search', {
-      method: 'POST',
-      headers: { 'X-API-KEY': serperApiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: `${query} site:${platform.domain}`, gl: 'gb', hl: 'en', num: 3 }),
+    const res = await fetch("https://google.serper.dev/search", {
+      method: "POST",
+      headers: { "X-API-KEY": serperApiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({ q: `${query} site:${platform.domain}`, gl: "gb", hl: "en", num: 3 }),
     });
     if (!res.ok) return null;
     const data = await res.json();
-    const result = (data.organic || []).find((r: any) =>
-      isValidProductUrl(r.link) &&
-      // avoid landing on generic search / category index pages
-      !/\/(search|category|categories|browse)(\/|\?|$)/i.test(r.link),
+    const result = (data.organic || []).find(
+      (r: any) =>
+        isValidProductUrl(r.link) &&
+        // avoid landing on generic search / category index pages
+        !/\/(search|category|categories|browse)(\/|\?|$)/i.test(r.link),
     );
     if (!result) return null;
-    const text = `${result.title || ''} ${result.snippet || ''}`;
+    const text = `${result.title || ""} ${result.snippet || ""}`;
     const priceMatch = text.match(/£[\d,]+(?:\.\d{2})?(?:\s*(?:\/\s*day|per\s*day|per\s*occasion))?/i);
     return {
       platform: platform.name,
@@ -1037,8 +1125,8 @@ async function searchSerperRental(
       price: priceMatch ? priceMatch[0] : null,
       product_url: result.link,
       image_url: result.imageUrl || result.thumbnail || null,
-      type: 'rental',
-      source: 'serper_web',
+      type: "rental",
+      source: "serper_web",
     };
   } catch (_) {
     return null;
@@ -1046,9 +1134,7 @@ async function searchSerperRental(
 }
 
 async function runRentSearch(query: string): Promise<any[]> {
-  const settled = await Promise.all(
-    RENTAL_PLATFORMS.map((p) => searchSerperRental(query, p)),
-  );
+  const settled = await Promise.all(RENTAL_PLATFORMS.map((p) => searchSerperRental(query, p)));
   return cleanProductResults(settled.filter(Boolean), 2);
 }
 
@@ -1056,11 +1142,11 @@ async function runRentSearch(query: string): Promise<any[]> {
 // contain "suit" as its own word — "bodysuit" is excluded, "trouser suit"
 // passes.
 function filterByGarmentType(results: any[], garmentType: string | undefined): any[] {
-  const g = (garmentType || '').trim().toLowerCase();
+  const g = (garmentType || "").trim().toLowerCase();
   if (!g) return results;
-  const escaped = g.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const re = new RegExp(`\\b${escaped}s?\\b`, 'i');
-  return results.filter((r) => re.test(String(r?.product_name || '')));
+  const escaped = g.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp(`\\b${escaped}s?\\b`, "i");
+  return results.filter((r) => re.test(String(r?.product_name || "")));
 }
 
 // -----------------------------------------------------------------------
@@ -1069,43 +1155,94 @@ function filterByGarmentType(results: any[], garmentType: string | undefined): a
 // navy/dark blue) count as compatible; titles naming no colour always pass.
 // -----------------------------------------------------------------------
 const COLOUR_WORDS = [
-  'black','white','ivory','cream','off-white','beige','tan','camel','nude','stone','sand',
-  'grey','gray','charcoal','silver','gold','champagne','bronze','copper',
-  'navy','dark blue','midnight','blue','sky','cobalt','denim','indigo',
-  'green','sage','olive','khaki','emerald','forest','mint','teal',
-  'red','burgundy','wine','maroon','crimson','scarlet',
-  'pink','blush','rose','fuchsia','magenta','coral',
-  'orange','terracotta','rust',
-  'yellow','mustard','ochre',
-  'purple','lilac','lavender','plum','violet',
-  'brown','chocolate','mocha',
+  "black",
+  "white",
+  "ivory",
+  "cream",
+  "off-white",
+  "beige",
+  "tan",
+  "camel",
+  "nude",
+  "stone",
+  "sand",
+  "grey",
+  "gray",
+  "charcoal",
+  "silver",
+  "gold",
+  "champagne",
+  "bronze",
+  "copper",
+  "navy",
+  "dark blue",
+  "midnight",
+  "blue",
+  "sky",
+  "cobalt",
+  "denim",
+  "indigo",
+  "green",
+  "sage",
+  "olive",
+  "khaki",
+  "emerald",
+  "forest",
+  "mint",
+  "teal",
+  "red",
+  "burgundy",
+  "wine",
+  "maroon",
+  "crimson",
+  "scarlet",
+  "pink",
+  "blush",
+  "rose",
+  "fuchsia",
+  "magenta",
+  "coral",
+  "orange",
+  "terracotta",
+  "rust",
+  "yellow",
+  "mustard",
+  "ochre",
+  "purple",
+  "lilac",
+  "lavender",
+  "plum",
+  "violet",
+  "brown",
+  "chocolate",
+  "mocha",
 ];
 
 const COLOUR_NEIGHBOUR_GROUPS: string[][] = [
-  ['sage','olive','khaki'],
-  ['terracotta','rust'],
-  ['navy','dark blue','midnight','indigo'],
-  ['beige','tan','camel','nude','stone','sand','cream','ivory','off-white'],
-  ['burgundy','wine','maroon'],
-  ['pink','blush','rose'],
-  ['grey','gray','charcoal'],
-  ['red','crimson','scarlet'],
-  ['blue','sky','cobalt','denim'],
-  ['green','emerald','forest','mint','teal'],
-  ['yellow','mustard','ochre'],
-  ['purple','lilac','lavender','plum','violet'],
-  ['brown','chocolate','mocha'],
-  ['orange','coral'],
-  ['white','ivory','cream','off-white'],
-  ['gold','champagne','bronze','copper'],
+  ["sage", "olive", "khaki"],
+  ["terracotta", "rust"],
+  ["navy", "dark blue", "midnight", "indigo"],
+  ["beige", "tan", "camel", "nude", "stone", "sand", "cream", "ivory", "off-white"],
+  ["burgundy", "wine", "maroon"],
+  ["pink", "blush", "rose"],
+  ["grey", "gray", "charcoal"],
+  ["red", "crimson", "scarlet"],
+  ["blue", "sky", "cobalt", "denim"],
+  ["green", "emerald", "forest", "mint", "teal"],
+  ["yellow", "mustard", "ochre"],
+  ["purple", "lilac", "lavender", "plum", "violet"],
+  ["brown", "chocolate", "mocha"],
+  ["orange", "coral"],
+  ["white", "ivory", "cream", "off-white"],
+  ["gold", "champagne", "bronze", "copper"],
 ];
 
 function detectColourInText(text: string): string | null {
-  const lower = ` ${String(text || '').toLowerCase()} `;
+  const lower = ` ${String(text || "").toLowerCase()} `;
   // longest-first so "dark blue" beats "blue"
   const sorted = [...COLOUR_WORDS].sort((a, b) => b.length - a.length);
   for (const c of sorted) {
-    const re = new RegExp(`(^|[^a-z])${c.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`, 'i');
+    const re = new RegExp(`(^|[^a-z])${c.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`, "i");
     if (re.test(lower)) return c;
   }
   return null;
@@ -1128,7 +1265,7 @@ function filterByColour(results: any[], requestedColour: string | null): any[] {
   if (!requestedColour) return results;
   const req = requestedColour.toLowerCase();
   return results.filter((r) => {
-    const title = String(r?.product_name || '');
+    const title = String(r?.product_name || "");
     if (!title) return true;
     const lower = ` ${title.toLowerCase()} `;
     // If the title contains the requested colour (or a neighbour), keep.
@@ -1137,11 +1274,10 @@ function filterByColour(results: any[], requestedColour: string | null): any[] {
     if (coloursCompatible(req, found)) return true;
     // Title names some colour, but incompatible. Still keep if the
     // requested colour appears anywhere in the title too.
-    const reqRe = new RegExp(`(^|[^a-z])${req.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z]|$)`, 'i');
+    const reqRe = new RegExp(`(^|[^a-z])${req.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`, "i");
     return reqRe.test(lower);
   });
 }
-
 
 // Buy cards must be real, specific products with a price. Allow at most one
 // price-missing card, and only when fewer than 3 priced results exist.
@@ -1162,13 +1298,13 @@ const WOMEN_TERMS_RE = /\b(women'?s?|woman'?s?|ladies|female|womens)\b/i;
 const MEN_TERMS_RE = /\b(men'?s?|man'?s?|male|mens)\b/i;
 
 function enforceGenderInQuery(query: string, isMenswear: boolean): string {
-  const q = (query || '').trim();
+  const q = (query || "").trim();
   if (!q) return q;
   if (isMenswear) {
     return MEN_TERMS_RE.test(q) || WOMEN_TERMS_RE.test(q) ? q : `men's ${q}`;
   }
   // Womenswear (default): strip any men's terms, then ensure women's is present.
-  let out = q.replace(MEN_TERMS_RE, '').replace(/\s+/g, ' ').trim();
+  let out = q.replace(MEN_TERMS_RE, "").replace(/\s+/g, " ").trim();
   if (!WOMEN_TERMS_RE.test(out)) out = `women's ${out}`;
   return out;
 }
@@ -1183,29 +1319,22 @@ function filterOutMenswear(results: any[], isMenswear: boolean): any[] {
   const menWordRe = /(^|[^a-z])(men'?s?|mens)([^a-z]|$)/i;
   // URL path segments that unambiguously indicate a men's department.
   const menUrlRe = /(\/men\/|\/mens\/|\/men-|\/mens-|menswear)/i;
-  const stripWomen = (s: string) => s.replace(/wom[ae]n'?s?/ig, '');
+  const stripWomen = (s: string) => s.replace(/wom[ae]n'?s?/gi, "");
   return results.filter((r) => {
-    const title = stripWomen(String(r?.product_name || ''));
+    const title = stripWomen(String(r?.product_name || ""));
     if (menWordRe.test(title)) return false;
 
-    const url = String(r?.product_url || '');
+    const url = String(r?.product_url || "");
     // Strip "women" substrings from the URL so "/womens-" etc don't match.
-    const strippedUrl = url.replace(/wom[ae]ns?/ig, '');
+    const strippedUrl = url.replace(/wom[ae]ns?/gi, "");
     if (menUrlRe.test(strippedUrl)) return false;
 
     // Displayed source / retailer / breadcrumb / category text.
-    const extras = [
-      r?.retailer,
-      r?.source_label,
-      r?.breadcrumb,
-      r?.breadcrumbs,
-      r?.category,
-      r?.department,
-    ]
+    const extras = [r?.retailer, r?.source_label, r?.breadcrumb, r?.breadcrumbs, r?.category, r?.department]
       .flat()
-      .filter((x) => typeof x === 'string')
+      .filter((x) => typeof x === "string")
       .map((x: string) => stripWomen(x))
-      .join(' ');
+      .join(" ");
     if (extras && (menWordRe.test(extras) || /menswear/i.test(extras))) return false;
 
     return true;
@@ -1218,19 +1347,18 @@ async function searchItemsForOption(
   rentalPreference: string | undefined,
   stylingCategory: string | undefined,
 ): Promise<any[]> {
-  const isMenswear = stylingCategory === 'menswear';
+  const isMenswear = stylingCategory === "menswear";
   // Run every item's buy + rent lookups fully in parallel.
   return await Promise.all(
     items.map(async (item: any) => {
       const keywordsList = Array.isArray(item?.search_keywords)
-        ? item.search_keywords.filter((k: any) => typeof k === 'string' && k.trim())
+        ? item.search_keywords.filter((k: any) => typeof k === "string" && k.trim())
         : [];
-      const keywords = keywordsList.length > 0
-        ? keywordsList.join(' ')
-        : (typeof item?.name === 'string' ? item.name : '');
-      const garmentType = typeof item?.garment_type === 'string' ? item.garment_type : '';
+      const keywords =
+        keywordsList.length > 0 ? keywordsList.join(" ") : typeof item?.name === "string" ? item.name : "";
+      const garmentType = typeof item?.garment_type === "string" ? item.garment_type : "";
       // Detect a colour anywhere in the item's stated identity (keywords or name).
-      const colourSource = `${keywords} ${typeof item?.name === 'string' ? item.name : ''}`;
+      const colourSource = `${keywords} ${typeof item?.name === "string" ? item.name : ""}`;
       const requestedColour = detectColourInText(colourSource);
       // Lead the retailer query with colour + garment when a colour is
       // named, e.g. "sage green midi dress" → "sage midi dress" first.
@@ -1238,26 +1366,25 @@ async function searchItemsForOption(
       if (requestedColour && garmentType) {
         const rest = keywords
           .toLowerCase()
-          .replace(new RegExp(`\\b${requestedColour.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i'), '')
-          .replace(new RegExp(`\\b${garmentType.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}s?\\b`, 'i'), '')
-          .replace(/\s+/g, ' ')
+          .replace(new RegExp(`\\b${requestedColour.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"), "")
+          .replace(new RegExp(`\\b${garmentType.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`, "i"), "")
+          .replace(/\s+/g, " ")
           .trim();
-        rawQuery = [requestedColour, garmentType, rest].filter(Boolean).join(' ').trim();
+        rawQuery = [requestedColour, garmentType, rest].filter(Boolean).join(" ").trim();
       } else {
         const includeGarment = garmentType && !keywords.toLowerCase().includes(garmentType.toLowerCase());
-        rawQuery = [keywords, includeGarment ? garmentType : ''].filter(Boolean).join(' ').trim();
+        rawQuery = [keywords, includeGarment ? garmentType : ""].filter(Boolean).join(" ").trim();
       }
       const baseQuery = enforceGenderInQuery(rawQuery, isMenswear);
-      const tier = item?.price_tier || 'mid_range';
-      const wantBuy = rentalPreference !== 'rent_only';
-      const wantRent =
-        rentalPreference !== 'buy_only' && item?.rental_market_likely === true;
+      const tier = item?.price_tier || "mid_range";
+      const wantBuy = rentalPreference !== "rent_only";
+      const wantRent = rentalPreference !== "buy_only" && item?.rental_market_likely === true;
       const [buyRaw, rentRaw] = await Promise.all([
         wantBuy && baseQuery
-          ? cachedSearch(supabase, baseQuery, tier, 'buy', () => runBuySearch(baseQuery, tier))
+          ? cachedSearch(supabase, baseQuery, tier, "buy", () => runBuySearch(baseQuery, tier))
           : Promise.resolve([]),
         wantRent && baseQuery
-          ? cachedSearch(supabase, baseQuery, tier, 'rent', () => runRentSearch(baseQuery))
+          ? cachedSearch(supabase, baseQuery, tier, "rent", () => runRentSearch(baseQuery))
           : Promise.resolve([]),
       ]);
 
@@ -1272,12 +1399,8 @@ async function searchItemsForOption(
       // If garment/colour filter thinned results below 3, fetch a deeper
       // candidate pool via the existing search-depth mechanism and retry.
       if (wantBuy && baseQuery && buyFiltered.length < 3) {
-        const deepRaw = await cachedSearch(
-          supabase,
-          `${baseQuery} __deep`,
-          tier,
-          'buy',
-          () => runBuySearch(baseQuery, tier, true),
+        const deepRaw = await cachedSearch(supabase, `${baseQuery} __deep`, tier, "buy", () =>
+          runBuySearch(baseQuery, tier, true),
         );
         buyFiltered = applyBuyFilters(deepRaw);
       }
@@ -1314,9 +1437,9 @@ serve(async (req) => {
 
     if (authHeader) {
       try {
-        const { data: { user: authUser } } = await supabase.auth.getUser(
-          authHeader.replace("Bearer ", ""),
-        );
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser(authHeader.replace("Bearer ", ""));
         if (authUser) user = { id: authUser.id, email: authUser.email ?? undefined };
       } catch (_) {
         // fall through as guest
@@ -1333,12 +1456,7 @@ serve(async (req) => {
       if (!user) {
         return jsonResponse(req, { error: "auth_required" }, 401);
       }
-      const {
-        occasion = "",
-        vote_summary = "",
-        comments_text = "",
-        option_count = 0,
-      } = body ?? {};
+      const { occasion = "", vote_summary = "", comments_text = "", option_count = 0 } = body ?? {};
 
       const system =
         "You are Serena, a personal stylist. Write a short, warm, fun 2-3 sentence summary of this community outfit poll: which option the community favoured and why, drawing on the vote counts and comments. UK English. No preamble.";
@@ -1353,7 +1471,7 @@ serve(async (req) => {
         const resp = await fetch(AI_GATEWAY_URL, {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${lovableApiKey}`,
+            Authorization: `Bearer ${lovableApiKey}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
@@ -1387,18 +1505,22 @@ serve(async (req) => {
     if (!user) {
       const forwarded = req.headers.get("x-forwarded-for") || "";
       const guestIp = forwarded.split(",")[0]?.trim() || "unknown";
-      const { data: guestLimit, error: guestLimitError } = await supabase.rpc(
-        "check_guest_rate_limit",
-        { ip_param: guestIp, daily_limit: 5 },
-      );
+      const { data: guestLimit, error: guestLimitError } = await supabase.rpc("check_guest_rate_limit", {
+        ip_param: guestIp,
+        daily_limit: 5,
+      });
       if (guestLimitError) {
         console.error("Guest rate limit check error:", guestLimitError);
       }
       if (guestLimit && guestLimit.allowed === false) {
-        return jsonResponse(req, {
-          error: "Rate limit exceeded",
-          message: "You've reached the daily limit for guests. Sign up to continue getting styling advice.",
-        }, 429);
+        return jsonResponse(
+          req,
+          {
+            error: "Rate limit exceeded",
+            message: "You've reached the daily limit for guests. Sign up to continue getting styling advice.",
+          },
+          429,
+        );
       }
     }
 
@@ -1437,9 +1559,7 @@ serve(async (req) => {
       if (!Array.isArray(items_to_search)) {
         return jsonResponse(req, { error: "items_to_search must be an array" }, 400);
       }
-      const nonWardrobe = items_to_search.filter(
-        (i: any) => i?.source !== "from_wardrobe",
-      );
+      const nonWardrobe = items_to_search.filter((i: any) => i?.source !== "from_wardrobe");
       const searched = await searchItemsForOption(
         supabase,
         nonWardrobe,
@@ -1448,7 +1568,6 @@ serve(async (req) => {
       );
       return jsonResponse(req, { ok: true, option_label, items: searched });
     }
-
 
     const {
       user_message: userMessageSnake,
@@ -1496,11 +1615,7 @@ serve(async (req) => {
 
     if (user) {
       const [profileRes, wardrobeRes, insightsRes, feedbackRes, selectionsRes] = await Promise.all([
-        supabase
-          .from("user_style_profiles")
-          .select("*")
-          .eq("user_id", user.id)
-          .maybeSingle(),
+        supabase.from("user_style_profiles").select("*").eq("user_id", user.id).maybeSingle(),
         supabase
           .from("wardrobe_items")
           .select("*")
@@ -1532,6 +1647,18 @@ serve(async (req) => {
       preferenceInsights = insightsRes.data ?? [];
       recentFeedback = feedbackRes.data ?? [];
       recentSelections = selectionsRes.data ?? [];
+    } // Two-tap product feedback (Phase 1 partnership table)
+    let productSaved: string[] = [];
+    let productRejected: string[] = [];
+    if (user) {
+      const { data: pf } = await supabase
+        .from("product_feedback")
+        .select("product_ref, verdict")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(30);
+      productSaved = (pf ?? []).filter((f) => f.verdict === "save").map((f) => f.product_ref);
+      productRejected = (pf ?? []).filter((f) => f.verdict === "not_for_me").map((f) => f.product_ref);
     }
 
     // Resolve the anchor item (Style this). Only honoured for authenticated
@@ -1555,9 +1682,7 @@ serve(async (req) => {
           brand: match.brand ?? null,
         };
       } else {
-        console.warn(
-          `Anchor item ${anchor_item_id} not found for user ${user.id}; ignoring anchor`,
-        );
+        console.warn(`Anchor item ${anchor_item_id} not found for user ${user.id}; ignoring anchor`);
       }
     }
     const effectiveAnchorId = anchorItem?.id ?? null;
@@ -1586,11 +1711,12 @@ serve(async (req) => {
 
     const historyMessages = Array.isArray(conversation_history)
       ? conversation_history
-          .filter((m: any) =>
-            m &&
-            typeof m.role === "string" &&
-            typeof m.content === "string" &&
-            (m.role === "user" || m.role === "assistant")
+          .filter(
+            (m: any) =>
+              m &&
+              typeof m.role === "string" &&
+              typeof m.content === "string" &&
+              (m.role === "user" || m.role === "assistant"),
           )
           .slice(-20)
           .map((m: any) => ({ role: m.role, content: m.content }))
@@ -1600,9 +1726,7 @@ serve(async (req) => {
       { role: "system", content: ORACLE_SYSTEM_PROMPT },
       {
         role: "system",
-        content:
-          "CONTEXT (JSON — treat as real signals, not decoration):\n" +
-          JSON.stringify(contextPayload),
+        content: "CONTEXT (JSON — treat as real signals, not decoration):\n" + JSON.stringify(contextPayload),
       },
       ...historyMessages,
       { role: "user", content: user_message },
@@ -1632,9 +1756,10 @@ serve(async (req) => {
           req,
           {
             error: gatewayResp.status === 402 ? "credits_exhausted" : "rate_limited",
-            message: gatewayResp.status === 402
-              ? "AI credits exhausted. Please top up in workspace settings."
-              : "Too many requests to the AI gateway. Please try again shortly.",
+            message:
+              gatewayResp.status === 402
+                ? "AI credits exhausted. Please top up in workspace settings."
+                : "Too many requests to the AI gateway. Please try again shortly.",
           },
           gatewayResp.status,
         );
@@ -1678,7 +1803,8 @@ serve(async (req) => {
     if (rr && typeof rr === "object") {
       const venueName = typeof rr.venue_name === "string" && rr.venue_name.trim() ? rr.venue_name.trim() : null;
       const eventName = typeof rr.event_name === "string" && rr.event_name.trim() ? rr.event_name.trim() : null;
-      const weatherLoc = typeof rr.weather_location === "string" && rr.weather_location.trim() ? rr.weather_location.trim() : null;
+      const weatherLoc =
+        typeof rr.weather_location === "string" && rr.weather_location.trim() ? rr.weather_location.trim() : null;
       const weatherDate = typeof rr.weather_date === "string" && rr.weather_date.trim() ? rr.weather_date.trim() : null;
 
       if (venueName || eventName || weatherLoc) {
@@ -1701,14 +1827,10 @@ serve(async (req) => {
 
         const [venueRes, eventRes, weatherRes] = await Promise.all([
           venueName
-            ? runResearch("scrape-venue", () =>
-                supabase.functions.invoke("scrape-venue", { body: { venueName } }),
-              )
+            ? runResearch("scrape-venue", () => supabase.functions.invoke("scrape-venue", { body: { venueName } }))
             : Promise.resolve({ data: null, error: null }),
           eventName
-            ? runResearch("scrape-event", () =>
-                supabase.functions.invoke("scrape-event", { body: { eventName } }),
-              )
+            ? runResearch("scrape-event", () => supabase.functions.invoke("scrape-event", { body: { eventName } }))
             : Promise.resolve({ data: null, error: null }),
           weatherLoc
             ? runResearch("weather-recommendations", () =>
@@ -1751,9 +1873,6 @@ serve(async (req) => {
       }
     }
 
-
-
-
     // Server-side wardrobe_item_id validation:
     // - Guests (no user) and users with an empty wardrobe: every from_wardrobe
     //   item is downgraded — the AI cannot legitimately pick from what we did
@@ -1769,16 +1888,12 @@ serve(async (req) => {
         if (!Array.isArray(opt?.items)) continue;
         for (const item of opt.items) {
           if (item?.source !== "from_wardrobe") continue;
-          const idValid =
-            item.wardrobe_item_id != null &&
-            validIds.has(String(item.wardrobe_item_id));
+          const idValid = item.wardrobe_item_id != null && validIds.has(String(item.wardrobe_item_id));
           if (forceDowngrade || !idValid) {
             const reason = forceDowngrade
               ? `no wardrobe in scope (user=${!!user}, items=${wardrobeItems.length})`
               : `wardrobe_item_id missing or not in user's wardrobe`;
-            console.warn(
-              `Wardrobe validation: downgrading "${item?.name ?? "(unnamed)"}" — ${reason}`,
-            );
+            console.warn(`Wardrobe validation: downgrading "${item?.name ?? "(unnamed)"}" — ${reason}`);
             item.source = "needs_purchase_or_rental";
             item.wardrobe_item_id = null;
           }
@@ -1793,9 +1908,7 @@ serve(async (req) => {
         if (!Array.isArray(opt?.items)) continue;
         for (const item of opt.items) {
           if (item?.source !== "from_wardrobe") continue;
-          const idValid =
-            item.wardrobe_item_id != null &&
-            validIds.has(String(item.wardrobe_item_id));
+          const idValid = item.wardrobe_item_id != null && validIds.has(String(item.wardrobe_item_id));
           if (forceDowngrade || !idValid) {
             item.source = "needs_purchase_or_rental";
             item.wardrobe_item_id = null;
@@ -1809,13 +1922,12 @@ serve(async (req) => {
       if (!Array.isArray(p?.outfit_options) || p.outfit_options.length === 0) {
         return false;
       }
-      return p.outfit_options.every((opt: any) =>
-        Array.isArray(opt?.items) &&
-        opt.items.some(
-          (it: any) =>
-            it?.source === "from_wardrobe" &&
-            String(it?.wardrobe_item_id ?? "") === String(anchorId),
-        ),
+      return p.outfit_options.every(
+        (opt: any) =>
+          Array.isArray(opt?.items) &&
+          opt.items.some(
+            (it: any) => it?.source === "from_wardrobe" && String(it?.wardrobe_item_id ?? "") === String(anchorId),
+          ),
       );
     };
 
@@ -1826,16 +1938,14 @@ serve(async (req) => {
     let anchor_enforced: boolean | undefined;
     if (effectiveAnchorId && anchorItem) {
       if (!anchorSatisfied(parsed, effectiveAnchorId)) {
-        console.warn(
-          `Anchor not enforced on first generation (anchor_item_id=${effectiveAnchorId}); retrying once`,
-        );
+        console.warn(`Anchor not enforced on first generation (anchor_item_id=${effectiveAnchorId}); retrying once`);
         const enforcementReminder = {
           role: "system" as const,
           content:
             "ANCHOR ENFORCEMENT (hard rule): the user tapped 'Style this' " +
             `on wardrobe item id=${anchorItem.id} (${anchorItem.name}). ` +
             "EVERY outfit_options entry you return MUST include an item " +
-            "with source=\"from_wardrobe\" and wardrobe_item_id equal to " +
+            'with source="from_wardrobe" and wardrobe_item_id equal to ' +
             `"${anchorItem.id}". Build each option AROUND this piece. Do ` +
             "not omit it from any option. Echo the same anchor_item_id in " +
             "your response.",
@@ -1854,9 +1964,7 @@ serve(async (req) => {
                   parsed = retryParsed;
                   anchor_enforced = true;
                 } else {
-                  console.warn(
-                    `Anchor still not enforced after retry (anchor_item_id=${effectiveAnchorId})`,
-                  );
+                  console.warn(`Anchor still not enforced after retry (anchor_item_id=${effectiveAnchorId})`);
                   anchor_enforced = false;
                 }
               } catch (err) {
@@ -1879,16 +1987,13 @@ serve(async (req) => {
       }
     }
 
-
     // shop_new mode: auto-run product search for the primary option's
     // non-wardrobe items and attach { buy, rent } directly to each item.
     // Other options load on tap via the search_option action above.
     if (parsed.mode === "shop_new" && Array.isArray(parsed.outfit_options)) {
       const primary = parsed.outfit_options.find((o: any) => o?.is_primary === true);
       if (primary && Array.isArray(primary.items)) {
-        const nonWardrobe = primary.items.filter(
-          (i: any) => i?.source !== "from_wardrobe",
-        );
+        const nonWardrobe = primary.items.filter((i: any) => i?.source !== "from_wardrobe");
         if (nonWardrobe.length > 0) {
           try {
             const searched = await searchItemsForOption(
