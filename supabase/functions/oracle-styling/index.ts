@@ -1703,6 +1703,8 @@ serve(async (req) => {
       preference_insights: preferenceInsights,
       recent_feedback: recentFeedback,
       recent_option_selections: recentSelections,
+      product_feedback_saved: productSaved.slice(0, 15),
+      product_feedback_rejected: productRejected.slice(0, 15),
       accumulated_context,
       anchor_item_id: effectiveAnchorId,
       anchor_item: anchorItem,
