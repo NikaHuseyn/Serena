@@ -1006,7 +1006,26 @@ const RENTAL_PLATFORMS = [
 ];
 
 const priceTierMax = (tier: string): number => (tier === "budget" ? 100 : tier === "luxury" ? 2000 : 300);
+// Phase 1: tracked affiliate links via the /go edge function.
+// Applied at response time only — never stored in search_cache.
+function trackedLink(productUrl: string, userId: string | null, briefId: string | null): string {
+  const params = new URLSearchParams({ pid: productUrl });
+  if (userId) params.set("u", userId);
+  if (briefId) params.set("b", briefId);
+  return `${supabaseUrl}/functions/v1/go?${params.toString()}`;
+}
 
+function wrapProductLinks(items: any[], userId: string | null, briefId: string | null): any[] {
+  const wrapArr = (arr: any[]) =>
+    (arr ?? []).map((p: any) =>
+      p?.product_url ? { ...p, product_url: trackedLink(p.product_url, userId, briefId) } : p,
+    );
+  return (items ?? []).map((it: any) => ({
+    ...it,
+    ...(Array.isArray(it?.buy) ? { buy: wrapArr(it.buy) } : {}),
+    ...(Array.isArray(it?.rent) ? { rent: wrapArr(it.rent) } : {}),
+  }));
+}
 async function cachedSearch(
   supabase: any,
   query: string,
@@ -1566,7 +1585,11 @@ serve(async (req) => {
         typeof rental_preference === "string" ? rental_preference : undefined,
         typeof styling_category === "string" ? styling_category : undefined,
       );
-      return jsonResponse(req, { ok: true, option_label, items: searched });
+      return jsonResponse(req, {
+        ok: true,
+        option_label,
+        items: wrapProductLinks(searched, user?.id ?? null, null),
+      });
     }
 
     const {
@@ -1988,7 +2011,57 @@ serve(async (req) => {
         anchor_enforced = true;
       }
     }
+    // ------------------------------------------------------------------
+    // Phase 1: log the style brief (authenticated users only —
+    // style_briefs.user_id is NOT NULL). matched is updated after search.
+    // ------------------------------------------------------------------
+    let briefId: string | null = null;
+    if (user) {
+      try {
+        // NOTE: verify the jsonb key against a real row:
+        //   select color_analysis from user_style_profiles
+        //   where color_analysis is not null limit 1;
+        const colorSeason: string | null =
+          styleProfile?.color_analysis?.season ?? styleProfile?.color_analysis?.result?.season ?? null;
 
+        const categories = Array.isArray(parsed.outfit_options)
+          ? Array.from(
+              new Set(
+                parsed.outfit_options.flatMap((o: any) =>
+                  Array.isArray(o?.items) ? o.items.map((i: any) => i?.category).filter(Boolean) : [],
+                ),
+              ),
+            )
+          : null;
+
+        const { data: briefRow } = await supabase
+          .from("style_briefs")
+          .insert({
+            user_id: user.id,
+            mode: parsed.mode ?? null,
+            occasion: accumulated_context?.occasion ?? null,
+            budget_min: styleProfile?.budget_min ?? null,
+            budget_max: styleProfile?.budget_max ?? null,
+            currency: styleProfile?.budget_currency ?? "GBP",
+            categories,
+            color_season: colorSeason,
+            brief: {
+              user_message,
+              mode: parsed.mode ?? null,
+              styling_category: parsed.styling_category ?? null,
+              colour_override: parsed.colour_override ?? false,
+              wardrobe_check_result: parsed.wardrobe_check_result ?? null,
+              anchor_item_id: effectiveAnchorId,
+            },
+            matched: null,
+          })
+          .select("id")
+          .single();
+        briefId = briefRow?.id ?? null;
+      } catch (err) {
+        console.warn("style_briefs insert failed (non-fatal):", err);
+      }
+    }
     // shop_new mode: auto-run product search for the primary option's
     // non-wardrobe items and attach { buy, rent } directly to each item.
     // Other options load on tap via the search_option action above.
