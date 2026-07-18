@@ -386,6 +386,126 @@ export type Database = {
           },
         ]
       }
+      link_clicks: {
+        Row: {
+          brief_id: string | null
+          campaign_id: string | null
+          created_at: string
+          id: string
+          partner_product_id: string | null
+          product_ref: string
+          session_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          brief_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          partner_product_id?: string | null
+          product_ref: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          brief_id?: string | null
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          partner_product_id?: string | null
+          product_ref?: string
+          session_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "link_clicks_brief_id_fkey"
+            columns: ["brief_id"]
+            isOneToOne: false
+            referencedRelation: "style_briefs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "link_clicks_partner_product_id_fkey"
+            columns: ["partner_product_id"]
+            isOneToOne: false
+            referencedRelation: "partner_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      milestone_achievements: {
+        Row: {
+          achieved_at: string
+          id: string
+          milestone_id: string
+          reward_claimed_at: string | null
+          user_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          id?: string
+          milestone_id: string
+          reward_claimed_at?: string | null
+          user_id: string
+        }
+        Update: {
+          achieved_at?: string
+          id?: string
+          milestone_id?: string
+          reward_claimed_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "milestone_achievements_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "milestone_achievements_milestone_id_fkey"
+            columns: ["milestone_id"]
+            isOneToOne: false
+            referencedRelation: "milestones_public"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      milestones: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          revealed: boolean
+          reward_config: Json | null
+          sort_order: number
+          threshold: number
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          revealed?: boolean
+          reward_config?: Json | null
+          sort_order?: number
+          threshold: number
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          revealed?: boolean
+          reward_config?: Json | null
+          sort_order?: number
+          threshold?: number
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string | null
@@ -682,9 +802,108 @@ export type Database = {
           },
         ]
       }
+      partner_products: {
+        Row: {
+          brand: string | null
+          category: string | null
+          currency: string | null
+          external_id: string
+          id: string
+          image_url: string | null
+          imported_at: string
+          in_stock: boolean
+          name: string | null
+          price: number | null
+          region: string | null
+          retailer_url: string
+          source: string
+          tags: Json
+        }
+        Insert: {
+          brand?: string | null
+          category?: string | null
+          currency?: string | null
+          external_id: string
+          id?: string
+          image_url?: string | null
+          imported_at?: string
+          in_stock?: boolean
+          name?: string | null
+          price?: number | null
+          region?: string | null
+          retailer_url: string
+          source?: string
+          tags?: Json
+        }
+        Update: {
+          brand?: string | null
+          category?: string | null
+          currency?: string | null
+          external_id?: string
+          id?: string
+          image_url?: string | null
+          imported_at?: string
+          in_stock?: boolean
+          name?: string | null
+          price?: number | null
+          region?: string | null
+          retailer_url?: string
+          source?: string
+          tags?: Json
+        }
+        Relationships: []
+      }
+      points_transactions: {
+        Row: {
+          amount: number
+          campaign_id: string | null
+          created_at: string
+          id: string
+          idempotency_key: string | null
+          reason: string
+          reverses_transaction_id: string | null
+          source_id: string | null
+          source_type: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          idempotency_key?: string | null
+          reason: string
+          reverses_transaction_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          idempotency_key?: string | null
+          reason?: string
+          reverses_transaction_id?: string | null
+          source_id?: string | null
+          source_type?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "points_transactions_reverses_transaction_id_fkey"
+            columns: ["reverses_transaction_id"]
+            isOneToOne: false
+            referencedRelation: "points_transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       posts_base: {
         Row: {
           brand_tags: string[]
+          campaign_id: string | null
           caption: string | null
           comments_count: number | null
           created_at: string | null
@@ -706,6 +925,7 @@ export type Database = {
         }
         Insert: {
           brand_tags?: string[]
+          campaign_id?: string | null
           caption?: string | null
           comments_count?: number | null
           created_at?: string | null
@@ -727,6 +947,7 @@ export type Database = {
         }
         Update: {
           brand_tags?: string[]
+          campaign_id?: string | null
           caption?: string | null
           comments_count?: number | null
           created_at?: string | null
@@ -747,6 +968,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      product_feedback: {
+        Row: {
+          brief_id: string | null
+          created_at: string
+          id: string
+          product_ref: string
+          user_id: string
+          verdict: string
+        }
+        Insert: {
+          brief_id?: string | null
+          created_at?: string
+          id?: string
+          product_ref: string
+          user_id: string
+          verdict: string
+        }
+        Update: {
+          brief_id?: string | null
+          created_at?: string
+          id?: string
+          product_ref?: string
+          user_id?: string
+          verdict?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_feedback_brief"
+            columns: ["brief_id"]
+            isOneToOne: false
+            referencedRelation: "style_briefs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recommendation_feedback: {
         Row: {
@@ -934,6 +1190,7 @@ export type Database = {
           followers_count: number | null
           following_count: number | null
           id: string
+          points_balance: number
           posts_count: number | null
           total_likes: number | null
           updated_at: string | null
@@ -948,6 +1205,7 @@ export type Database = {
           followers_count?: number | null
           following_count?: number | null
           id?: string
+          points_balance?: number
           posts_count?: number | null
           total_likes?: number | null
           updated_at?: string | null
@@ -962,9 +1220,58 @@ export type Database = {
           followers_count?: number | null
           following_count?: number | null
           id?: string
+          points_balance?: number
           posts_count?: number | null
           total_likes?: number | null
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      style_briefs: {
+        Row: {
+          brief: Json
+          budget_max: number | null
+          budget_min: number | null
+          campaign_id: string | null
+          categories: string[] | null
+          color_season: string | null
+          created_at: string
+          currency: string | null
+          id: string
+          matched: boolean | null
+          mode: string | null
+          occasion: string | null
+          user_id: string
+        }
+        Insert: {
+          brief?: Json
+          budget_max?: number | null
+          budget_min?: number | null
+          campaign_id?: string | null
+          categories?: string[] | null
+          color_season?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          matched?: boolean | null
+          mode?: string | null
+          occasion?: string | null
+          user_id: string
+        }
+        Update: {
+          brief?: Json
+          budget_max?: number | null
+          budget_min?: number | null
+          campaign_id?: string | null
+          categories?: string[] | null
+          color_season?: string | null
+          created_at?: string
+          currency?: string | null
+          id?: string
+          matched?: boolean | null
+          mode?: string | null
+          occasion?: string | null
           user_id?: string
         }
         Relationships: []
@@ -1494,9 +1801,37 @@ export type Database = {
       }
     }
     Views: {
+      milestones_public: {
+        Row: {
+          id: string | null
+          name: string | null
+          revealed: boolean | null
+          reward_config: Json | null
+          sort_order: number | null
+          threshold: number | null
+        }
+        Insert: {
+          id?: string | null
+          name?: string | null
+          revealed?: boolean | null
+          reward_config?: never
+          sort_order?: number | null
+          threshold?: number | null
+        }
+        Update: {
+          id?: string | null
+          name?: string | null
+          revealed?: boolean | null
+          reward_config?: never
+          sort_order?: number | null
+          threshold?: number | null
+        }
+        Relationships: []
+      }
       posts: {
         Row: {
           brand_tags: string[] | null
+          campaign_id: string | null
           caption: string | null
           comments_count: number | null
           created_at: string | null
@@ -1518,6 +1853,7 @@ export type Database = {
         }
         Insert: {
           brand_tags?: string[] | null
+          campaign_id?: string | null
           caption?: string | null
           comments_count?: number | null
           created_at?: string | null
@@ -1539,6 +1875,7 @@ export type Database = {
         }
         Update: {
           brand_tags?: string[] | null
+          campaign_id?: string | null
           caption?: string | null
           comments_count?: number | null
           created_at?: string | null
@@ -1562,6 +1899,17 @@ export type Database = {
       }
     }
     Functions: {
+      award_points: {
+        Args: {
+          p_amount: number
+          p_idempotency_key?: string
+          p_reason: string
+          p_source_id?: string
+          p_source_type?: string
+          p_user_id: string
+        }
+        Returns: string
+      }
       check_ai_rate_limit: { Args: { user_id_param: string }; Returns: Json }
       check_guest_rate_limit: {
         Args: { daily_limit?: number; ip_param: string }
@@ -1588,6 +1936,10 @@ export type Database = {
         Returns: undefined
       }
       purge_user_data: { Args: { target_user: string }; Returns: undefined }
+      reverse_points: {
+        Args: { p_reason?: string; p_transaction_id: string }
+        Returns: string
+      }
     }
     Enums: {
       [_ in never]: never
