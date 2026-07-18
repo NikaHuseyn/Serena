@@ -2094,6 +2094,21 @@ serve(async (req) => {
     if (typeof anchor_enforced === "boolean") {
       parsed.anchor_enforced = anchor_enforced;
     }
+    // Phase 1: matched = did this request end with genuinely usable results?
+    if (briefId) {
+      try {
+        let matched = Array.isArray(parsed.outfit_options) && parsed.outfit_options.length > 0;
+        if (matched && parsed.mode === "shop_new") {
+          const primary = parsed.outfit_options.find((o: any) => o?.is_primary === true);
+          const hasBuy = Array.isArray(primary?.items) &&
+            primary.items.some((i: any) => Array.isArray(i?.buy) && i.buy.length > 0);
+          matched = hasBuy;
+        }
+        await supabase.from("style_briefs").update({ matched }).eq("id", briefId);
+      } catch (err) {
+        console.warn("style_briefs matched update failed (non-fatal):", err);
+      }
+    }
     return jsonResponse(req, { success: true, data: parsed });
   } catch (err) {
     console.error("Oracle-styling unexpected error:", err);
