@@ -491,7 +491,7 @@ const WardrobeManager = () => {
                     size="sm"
                     className="w-full mt-2"
                     onClick={() =>
-                      navigate('/', {
+                      navigate('/app', {
                         state: { anchorItemId: item.id, anchorItemName: item.name },
                       })
                     }
