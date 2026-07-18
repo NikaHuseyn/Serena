@@ -54,18 +54,9 @@ interface OutfitOptionCardsProps {
   onSelect: (message: string) => void;
 }
 
-const isUsableProduct = (product: ProductResult) => {
-  const url = product.product_url || '';
-  return (
-    /^https?:\/\//.test(url) &&
-    !url.includes('google.com/search') &&
-    !url.includes('google.co.uk/search') &&
-    !url.includes('google.com/shopping') &&
-    !url.includes('google.co.uk/shopping')
-  );
-};
+const hasProductUrl = (product: ProductResult) => !!product.product_url?.trim();
 
-const usableProducts = (products?: ProductResult[]) => (products || []).filter(isUsableProduct);
+const productsWithUrl = (products?: ProductResult[]) => (products || []).filter(hasProductUrl);
 
 // -----------------------------------------------------------------------
 // Product cards
@@ -155,8 +146,8 @@ const ProductCard = ({ product, label }: { product: ProductResult; label: 'Buy' 
 };
 
 const ItemProducts = ({ item }: { item: OutfitItem }) => {
-  const buyAll = usableProducts(item.buy);
-  const rent = usableProducts(item.rent).slice(0, 2);
+  const buyAll = productsWithUrl(item.buy);
+  const rent = productsWithUrl(item.rent).slice(0, 2);
   const [showAllBuy, setShowAllBuy] = useState(false);
   const buyVisible = showAllBuy ? buyAll : buyAll.slice(0, 2);
   const buyExtra = buyAll.length - buyVisible.length;
@@ -337,7 +328,7 @@ const OptionCard = ({
   const [expanded, setExpanded] = useState<boolean>(!!option.is_primary);
 
   const hasProductResults = items.some(
-    (it) => it.source !== 'from_wardrobe' && (usableProducts(it.buy).length + usableProducts(it.rent).length > 0),
+    (it) => it.source !== 'from_wardrobe' && (productsWithUrl(it.buy).length + productsWithUrl(it.rent).length > 0),
   );
   const hasSearchable = items.some((it) => it.source !== 'from_wardrobe');
 
