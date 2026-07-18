@@ -54,18 +54,9 @@ interface OutfitOptionCardsProps {
   onSelect: (message: string) => void;
 }
 
-const isUsableProduct = (product: ProductResult) => {
-  const url = product.product_url || '';
-  return (
-    /^https?:\/\//.test(url) &&
-    !url.includes('google.com/search') &&
-    !url.includes('google.co.uk/search') &&
-    !url.includes('google.com/shopping') &&
-    !url.includes('google.co.uk/shopping')
-  );
-};
+const hasProductUrl = (product: ProductResult) => !!product.product_url?.trim();
 
-const usableProducts = (products?: ProductResult[]) => (products || []).filter(isUsableProduct);
+const productsWithUrl = (products?: ProductResult[]) => (products || []).filter(hasProductUrl);
 
 // -----------------------------------------------------------------------
 // Product cards
