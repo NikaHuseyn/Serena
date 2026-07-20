@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw } from 'lucide-react';
+import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw, Share2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { renderColorCard, shareOrDownloadCard, logShareEvent } from './shareColorCard';
 
 interface ColourItem {
   name: string;
@@ -85,6 +86,7 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isAnalysing, setIsAnalysing] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [storedSignedUrl, setStoredSignedUrl] = useState<string | null>(null);
   const [retakeReason, setRetakeReason] = useState<string | null>(null);
@@ -235,6 +237,29 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
   const bestColours = (analysis?.best_colours || []).map(normaliseColour);
   const avoidColours = (analysis?.avoid_colours || (analysis?.colours_to_avoid as any) || []).map(normaliseColour);
 
+  const handleShareSeason = async () => {
+    if (!analysis?.season) return;
+    setIsSharing(true);
+    try {
+      const blob = await renderColorCard({
+        season: analysis.season,
+        bestColours: bestColours.map((c) => ({ name: c.name, hex: c.hex })),
+        summary: analysis.summary || analysis.styling_advice,
+      });
+      const result = await shareOrDownloadCard(blob);
+      await logShareEvent();
+      if (result === 'downloaded') {
+        toast({ title: 'Card saved — share it anywhere!' });
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.error('Share card failed:', err);
+      toast({ title: 'Could not create card', description: err?.message, variant: 'destructive' });
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -326,6 +351,22 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
                 </Badge>
               )}
             </div>
+
+            {analysis.season && (
+              <Button
+                onClick={handleShareSeason}
+                disabled={isSharing}
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                {isSharing ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating card…</>
+                ) : (
+                  <><Share2 className="h-4 w-4 mr-2" />Share my season</>
+                )}
+              </Button>
+            )}
+
 
             {(undertoneObj?.evidence || analysis.value?.evidence || analysis.chroma?.evidence) && (
               <div className="grid gap-3 sm:grid-cols-3">
