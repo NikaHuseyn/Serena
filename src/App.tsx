@@ -19,6 +19,7 @@ const Wardrobe = React.lazy(() => import("./pages/Wardrobe"));
 
 
 const Community = React.lazy(() => import("./pages/Community"));
+const ChallengeDetail = React.lazy(() => import("./pages/ChallengeDetail"));
 const Profile = React.lazy(() => import("./pages/Profile"));
 const Admin = React.lazy(() => import("./pages/Admin"));
 const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
@@ -37,6 +38,7 @@ const AppRoutes = () => (
       
       
       <Route path="/community" element={<Community />} />
+      <Route path="/community/challenges/:id" element={<ChallengeDetail />} />
       <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
       <Route path="/profile/:userId" element={<UserProfile />} />
       <Route path="/admin" element={<Admin />} />

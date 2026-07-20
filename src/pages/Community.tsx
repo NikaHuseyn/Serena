@@ -3,6 +3,7 @@ import React from 'react';
 
 import BottomNav from '@/components/BottomNav';
 import CommunityFeed from '@/components/CommunityFeed';
+import ChallengesEntryPoint from '@/components/community/ChallengesEntryPoint';
 
 const Community = () => {
   return (
@@ -15,6 +16,10 @@ const Community = () => {
           </p>
         </div>
 
+        <div className="mb-6">
+          <ChallengesEntryPoint />
+        </div>
+
         <CommunityFeed />
       </main>
       <BottomNav />
@@ -23,3 +28,4 @@ const Community = () => {
 };
 
 export default Community;
+
