@@ -246,24 +246,37 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
   const bestColours = (analysis?.best_colours || []).map(normaliseColour);
   const avoidColours = (analysis?.avoid_colours || (analysis?.colours_to_avoid as any) || []).map(normaliseColour);
 
-  const handleShareSeason = async () => {
-    if (!analysis?.season) return;
+  const canShareFiles = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const nav = navigator as any;
+    try {
+      return !!(nav.share && nav.canShare && nav.canShare({ files: [new File([], 'serena.png', { type: 'image/png' })] }));
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const renderCardBlob = async () => {
+    if (!analysis?.season) throw new Error('No season to share');
+    return renderColorCard({
+      season: analysis.season,
+      bestColours: bestColours.map((c) => ({ name: c.name, hex: c.hex })),
+      summary: analysis.summary || analysis.styling_advice,
+    });
+  };
+
+  const handleShareCard = async () => {
     setIsSharing(true);
     try {
-      const blob = await renderColorCard({
-        season: analysis.season,
-        bestColours: bestColours.map((c) => ({ name: c.name, hex: c.hex })),
-        summary: analysis.summary || analysis.styling_advice,
-      });
-      const result = await shareOrDownloadCard(blob);
-      await logShareEvent();
-      if (result === 'downloaded') {
-        toast({ title: 'Card saved — share it anywhere!' });
-      }
+      const blob = await renderCardBlob();
+      await shareCard(blob);
+      await logShareEvent('color_card');
+      toast({ title: 'Shared!' });
+      setShareSheetOpen(false);
     } catch (err: any) {
       if (err?.name === 'AbortError') return;
       console.error('Share card failed:', err);
-      toast({ title: 'Could not create card', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Could not share card', description: err?.message, variant: 'destructive' });
     } finally {
       setIsSharing(false);
     }
@@ -274,13 +287,27 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
     try {
       await navigator.clipboard.writeText(url);
       toast({ title: 'Link copied!' });
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('share_events').insert({ user_id: user.id, share_type: 'color_link' });
-      }
+      await logShareEvent('color_link');
+      setShareSheetOpen(false);
     } catch (err) {
       console.warn('Copy link failed:', err);
       toast({ title: 'Could not copy link', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveImage = async () => {
+    setIsSharing(true);
+    try {
+      const blob = await renderCardBlob();
+      await downloadCard(blob);
+      await logShareEvent('color_save');
+      toast({ title: 'Card saved!' });
+      setShareSheetOpen(false);
+    } catch (err: any) {
+      console.error('Save card failed:', err);
+      toast({ title: 'Could not save card', description: err?.message, variant: 'destructive' });
+    } finally {
+      setIsSharing(false);
     }
   };
 
