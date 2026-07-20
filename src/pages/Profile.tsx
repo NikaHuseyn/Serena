@@ -13,6 +13,7 @@ import OutfitHistory from '@/components/profile/OutfitHistory';
 import UserWishlist from '@/components/profile/UserWishlist';
 import PurchaseHistory from '@/components/profile/PurchaseHistory';
 import PrivacySettingsForm from '@/components/profile/PrivacySettingsForm';
+import StylePointsSection from '@/components/profile/StylePointsSection';
 
 
 const Profile = () => {
@@ -103,7 +104,8 @@ const Profile = () => {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="personal">
+          <TabsContent value="personal" className="space-y-6">
+            <StylePointsSection />
             <PersonalInfoForm profile={profile} onUpdate={handleProfileUpdate} />
           </TabsContent>
 

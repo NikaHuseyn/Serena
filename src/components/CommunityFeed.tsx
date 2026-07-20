@@ -13,6 +13,7 @@ import ErrorState from './community/ErrorState';
 
 import Leaderboard from './community/Leaderboard';
 import GuestNudgeBanner from './community/GuestNudgeBanner';
+import PointsIndicator from './community/PointsIndicator';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
@@ -111,9 +112,10 @@ const CommunityFeed = () => {
       <div className={`space-y-6 ${SHOW_LEADERBOARD ? 'lg:col-span-2' : ''}`}>
         <div className="flex items-center justify-between">
           <div>
-          <h2 className="text-2xl font-bold text-foreground flex items-center">
-            <Users className="h-6 w-6 mr-2" />
+          <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Users className="h-6 w-6" />
             Feed
+            {currentUserId && <PointsIndicator />}
           </h2>
           <p className="text-muted-foreground">Let's get inspired, share our styles and support each other</p>
           </div>
