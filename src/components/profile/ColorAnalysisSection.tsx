@@ -1,16 +1,24 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw, Share2, Link } from 'lucide-react';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
+import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw, Share2, Link, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { renderColorCard, shareOrDownloadCard, logShareEvent } from './shareColorCard';
+import { renderColorCard, shareCard, downloadCard, logShareEvent } from './shareColorCard';
 
 interface ColourItem {
   name: string;
@@ -87,6 +95,7 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
   const queryClient = useQueryClient();
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [storedSignedUrl, setStoredSignedUrl] = useState<string | null>(null);
   const [retakeReason, setRetakeReason] = useState<string | null>(null);
@@ -237,24 +246,37 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
   const bestColours = (analysis?.best_colours || []).map(normaliseColour);
   const avoidColours = (analysis?.avoid_colours || (analysis?.colours_to_avoid as any) || []).map(normaliseColour);
 
-  const handleShareSeason = async () => {
-    if (!analysis?.season) return;
+  const canShareFiles = useMemo(() => {
+    if (typeof navigator === 'undefined') return false;
+    const nav = navigator as any;
+    try {
+      return !!(nav.share && nav.canShare && nav.canShare({ files: [new File([], 'serena.png', { type: 'image/png' })] }));
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const renderCardBlob = async () => {
+    if (!analysis?.season) throw new Error('No season to share');
+    return renderColorCard({
+      season: analysis.season,
+      bestColours: bestColours.map((c) => ({ name: c.name, hex: c.hex })),
+      summary: analysis.summary || analysis.styling_advice,
+    });
+  };
+
+  const handleShareCard = async () => {
     setIsSharing(true);
     try {
-      const blob = await renderColorCard({
-        season: analysis.season,
-        bestColours: bestColours.map((c) => ({ name: c.name, hex: c.hex })),
-        summary: analysis.summary || analysis.styling_advice,
-      });
-      const result = await shareOrDownloadCard(blob);
-      await logShareEvent();
-      if (result === 'downloaded') {
-        toast({ title: 'Card saved — share it anywhere!' });
-      }
+      const blob = await renderCardBlob();
+      await shareCard(blob);
+      await logShareEvent('color_card');
+      toast({ title: 'Shared!' });
+      setShareSheetOpen(false);
     } catch (err: any) {
       if (err?.name === 'AbortError') return;
       console.error('Share card failed:', err);
-      toast({ title: 'Could not create card', description: err?.message, variant: 'destructive' });
+      toast({ title: 'Could not share card', description: err?.message, variant: 'destructive' });
     } finally {
       setIsSharing(false);
     }
@@ -265,13 +287,27 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
     try {
       await navigator.clipboard.writeText(url);
       toast({ title: 'Link copied!' });
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase.from('share_events').insert({ user_id: user.id, share_type: 'color_link' });
-      }
+      await logShareEvent('color_link');
+      setShareSheetOpen(false);
     } catch (err) {
       console.warn('Copy link failed:', err);
       toast({ title: 'Could not copy link', variant: 'destructive' });
+    }
+  };
+
+  const handleSaveImage = async () => {
+    setIsSharing(true);
+    try {
+      const blob = await renderCardBlob();
+      await downloadCard(blob);
+      await logShareEvent('color_save');
+      toast({ title: 'Card saved!' });
+      setShareSheetOpen(false);
+    } catch (err: any) {
+      console.error('Save card failed:', err);
+      toast({ title: 'Could not save card', description: err?.message, variant: 'destructive' });
+    } finally {
+      setIsSharing(false);
     }
   };
 
@@ -368,27 +404,61 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
             </div>
 
             {analysis.season && (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={handleShareSeason}
-                  disabled={isSharing}
-                  size="lg"
-                >
-                  {isSharing ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating card…</>
-                  ) : (
-                    <><Share2 className="h-4 w-4 mr-2" />Share my season</>
-                  )}
-                </Button>
-                <Button
-                  onClick={handleCopyLink}
-                  variant="outline"
-                  size="lg"
-                >
-                  <Link className="h-4 w-4 mr-2" />
-                  Copy link
-                </Button>
-              </div>
+              <Drawer open={shareSheetOpen} onOpenChange={setShareSheetOpen}>
+                <DrawerTrigger asChild>
+                  <Button size="lg">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share my season
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent>
+                  <DrawerHeader className="text-left">
+                    <DrawerTitle>Share my season</DrawerTitle>
+                    <DrawerDescription>
+                      Spread the word about your colour season.
+                    </DrawerDescription>
+                  </DrawerHeader>
+                  <div className="grid gap-3 p-4 pt-0">
+                    {canShareFiles && (
+                      <Button
+                        variant="outline"
+                        className="justify-start h-14 px-4"
+                        onClick={handleShareCard}
+                        disabled={isSharing}
+                      >
+                        {isSharing ? (
+                          <Loader2 className="h-5 w-5 mr-3 animate-spin" />
+                        ) : (
+                          <Share2 className="h-5 w-5 mr-3" />
+                        )}
+                        <span className="text-base">Share card</span>
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="justify-start h-14 px-4"
+                      onClick={handleCopyLink}
+                      disabled={isSharing}
+                    >
+                      <Link className="h-5 w-5 mr-3" />
+                      <span className="text-base">Copy link</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="justify-start h-14 px-4"
+                      onClick={handleSaveImage}
+                      disabled={isSharing}
+                    >
+                      {isSharing ? (
+                        <Loader2 className="h-5 w-5 mr-3 animate-spin" />
+                      ) : (
+                        <Download className="h-5 w-5 mr-3" />
+                      )}
+                      <span className="text-base">Save image</span>
+                    </Button>
+                  </div>
+                </DrawerContent>
+              </Drawer>
             )}
 
 
