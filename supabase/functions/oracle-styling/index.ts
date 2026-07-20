@@ -28,6 +28,10 @@ const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
 const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-3-flash-preview";
 
+// Feature flag: when true, prefer Selectika partner_products before falling
+// back to the existing web search. Kept OFF until the feed is wired up.
+const SELECTIKA_ENABLED = false;
+
 // -----------------------------------------------------------------------
 // SYSTEM PROMPT — complete, verbatim. Do not merge or append.
 // -----------------------------------------------------------------------
@@ -1369,71 +1373,113 @@ async function searchItemsForOption(
   const isMenswear = stylingCategory === "menswear";
   // Run every item's buy + rent lookups fully in parallel.
   return await Promise.all(
-    items.map(async (item: any) => {
-      const keywordsList = Array.isArray(item?.search_keywords)
-        ? item.search_keywords.filter((k: any) => typeof k === "string" && k.trim())
-        : [];
-      const keywords =
-        keywordsList.length > 0 ? keywordsList.join(" ") : typeof item?.name === "string" ? item.name : "";
-      const garmentType = typeof item?.garment_type === "string" ? item.garment_type : "";
-      // Detect a colour anywhere in the item's stated identity (keywords or name).
-      const colourSource = `${keywords} ${typeof item?.name === "string" ? item.name : ""}`;
-      const requestedColour = detectColourInText(colourSource);
-      // Lead the retailer query with colour + garment when a colour is
-      // named, e.g. "sage green midi dress" → "sage midi dress" first.
-      let rawQuery: string;
-      if (requestedColour && garmentType) {
-        const rest = keywords
-          .toLowerCase()
-          .replace(new RegExp(`\\b${requestedColour.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"), "")
-          .replace(new RegExp(`\\b${garmentType.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`, "i"), "")
-          .replace(/\s+/g, " ")
-          .trim();
-        rawQuery = [requestedColour, garmentType, rest].filter(Boolean).join(" ").trim();
-      } else {
-        const includeGarment = garmentType && !keywords.toLowerCase().includes(garmentType.toLowerCase());
-        rawQuery = [keywords, includeGarment ? garmentType : ""].filter(Boolean).join(" ").trim();
-      }
-      const baseQuery = enforceGenderInQuery(rawQuery, isMenswear);
-      const tier = item?.price_tier || "mid_range";
-      const wantBuy = rentalPreference !== "rent_only";
-      const wantRent = rentalPreference !== "buy_only" && item?.rental_market_likely === true;
-      const [buyRaw, rentRaw] = await Promise.all([
-        wantBuy && baseQuery
-          ? cachedSearch(supabase, baseQuery, tier, "buy", () => runBuySearch(baseQuery, tier))
-          : Promise.resolve([]),
-        wantRent && baseQuery
-          ? cachedSearch(supabase, baseQuery, tier, "rent", () => runRentSearch(baseQuery))
-          : Promise.resolve([]),
-      ]);
-
-      const applyBuyFilters = (raw: any[]) => {
-        const m = filterOutMenswear(raw, isMenswear);
-        const g = filterByGarmentType(m, garmentType);
-        const c = filterByColour(g, requestedColour);
-        return c;
-      };
-
-      let buyFiltered = applyBuyFilters(buyRaw);
-      // If garment/colour filter thinned results below 3, fetch a deeper
-      // candidate pool via the existing search-depth mechanism and retry.
-      if (wantBuy && baseQuery && buyFiltered.length < 3) {
-        const deepRaw = await cachedSearch(supabase, `${baseQuery} __deep`, tier, "buy", () =>
-          runBuySearch(baseQuery, tier, true),
-        );
-        buyFiltered = applyBuyFilters(deepRaw);
-      }
-      const buy = enforceHonestBuyRules(buyFiltered, 4);
-
-      const rentFiltered = filterByColour(
-        filterByGarmentType(filterOutMenswear(rentRaw, isMenswear), garmentType),
-        requestedColour,
-      );
-      const rent = rentFiltered.slice(0, 2);
-      return { ...item, buy, rent };
-    }),
+    items.map((item: any) => getProductsForItem(supabase, item, rentalPreference, isMenswear)),
   );
 }
+
+// Wrapper around the buy/rent search for a single item. When
+// SELECTIKA_ENABLED is false this behaves EXACTLY like the previous
+// inline logic. When true it first tries the partner_products table and
+// falls back to the existing web search when fewer than 3 matches are found.
+async function getProductsForItem(
+  supabase: any,
+  item: any,
+  rentalPreference: string | undefined,
+  isMenswear: boolean,
+): Promise<any> {
+  if (SELECTIKA_ENABLED) {
+    // TODO(selectika): query partner_products for in-stock matches on
+    // category and tags once the Selectika feed is wired up. For now this
+    // returns an empty list so we always fall through to the existing
+    // search below.
+    const partnerBuy: any[] = await queryPartnerProductsForItem(supabase, item, isMenswear);
+    if (partnerBuy.length >= 3) {
+      return { ...item, buy: partnerBuy.slice(0, 4), rent: [] };
+    }
+  }
+
+  return await runExistingWebSearchForItem(supabase, item, rentalPreference, isMenswear);
+}
+
+// TODO(selectika): implement partner_products lookup here.
+async function queryPartnerProductsForItem(
+  _supabase: any,
+  _item: any,
+  _isMenswear: boolean,
+): Promise<any[]> {
+  return [];
+}
+
+// The original, unchanged buy/rent search logic for a single item.
+async function runExistingWebSearchForItem(
+  supabase: any,
+  item: any,
+  rentalPreference: string | undefined,
+  isMenswear: boolean,
+): Promise<any> {
+  const keywordsList = Array.isArray(item?.search_keywords)
+    ? item.search_keywords.filter((k: any) => typeof k === "string" && k.trim())
+    : [];
+  const keywords =
+    keywordsList.length > 0 ? keywordsList.join(" ") : typeof item?.name === "string" ? item.name : "";
+  const garmentType = typeof item?.garment_type === "string" ? item.garment_type : "";
+  // Detect a colour anywhere in the item's stated identity (keywords or name).
+  const colourSource = `${keywords} ${typeof item?.name === "string" ? item.name : ""}`;
+  const requestedColour = detectColourInText(colourSource);
+  // Lead the retailer query with colour + garment when a colour is
+  // named, e.g. "sage green midi dress" → "sage midi dress" first.
+  let rawQuery: string;
+  if (requestedColour && garmentType) {
+    const rest = keywords
+      .toLowerCase()
+      .replace(new RegExp(`\\b${requestedColour.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i"), "")
+      .replace(new RegExp(`\\b${garmentType.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}s?\\b`, "i"), "")
+      .replace(/\s+/g, " ")
+      .trim();
+    rawQuery = [requestedColour, garmentType, rest].filter(Boolean).join(" ").trim();
+  } else {
+    const includeGarment = garmentType && !keywords.toLowerCase().includes(garmentType.toLowerCase());
+    rawQuery = [keywords, includeGarment ? garmentType : ""].filter(Boolean).join(" ").trim();
+  }
+  const baseQuery = enforceGenderInQuery(rawQuery, isMenswear);
+  const tier = item?.price_tier || "mid_range";
+  const wantBuy = rentalPreference !== "rent_only";
+  const wantRent = rentalPreference !== "buy_only" && item?.rental_market_likely === true;
+  const [buyRaw, rentRaw] = await Promise.all([
+    wantBuy && baseQuery
+      ? cachedSearch(supabase, baseQuery, tier, "buy", () => runBuySearch(baseQuery, tier))
+      : Promise.resolve([]),
+    wantRent && baseQuery
+      ? cachedSearch(supabase, baseQuery, tier, "rent", () => runRentSearch(baseQuery))
+      : Promise.resolve([]),
+  ]);
+
+  const applyBuyFilters = (raw: any[]) => {
+    const m = filterOutMenswear(raw, isMenswear);
+    const g = filterByGarmentType(m, garmentType);
+    const c = filterByColour(g, requestedColour);
+    return c;
+  };
+
+  let buyFiltered = applyBuyFilters(buyRaw);
+  // If garment/colour filter thinned results below 3, fetch a deeper
+  // candidate pool via the existing search-depth mechanism and retry.
+  if (wantBuy && baseQuery && buyFiltered.length < 3) {
+    const deepRaw = await cachedSearch(supabase, `${baseQuery} __deep`, tier, "buy", () =>
+      runBuySearch(baseQuery, tier, true),
+    );
+    buyFiltered = applyBuyFilters(deepRaw);
+  }
+  const buy = enforceHonestBuyRules(buyFiltered, 4);
+
+  const rentFiltered = filterByColour(
+    filterByGarmentType(filterOutMenswear(rentRaw, isMenswear), garmentType),
+    requestedColour,
+  );
+  const rent = rentFiltered.slice(0, 2);
+  return { ...item, buy, rent };
+}
+
 
 // -----------------------------------------------------------------------
 // Handler
