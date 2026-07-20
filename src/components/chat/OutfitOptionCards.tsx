@@ -11,6 +11,11 @@ import {
   Pin,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  ProductFeedbackProvider,
+  ProductFeedbackButtons,
+  extractProductRef,
+} from './ProductFeedbackButtons';
 
 interface ProductResult {
   retailer?: string;
