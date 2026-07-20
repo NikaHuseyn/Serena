@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Sparkles, Gift, Trophy, Lock } from 'lucide-react';
 
@@ -29,9 +29,9 @@ const StylePointsSection = () => {
   if (isLoading || !data) {
     return (
       <Card>
-        <CardContent className="p-6 animate-pulse">
-          <div className="h-8 bg-muted rounded w-1/3 mb-4" />
-          <div className="h-4 bg-muted rounded w-2/3" />
+        <CardContent className="p-4 animate-pulse">
+          <div className="h-6 bg-muted rounded w-1/4 mb-3" />
+          <div className="h-3 bg-muted rounded w-full" />
         </CardContent>
       </Card>
     );
@@ -42,20 +42,16 @@ const StylePointsSection = () => {
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Sparkles className="h-5 w-5 text-primary" />
-          Style Points
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="text-center py-4 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20">
-          <div className="text-5xl font-bold text-foreground">{balance.toLocaleString()}</div>
-          <div className="text-sm text-muted-foreground mt-1">points earned</div>
+      <CardContent className="p-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-foreground">Style Points</span>
+          </div>
+          <span className="text-lg font-semibold text-foreground">{balance.toLocaleString()}</span>
         </div>
 
-        <div className="space-y-4">
-          <h3 className="text-sm font-semibold text-foreground">Milestones</h3>
+        <div className="space-y-3">
           {milestones.length === 0 && (
             <p className="text-sm text-muted-foreground">No milestones yet.</p>
           )}
@@ -63,44 +59,35 @@ const StylePointsSection = () => {
             const achieved = achievedIds.has(m.id);
             const pct = Math.min(100, Math.round((balance / Math.max(m.threshold, 1)) * 100));
             return (
-              <div
-                key={m.id}
-                className={`p-4 rounded-lg border ${
-                  achieved
-                    ? 'bg-primary/5 border-primary/30'
-                    : 'bg-card border-border'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
+              <div key={m.id} className="space-y-1.5">
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-1.5">
                     {achieved ? (
-                      <Trophy className="h-4 w-4 text-primary" />
+                      <Trophy className="h-3.5 w-3.5 text-primary" />
                     ) : m.revealed ? (
-                      <Sparkles className="h-4 w-4 text-muted-foreground" />
+                      <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
                     ) : (
-                      <Lock className="h-4 w-4 text-muted-foreground" />
+                      <Lock className="h-3.5 w-3.5 text-muted-foreground" />
                     )}
-                    <span className="font-medium text-foreground">{m.name}</span>
+                    <span className={achieved ? 'text-primary font-medium' : 'text-foreground'}>
+                      {m.name}
+                    </span>
                   </div>
                   <span className="text-xs text-muted-foreground">
                     {balance.toLocaleString()} / {m.threshold.toLocaleString()}
                   </span>
                 </div>
 
-                <Progress value={pct} className="h-2" />
+                <Progress value={pct} className="h-1.5" />
 
-                <div className="mt-3 flex items-center gap-2 text-sm">
+                <div className="text-xs text-muted-foreground">
                   {achieved ? (
-                    <span className="text-primary font-medium">
-                      🎉 Achieved — reward coming
-                    </span>
+                    <span className="text-primary font-medium">Achieved — reward coming</span>
                   ) : m.revealed ? (
-                    <span className="text-muted-foreground">
-                      {Math.max(m.threshold - balance, 0).toLocaleString()} points to go
-                    </span>
+                    <span>{Math.max(m.threshold - balance, 0).toLocaleString()} points to go</span>
                   ) : (
-                    <span className="text-muted-foreground flex items-center gap-1.5">
-                      <Gift className="h-4 w-4" />
+                    <span className="flex items-center gap-1">
+                      <Gift className="h-3.5 w-3.5" />
                       Reward revealed soon
                     </span>
                   )}
