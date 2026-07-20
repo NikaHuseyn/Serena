@@ -237,6 +237,29 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
   const bestColours = (analysis?.best_colours || []).map(normaliseColour);
   const avoidColours = (analysis?.avoid_colours || (analysis?.colours_to_avoid as any) || []).map(normaliseColour);
 
+  const handleShareSeason = async () => {
+    if (!analysis?.season) return;
+    setIsSharing(true);
+    try {
+      const blob = await renderColorCard({
+        season: analysis.season,
+        bestColours: bestColours.map((c) => ({ name: c.name, hex: c.hex })),
+        summary: analysis.summary || analysis.styling_advice,
+      });
+      const result = await shareOrDownloadCard(blob);
+      await logShareEvent();
+      if (result === 'downloaded') {
+        toast({ title: 'Card saved — share it anywhere!' });
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
+      console.error('Share card failed:', err);
+      toast({ title: 'Could not create card', description: err?.message, variant: 'destructive' });
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
