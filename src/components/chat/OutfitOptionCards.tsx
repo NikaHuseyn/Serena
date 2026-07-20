@@ -135,6 +135,7 @@ const ProductTextRow = ({ product, label }: { product: ProductResult; label: 'Bu
       </div>
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <span className="text-xs font-semibold text-foreground">{product.price || ''}</span>
+        <ProductFeedbackButtons productUrl={product.product_url} variant="inline" />
         <span className="text-[11px] text-primary group-hover:underline">View →</span>
       </div>
     </a>
