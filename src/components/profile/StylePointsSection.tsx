@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Sparkles, Gift, Trophy, Lock } from 'lucide-react';
+import { Sparkles, Gift, Lock, Check } from 'lucide-react';
 
 const describeReward = (config: any): string => {
   if (!config || typeof config !== 'object') return 'Reward unlocked';
@@ -80,6 +80,9 @@ const StylePointsSection = () => {
     }
   };
 
+  // Find the next unachieved milestone (first one in sort_order without an achievement)
+  const nextIndex = milestones.findIndex((m: any) => !achievementMap.has(m.id));
+
   return (
     <Card>
       <CardContent className="p-4 space-y-4">
@@ -91,69 +94,85 @@ const StylePointsSection = () => {
           <span className="text-lg font-semibold text-foreground">{balance.toLocaleString()}</span>
         </div>
 
-        <div className="space-y-3">
+        <div className="space-y-2">
           {milestones.length === 0 && (
             <p className="text-sm text-muted-foreground">No milestones yet.</p>
           )}
-          {milestones.map((m: any) => {
+          {milestones.map((m: any, idx: number) => {
             const achievement = achievementMap.get(m.id);
             const achieved = Boolean(achievement);
+            const isNext = idx === nextIndex;
             const canClaim = achieved && m.revealed && !achievement?.reward_claimed_at;
             const claimed = achieved && Boolean(achievement?.reward_claimed_at);
-            const pct = Math.min(100, Math.round((balance / Math.max(m.threshold, 1)) * 100));
-            return (
-              <div key={m.id} className="space-y-1.5">
-                <div className="flex items-center justify-between text-sm">
-                  <div className="flex items-center gap-1.5">
-                    {achieved ? (
-                      <Trophy className="h-3.5 w-3.5 text-primary" />
-                    ) : m.revealed ? (
-                      <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
-                    ) : (
-                      <Lock className="h-3.5 w-3.5 text-muted-foreground" />
-                    )}
-                    <span className={achieved ? 'text-primary font-medium' : 'text-foreground'}>
-                      {m.name}
-                    </span>
+
+            // Achieved compact row
+            if (achieved) {
+              return (
+                <div key={m.id} className="flex items-center justify-between py-1.5 text-sm">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Check className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                    <span className="text-foreground truncate">{m.name}</span>
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    {balance.toLocaleString()} / {m.threshold.toLocaleString()}
-                  </span>
-                </div>
-
-                <Progress value={pct} className="h-1.5" />
-
-                <div className="text-xs text-muted-foreground">
                   {canClaim ? (
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-primary font-medium">
-                        Reward ready: {describeReward(m.reward_config)}
-                      </span>
-                      <Button
-                        size="sm"
-                        variant="default"
-                        className="h-7 px-3 text-xs"
-                        disabled={claimingId === m.id}
-                        onClick={() => handleClaim(m.id, m.reward_config)}
-                      >
-                        {claimingId === m.id ? 'Claiming…' : 'Claim reward'}
-                      </Button>
-                    </div>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      className="h-7 px-3 text-xs"
+                      disabled={claimingId === m.id}
+                      onClick={() => handleClaim(m.id, m.reward_config)}
+                    >
+                      {claimingId === m.id ? 'Claiming…' : 'Claim reward'}
+                    </Button>
                   ) : claimed ? (
-                    <span className="text-primary font-medium">
-                      Claimed — {describeReward(m.reward_config)}
+                    <span className="text-xs text-muted-foreground">
+                      Claimed
                     </span>
-                  ) : achieved ? (
-                    <span className="text-primary font-medium">Achieved — reward coming</span>
-                  ) : m.revealed ? (
-                    <span>{Math.max(m.threshold - balance, 0).toLocaleString()} points to go</span>
                   ) : (
-                    <span className="flex items-center gap-1">
-                      <Gift className="h-3.5 w-3.5" />
-                      Reward revealed soon
-                    </span>
+                    <span className="text-xs text-primary font-medium">Reward coming</span>
                   )}
                 </div>
+              );
+            }
+
+            // Next unachieved: expanded with progress
+            if (isNext) {
+              const pct = Math.min(100, Math.round((balance / Math.max(m.threshold, 1)) * 100));
+              return (
+                <div key={m.id} className="space-y-1.5 py-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-foreground font-medium">{m.name}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">
+                      {balance.toLocaleString()} / {m.threshold.toLocaleString()}
+                    </span>
+                  </div>
+                  <Progress value={pct} className="h-1.5" />
+                  <div className="text-xs text-muted-foreground">
+                    {m.revealed ? (
+                      <span>{Math.max(m.threshold - balance, 0).toLocaleString()} points to go</span>
+                    ) : (
+                      <span className="flex items-center gap-1">
+                        <Gift className="h-3.5 w-3.5" />
+                        Reward revealed soon
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            // Later unachieved: compact locked row
+            return (
+              <div key={m.id} className="flex items-center justify-between py-1.5 text-sm">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Lock className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
+                  <span className="text-muted-foreground truncate">{m.name}</span>
+                </div>
+                <span className="text-xs text-muted-foreground">
+                  {m.threshold.toLocaleString()}
+                </span>
               </div>
             );
           })}
