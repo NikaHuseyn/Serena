@@ -295,7 +295,46 @@ const PrivacySettingsForm = ({ profile, onUpdate }: PrivacySettingsFormProps) =>
             <Separator />
 
             <div className="space-y-4">
-              <Label className="text-base font-semibold">Data & Privacy</Label>
+              <Label className="text-base font-semibold">Data & privacy</Label>
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label>Help improve fashion recommendations</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Include my activity in anonymised, aggregated trend reports shared with retail partners. Never includes your name, photos, or identifiable data.
+                  </p>
+                </div>
+                <Switch
+                  checked={consentDataSharing}
+                  disabled={savingConsent === 'data_sharing'}
+                  onCheckedChange={(checked) =>
+                    updateConsent('consent_data_sharing', 'consent_data_sharing_at', checked, setConsentDataSharing, 'data_sharing')
+                  }
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label>Allow brands to feature my challenge photos</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Brands running challenges may reshare your entry photos in their marketing. You can withdraw this any time.
+                  </p>
+                </div>
+                <Switch
+                  checked={consentBrandContent}
+                  disabled={savingConsent === 'brand_content'}
+                  onCheckedChange={(checked) =>
+                    updateConsent('consent_brand_content', 'consent_brand_content_at', checked, setConsentBrandContent, 'brand_content')
+                  }
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Data management</Label>
+
               
               <div className="space-y-4">
                 <div className="p-4 border rounded-lg space-y-3">
