@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw } from 'lucide-react';
+import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw, Share2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { renderColorCard, shareOrDownloadCard, logShareEvent } from './shareColorCard';
 
 interface ColourItem {
   name: string;
