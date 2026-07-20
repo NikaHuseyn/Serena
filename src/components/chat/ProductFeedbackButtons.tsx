@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { Heart, X } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
@@ -7,13 +7,15 @@ export type Verdict = 'save' | 'not_for_me';
 
 interface FeedbackCtxValue {
   userId: string | null;
-  verdicts: Record<string, Verdict>;
+  verdicts: Record<string, Verdict | null>;
+  loadVerdict: (productRef: string) => void;
   setVerdict: (productRef: string, verdict: Verdict) => void;
 }
 
 const FeedbackCtx = createContext<FeedbackCtxValue>({
   userId: null,
   verdicts: {},
+  loadVerdict: () => {},
   setVerdict: () => {},
 });
 
@@ -28,49 +30,49 @@ export const extractProductRef = (productUrl?: string): string | null => {
       if (pid) return pid;
     }
   } catch {
-    /* not a valid URL, fall through */
+    /* not a URL — fall through */
   }
   return productUrl;
 };
 
-export const ProductFeedbackProvider: React.FC<{ children: React.ReactNode; productRefs: string[] }> = ({
-  children,
-  productRefs,
-}) => {
+export const ProductFeedbackProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [userId, setUserId] = useState<string | null>(null);
-  const [verdicts, setVerdicts] = useState<Record<string, Verdict>>({});
-
-  // Stabilise the refs list so effects don't loop on every render
-  const refsKey = useMemo(() => Array.from(new Set(productRefs)).sort().join('|'), [productRefs]);
+  const [verdicts, setVerdicts] = useState<Record<string, Verdict | null>>({});
+  const [requested, setRequested] = useState<Set<string>>(() => new Set());
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (cancelled) return;
-      const uid = session?.user?.id ?? null;
-      setUserId(uid);
-      if (!uid || !refsKey) return;
-      const refs = refsKey.split('|').filter(Boolean);
-      if (refs.length === 0) return;
-      const { data, error } = await supabase
-        .from('product_feedback')
-        .select('product_ref, verdict')
-        .eq('user_id', uid)
-        .in('product_ref', refs);
-      if (cancelled || error || !data) return;
-      const map: Record<string, Verdict> = {};
-      for (const row of data) {
-        if (row.verdict === 'save' || row.verdict === 'not_for_me') {
-          map[row.product_ref] = row.verdict;
-        }
-      }
-      setVerdicts(map);
-    })();
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!cancelled) setUserId(session?.user?.id ?? null);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_evt, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
     return () => {
       cancelled = true;
+      sub.subscription.unsubscribe();
     };
-  }, [refsKey]);
+  }, []);
+
+  const loadVerdict = useCallback(
+    (productRef: string) => {
+      if (!userId || !productRef) return;
+      if (requested.has(productRef)) return;
+      requested.add(productRef);
+      setRequested(new Set(requested));
+      supabase
+        .from('product_feedback')
+        .select('verdict')
+        .eq('user_id', userId)
+        .eq('product_ref', productRef)
+        .maybeSingle()
+        .then(({ data }) => {
+          const v = (data?.verdict === 'save' || data?.verdict === 'not_for_me') ? data.verdict : null;
+          setVerdicts((prev) => ({ ...prev, [productRef]: v }));
+        });
+    },
+    [userId, requested],
+  );
 
   const setVerdict = useCallback(
     (productRef: string, verdict: Verdict) => {
@@ -90,7 +92,9 @@ export const ProductFeedbackProvider: React.FC<{ children: React.ReactNode; prod
   );
 
   return (
-    <FeedbackCtx.Provider value={{ userId, verdicts, setVerdict }}>{children}</FeedbackCtx.Provider>
+    <FeedbackCtx.Provider value={{ userId, verdicts, loadVerdict, setVerdict }}>
+      {children}
+    </FeedbackCtx.Provider>
   );
 };
 
@@ -100,11 +104,16 @@ interface ButtonsProps {
 }
 
 export const ProductFeedbackButtons: React.FC<ButtonsProps> = ({ productUrl, variant = 'inline' }) => {
-  const { userId, verdicts, setVerdict } = useContext(FeedbackCtx);
+  const { userId, verdicts, loadVerdict, setVerdict } = useContext(FeedbackCtx);
   const productRef = extractProductRef(productUrl);
+
+  useEffect(() => {
+    if (userId && productRef) loadVerdict(productRef);
+  }, [userId, productRef, loadVerdict]);
+
   if (!userId || !productRef) return null;
 
-  const current = verdicts[productRef];
+  const current = verdicts[productRef] ?? null;
 
   const handle = (e: React.MouseEvent, v: Verdict) => {
     e.preventDefault();
