@@ -496,28 +496,30 @@ const OutfitOptionCards: React.FC<OutfitOptionCardsProps> = ({
   const effectiveAnchorId = enforcementFailed ? null : anchorItemId;
 
   return (
-    <div className="mt-4 space-y-3">
-      {enforcementFailed && (
-        <p className="text-xs text-muted-foreground italic">
-          I couldn't work your piece into every look this time — these are the strongest options I found.
-        </p>
-      )}
-      {mode && (
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          {mode === 'wardrobe_only' ? 'From your wardrobe' : 'Shop the look'}
-        </p>
-      )}
-      {options.map((opt, idx) => (
-        <OptionCard
-          key={`${opt.option_label}-${idx}`}
-          option={opt}
-          rentalPreference={rentalPreference}
-          stylingCategory={stylingCategory}
-          anchorItemId={effectiveAnchorId}
-          onSelect={onSelect}
-        />
-      ))}
-    </div>
+    <ProductFeedbackProvider>
+      <div className="mt-4 space-y-3">
+        {enforcementFailed && (
+          <p className="text-xs text-muted-foreground italic">
+            I couldn't work your piece into every look this time — these are the strongest options I found.
+          </p>
+        )}
+        {mode && (
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            {mode === 'wardrobe_only' ? 'From your wardrobe' : 'Shop the look'}
+          </p>
+        )}
+        {options.map((opt, idx) => (
+          <OptionCard
+            key={`${opt.option_label}-${idx}`}
+            option={opt}
+            rentalPreference={rentalPreference}
+            stylingCategory={stylingCategory}
+            anchorItemId={effectiveAnchorId}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    </ProductFeedbackProvider>
   );
 };
 
