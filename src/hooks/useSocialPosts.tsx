@@ -21,6 +21,7 @@ export interface SocialPost {
   poll_question: string | null;
   oracle_summary: string | null;
   oracle_summary_public: boolean;
+  campaign_id: string | null;
   social_profiles: {
     display_name: string | null;
     avatar_url: string | null;
@@ -161,6 +162,7 @@ export const useSocialPosts = (filter?: PostFilter) => {
           poll_question: (post as any).poll_question || null,
           oracle_summary: (post as any).oracle_summary || null,
           oracle_summary_public: (post as any).oracle_summary_public || false,
+          campaign_id: (post as any).campaign_id ?? null,
           social_profiles: profilesMap.get(post.user_id) || null,
           user_liked
         };

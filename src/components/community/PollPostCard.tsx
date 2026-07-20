@@ -27,6 +27,7 @@ import BadgeDisplay from './BadgeDisplay';
 import ReportPostDialog from './ReportPostDialog';
 import PollCommentSection from './PollCommentSection';
 import ImageLightbox from './ImageLightbox';
+import CampaignBadge from './CampaignBadge';
 import { useBadges } from '@/hooks/useBadges';
 import { useOutfitVotes } from '@/hooks/useOutfitVotes';
 import type { SocialPost } from '@/hooks/useSocialPosts';
@@ -173,6 +174,7 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
                         Option {index + 1}
                       </span>
                     </div>
+                    <CampaignBadge campaignId={post.campaign_id} />
                     {/* Vote count — only visible after voting or to author */}
                     {showResults && (
                       <div className="absolute bottom-3 right-3 pointer-events-none">

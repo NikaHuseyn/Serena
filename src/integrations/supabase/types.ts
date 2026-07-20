@@ -98,6 +98,33 @@ export type Database = {
         }
         Relationships: []
       }
+      campaigns: {
+        Row: {
+          active: boolean
+          brand_logo_url: string | null
+          brand_name: string
+          created_at: string
+          id: string
+          title: string | null
+        }
+        Insert: {
+          active?: boolean
+          brand_logo_url?: string | null
+          brand_name: string
+          created_at?: string
+          id?: string
+          title?: string | null
+        }
+        Update: {
+          active?: boolean
+          brand_logo_url?: string | null
+          brand_name?: string
+          created_at?: string
+          id?: string
+          title?: string | null
+        }
+        Relationships: []
+      }
       capsule_wardrobes: {
         Row: {
           color_scheme: Json | null

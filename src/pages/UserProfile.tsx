@@ -6,6 +6,7 @@ import FollowButton from '@/components/community/FollowButton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import LoadingState from '@/components/community/LoadingState';
+import CampaignBadge from '@/components/community/CampaignBadge';
 
 interface ProfileData {
   user_id: string;
@@ -21,6 +22,7 @@ interface PostThumb {
   id: string;
   image_urls: string[];
   created_at: string;
+  campaign_id: string | null;
 }
 
 const PAGE_SIZE = 20;
@@ -48,7 +50,7 @@ const UserProfile = () => {
     const to = from + PAGE_SIZE - 1;
     const { data } = await supabase
       .from('posts')
-      .select('id, image_urls, created_at')
+      .select('id, image_urls, created_at, campaign_id')
       .eq('user_id', userId)
       .order('created_at', { ascending: false })
       .range(from, to);
@@ -155,6 +157,7 @@ const UserProfile = () => {
                         No image
                       </div>
                     )}
+                    <CampaignBadge campaignId={post.campaign_id} />
                   </button>
                 );
               })}
