@@ -11,6 +11,10 @@ import {
   Pin,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import {
+  ProductFeedbackProvider,
+  ProductFeedbackButtons,
+} from './ProductFeedbackButtons';
 
 interface ProductResult {
   retailer?: string;
@@ -77,8 +81,9 @@ const ProductImageCard = ({
       href={product.product_url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex flex-col rounded-lg border border-border bg-background overflow-hidden hover:border-primary/40 transition-colors"
+      className="group relative flex flex-col rounded-lg border border-border bg-background overflow-hidden hover:border-primary/40 transition-colors"
     >
+      <ProductFeedbackButtons productUrl={product.product_url} variant="overlay" />
       <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
         <img
           src={product.image_url!}
@@ -129,6 +134,7 @@ const ProductTextRow = ({ product, label }: { product: ProductResult; label: 'Bu
       </div>
       <div className="flex items-center gap-1.5 flex-shrink-0">
         <span className="text-xs font-semibold text-foreground">{product.price || ''}</span>
+        <ProductFeedbackButtons productUrl={product.product_url} variant="inline" />
         <span className="text-[11px] text-primary group-hover:underline">View →</span>
       </div>
     </a>
@@ -489,28 +495,30 @@ const OutfitOptionCards: React.FC<OutfitOptionCardsProps> = ({
   const effectiveAnchorId = enforcementFailed ? null : anchorItemId;
 
   return (
-    <div className="mt-4 space-y-3">
-      {enforcementFailed && (
-        <p className="text-xs text-muted-foreground italic">
-          I couldn't work your piece into every look this time — these are the strongest options I found.
-        </p>
-      )}
-      {mode && (
-        <p className="text-xs uppercase tracking-wide text-muted-foreground">
-          {mode === 'wardrobe_only' ? 'From your wardrobe' : 'Shop the look'}
-        </p>
-      )}
-      {options.map((opt, idx) => (
-        <OptionCard
-          key={`${opt.option_label}-${idx}`}
-          option={opt}
-          rentalPreference={rentalPreference}
-          stylingCategory={stylingCategory}
-          anchorItemId={effectiveAnchorId}
-          onSelect={onSelect}
-        />
-      ))}
-    </div>
+    <ProductFeedbackProvider>
+      <div className="mt-4 space-y-3">
+        {enforcementFailed && (
+          <p className="text-xs text-muted-foreground italic">
+            I couldn't work your piece into every look this time — these are the strongest options I found.
+          </p>
+        )}
+        {mode && (
+          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+            {mode === 'wardrobe_only' ? 'From your wardrobe' : 'Shop the look'}
+          </p>
+        )}
+        {options.map((opt, idx) => (
+          <OptionCard
+            key={`${opt.option_label}-${idx}`}
+            option={opt}
+            rentalPreference={rentalPreference}
+            stylingCategory={stylingCategory}
+            anchorItemId={effectiveAnchorId}
+            onSelect={onSelect}
+          />
+        ))}
+      </div>
+    </ProductFeedbackProvider>
   );
 };
 
