@@ -169,6 +169,25 @@ export async function shareOrDownloadCard(blob: Blob, filename = 'serena-my-seas
       // fall through to download
     }
   }
+  await downloadCard(blob, filename);
+  return 'downloaded';
+}
+
+export async function shareCard(blob: Blob, filename = 'serena-my-season.png'): Promise<void> {
+  const file = new File([blob], filename, { type: 'image/png' });
+  const nav: any = navigator;
+  if (nav.canShare && nav.canShare({ files: [file] }) && nav.share) {
+    await nav.share({
+      files: [file],
+      title: 'My Serena colour season',
+      text: 'Find your season → serena-outfitoracle.lovable.app',
+    });
+    return;
+  }
+  throw new Error('Native file sharing is not supported in this browser');
+}
+
+export async function downloadCard(blob: Blob, filename = 'serena-my-season.png'): Promise<void> {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -177,14 +196,13 @@ export async function shareOrDownloadCard(blob: Blob, filename = 'serena-my-seas
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return 'downloaded';
 }
 
-export async function logShareEvent() {
+export async function logShareEvent(shareType: 'color_card' | 'color_link' | 'color_save') {
   try {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    await supabase.from('share_events').insert({ user_id: user.id, share_type: 'color_card' });
+    await supabase.from('share_events').insert({ user_id: user.id, share_type: shareType });
   } catch (err) {
     console.warn('share_events insert failed (non-fatal):', err);
   }
