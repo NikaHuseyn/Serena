@@ -27,6 +27,53 @@ const PrivacySettingsForm = ({ profile, onUpdate }: PrivacySettingsFormProps) =>
   const [deletingAccount, setDeletingAccount] = useState(false);
   const navigate = useNavigate();
 
+  const [consentDataSharing, setConsentDataSharing] = useState<boolean>(!!profile?.consent_data_sharing);
+  const [consentBrandContent, setConsentBrandContent] = useState<boolean>(!!profile?.consent_brand_content);
+  const [savingConsent, setSavingConsent] = useState<'data_sharing' | 'brand_content' | null>(null);
+
+  useEffect(() => {
+    setConsentDataSharing(!!profile?.consent_data_sharing);
+    setConsentBrandContent(!!profile?.consent_brand_content);
+  }, [profile?.consent_data_sharing, profile?.consent_brand_content]);
+
+  const updateConsent = async (
+    field: 'consent_data_sharing' | 'consent_brand_content',
+    timestampField: 'consent_data_sharing_at' | 'consent_brand_content_at',
+    value: boolean,
+    setLocal: (v: boolean) => void,
+    key: 'data_sharing' | 'brand_content',
+  ) => {
+    const prev = key === 'data_sharing' ? consentDataSharing : consentBrandContent;
+    setLocal(value);
+    setSavingConsent(key);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      const payload: any = {
+        user_id: user.id,
+        [field]: value,
+        updated_at: new Date().toISOString(),
+      };
+      if (value) payload[timestampField] = new Date().toISOString();
+
+      const { error } = await (supabase.from('user_style_profiles') as any)
+        .upsert(payload, { onConflict: 'user_id' });
+      if (error) throw error;
+      onUpdate();
+    } catch (e: any) {
+      console.error('Error updating consent:', e);
+      setLocal(prev);
+      toast({
+        title: 'Error',
+        description: 'Failed to update your preference. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingConsent(null);
+    }
+  };
+
   const handleFullAccountDeletion = async () => {
     try {
       setDeletingAccount(true);
