@@ -352,6 +352,22 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
               )}
             </div>
 
+            {analysis.season && (
+              <Button
+                onClick={handleShareSeason}
+                disabled={isSharing}
+                size="lg"
+                className="w-full sm:w-auto"
+              >
+                {isSharing ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating card…</>
+                ) : (
+                  <><Share2 className="h-4 w-4 mr-2" />Share my season</>
+                )}
+              </Button>
+            )}
+
+
             {(undertoneObj?.evidence || analysis.value?.evidence || analysis.chroma?.evidence) && (
               <div className="grid gap-3 sm:grid-cols-3">
                 {undertoneObj?.evidence && (
