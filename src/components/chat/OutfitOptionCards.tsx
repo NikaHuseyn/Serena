@@ -14,7 +14,6 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   ProductFeedbackProvider,
   ProductFeedbackButtons,
-  extractProductRef,
 } from './ProductFeedbackButtons';
 
 interface ProductResult {
