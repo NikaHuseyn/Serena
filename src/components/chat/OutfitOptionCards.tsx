@@ -82,8 +82,9 @@ const ProductImageCard = ({
       href={product.product_url}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex flex-col rounded-lg border border-border bg-background overflow-hidden hover:border-primary/40 transition-colors"
+      className="group relative flex flex-col rounded-lg border border-border bg-background overflow-hidden hover:border-primary/40 transition-colors"
     >
+      <ProductFeedbackButtons productUrl={product.product_url} variant="overlay" />
       <div className="aspect-square bg-muted flex items-center justify-center overflow-hidden">
         <img
           src={product.image_url!}
