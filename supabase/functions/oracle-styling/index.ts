@@ -28,6 +28,10 @@ const lovableApiKey = Deno.env.get("LOVABLE_API_KEY")!;
 const AI_GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 const MODEL = "google/gemini-3-flash-preview";
 
+// Feature flag: when true, prefer Selectika partner_products before falling
+// back to the existing web search. Kept OFF until the feed is wired up.
+const SELECTIKA_ENABLED = false;
+
 // -----------------------------------------------------------------------
 // SYSTEM PROMPT — complete, verbatim. Do not merge or append.
 // -----------------------------------------------------------------------
