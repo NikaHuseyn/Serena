@@ -29,6 +29,7 @@ import ReportPostDialog from './ReportPostDialog';
 import EditPostDialog from './EditPostDialog';
 import CaptionRenderer from './CaptionRenderer';
 import ImageLightbox from './ImageLightbox';
+import CampaignBadge from './CampaignBadge';
 import { MapPin, Tag as TagIcon } from 'lucide-react';
 import { useBadges } from '@/hooks/useBadges';
 
@@ -42,6 +43,7 @@ interface PostCardProps {
     brand_tags?: string[] | null;
     mentioned_user_ids?: string[] | null;
     location?: string | null;
+    campaign_id?: string | null;
     likes_count: number;
     comments_count: number;
     created_at: string;
@@ -169,6 +171,7 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
                   loading="lazy"
                   className="w-full h-full object-cover"
                 />
+                <CampaignBadge campaignId={post.campaign_id} />
                 {index === 3 && post.image_urls.length > 4 && (
                   <div className="absolute inset-0 bg-foreground/50 flex items-center justify-center">
                     <span className="text-background font-semibold">
