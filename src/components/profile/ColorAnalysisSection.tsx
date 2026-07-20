@@ -95,6 +95,7 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
   const queryClient = useQueryClient();
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [storedSignedUrl, setStoredSignedUrl] = useState<string | null>(null);
   const [retakeReason, setRetakeReason] = useState<string | null>(null);
