@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import LoadingState from '@/components/community/LoadingState';
 import CampaignBadge from '@/components/community/CampaignBadge';
+import StylePointsSection from '@/components/profile/StylePointsSection';
 
 interface ProfileData {
   user_id: string;
@@ -130,6 +131,13 @@ const UserProfile = () => {
             )}
           </div>
         </div>
+
+        {/* Style Points (own profile only) */}
+        {isOwn && (
+          <div className="mb-8">
+            <StylePointsSection />
+          </div>
+        )}
 
         {/* Grid */}
         {posts.length === 0 ? (
