@@ -14,22 +14,23 @@ const inflight = new Map<string, Promise<Campaign | null>>();
 async function fetchCampaign(id: string): Promise<Campaign | null> {
   if (campaignCache.has(id)) return campaignCache.get(id) ?? null;
   if (inflight.has(id)) return inflight.get(id)!;
-  const p = supabase
-    .from('campaigns')
-    .select('id, brand_name, brand_logo_url')
-    .eq('id', id)
-    .maybeSingle()
-    .then(({ data }) => {
+  const p = (async () => {
+    try {
+      const { data } = await supabase
+        .from('campaigns')
+        .select('id, brand_name, brand_logo_url')
+        .eq('id', id)
+        .maybeSingle();
       const value = (data as Campaign | null) ?? null;
       campaignCache.set(id, value);
-      inflight.delete(id);
       return value;
-    })
-    .catch(() => {
+    } catch {
       campaignCache.set(id, null);
-      inflight.delete(id);
       return null;
-    });
+    } finally {
+      inflight.delete(id);
+    }
+  })();
   inflight.set(id, p);
   return p;
 }
