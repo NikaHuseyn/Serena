@@ -404,27 +404,61 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
             </div>
 
             {analysis.season && (
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  onClick={handleShareSeason}
-                  disabled={isSharing}
-                  size="lg"
-                >
-                  {isSharing ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating card…</>
-                  ) : (
-                    <><Share2 className="h-4 w-4 mr-2" />Share my season</>
-                  )}
-                </Button>
-                <Button
-                  onClick={handleCopyLink}
-                  variant="outline"
-                  size="lg"
-                >
-                  <Link className="h-4 w-4 mr-2" />
-                  Copy link
-                </Button>
-              </div>
+              <Drawer open={shareSheetOpen} onOpenChange={setShareSheetOpen}>
+                <DrawerTrigger asChild>
+                  <Button size="lg">
+                    <Share2 className="h-4 w-4 mr-2" />
+                    Share my season
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent>
+                  <DrawerHeader className="text-left">
+                    <DrawerTitle>Share my season</DrawerTitle>
+                    <DrawerDescription>
+                      Spread the word about your colour season.
+                    </DrawerDescription>
+                  </DrawerHeader>
+                  <div className="grid gap-3 p-4 pt-0">
+                    {canShareFiles && (
+                      <Button
+                        variant="outline"
+                        className="justify-start h-14 px-4"
+                        onClick={handleShareCard}
+                        disabled={isSharing}
+                      >
+                        {isSharing ? (
+                          <Loader2 className="h-5 w-5 mr-3 animate-spin" />
+                        ) : (
+                          <Share2 className="h-5 w-5 mr-3" />
+                        )}
+                        <span className="text-base">Share card</span>
+                      </Button>
+                    )}
+                    <Button
+                      variant="outline"
+                      className="justify-start h-14 px-4"
+                      onClick={handleCopyLink}
+                      disabled={isSharing}
+                    >
+                      <Link className="h-5 w-5 mr-3" />
+                      <span className="text-base">Copy link</span>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="justify-start h-14 px-4"
+                      onClick={handleSaveImage}
+                      disabled={isSharing}
+                    >
+                      {isSharing ? (
+                        <Loader2 className="h-5 w-5 mr-3 animate-spin" />
+                      ) : (
+                        <Download className="h-5 w-5 mr-3" />
+                      )}
+                      <span className="text-base">Save image</span>
+                    </Button>
+                  </div>
+                </DrawerContent>
+              </Drawer>
             )}
 
 
