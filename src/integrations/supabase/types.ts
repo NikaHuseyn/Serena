@@ -104,7 +104,13 @@ export type Database = {
           brand_logo_url: string | null
           brand_name: string
           created_at: string
+          description: string | null
+          ends_at: string | null
+          entry_bonus_points: number
           id: string
+          prize_description: string | null
+          rules: string | null
+          starts_at: string | null
           title: string | null
         }
         Insert: {
@@ -112,7 +118,13 @@ export type Database = {
           brand_logo_url?: string | null
           brand_name: string
           created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          entry_bonus_points?: number
           id?: string
+          prize_description?: string | null
+          rules?: string | null
+          starts_at?: string | null
           title?: string | null
         }
         Update: {
@@ -120,7 +132,13 @@ export type Database = {
           brand_logo_url?: string | null
           brand_name?: string
           created_at?: string
+          description?: string | null
+          ends_at?: string | null
+          entry_bonus_points?: number
           id?: string
+          prize_description?: string | null
+          rules?: string | null
+          starts_at?: string | null
           title?: string | null
         }
         Relationships: []
@@ -166,6 +184,55 @@ export type Database = {
           wardrobe_item_ids?: string[] | null
         }
         Relationships: []
+      }
+      challenge_entries: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          post_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          post_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_entries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_entries_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_entries_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "posts_base"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       comments: {
         Row: {
@@ -530,6 +597,42 @@ export type Database = {
           reward_config?: Json | null
           sort_order?: number
           threshold?: number
+        }
+        Relationships: []
+      }
+      moderation_queue: {
+        Row: {
+          created_at: string
+          details: Json | null
+          id: string
+          item_id: string
+          item_type: string
+          reason: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          details?: Json | null
+          id?: string
+          item_id: string
+          item_type: string
+          reason: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          details?: Json | null
+          id?: string
+          item_id?: string
+          item_type?: string
+          reason?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: string
         }
         Relationships: []
       }
@@ -1604,6 +1707,10 @@ export type Database = {
           budget_max: number | null
           budget_min: number | null
           color_analysis: Json | null
+          consent_brand_content: boolean
+          consent_brand_content_at: string | null
+          consent_data_sharing: boolean
+          consent_data_sharing_at: string | null
           created_at: string | null
           data_export_requested: boolean | null
           default_budget: number | null
@@ -1646,6 +1753,10 @@ export type Database = {
           budget_max?: number | null
           budget_min?: number | null
           color_analysis?: Json | null
+          consent_brand_content?: boolean
+          consent_brand_content_at?: string | null
+          consent_data_sharing?: boolean
+          consent_data_sharing_at?: string | null
           created_at?: string | null
           data_export_requested?: boolean | null
           default_budget?: number | null
@@ -1688,6 +1799,10 @@ export type Database = {
           budget_max?: number | null
           budget_min?: number | null
           color_analysis?: Json | null
+          consent_brand_content?: boolean
+          consent_brand_content_at?: string | null
+          consent_data_sharing?: boolean
+          consent_data_sharing_at?: string | null
           created_at?: string | null
           data_export_requested?: boolean | null
           default_budget?: number | null
@@ -1828,6 +1943,40 @@ export type Database = {
       }
     }
     Views: {
+      challenge_leaderboard: {
+        Row: {
+          campaign_id: string | null
+          entry_id: string | null
+          like_count: number | null
+          post_id: string | null
+          rank: number | null
+          status: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "challenge_entries_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_entries_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "challenge_entries_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "posts_base"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       milestones_public: {
         Row: {
           id: string | null
@@ -1942,6 +2091,7 @@ export type Database = {
         Args: { daily_limit?: number; ip_param: string }
         Returns: Json
       }
+      flag_like_velocity: { Args: { p_campaign_id: string }; Returns: number }
       get_style_leaderboard: {
         Args: never
         Returns: {

@@ -1,5 +1,6 @@
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+
 import { useForm } from 'react-hook-form';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,6 +26,53 @@ const PrivacySettingsForm = ({ profile, onUpdate }: PrivacySettingsFormProps) =>
   const [showFullDeleteConfirm, setShowFullDeleteConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const navigate = useNavigate();
+
+  const [consentDataSharing, setConsentDataSharing] = useState<boolean>(!!profile?.consent_data_sharing);
+  const [consentBrandContent, setConsentBrandContent] = useState<boolean>(!!profile?.consent_brand_content);
+  const [savingConsent, setSavingConsent] = useState<'data_sharing' | 'brand_content' | null>(null);
+
+  useEffect(() => {
+    setConsentDataSharing(!!profile?.consent_data_sharing);
+    setConsentBrandContent(!!profile?.consent_brand_content);
+  }, [profile?.consent_data_sharing, profile?.consent_brand_content]);
+
+  const updateConsent = async (
+    field: 'consent_data_sharing' | 'consent_brand_content',
+    timestampField: 'consent_data_sharing_at' | 'consent_brand_content_at',
+    value: boolean,
+    setLocal: (v: boolean) => void,
+    key: 'data_sharing' | 'brand_content',
+  ) => {
+    const prev = key === 'data_sharing' ? consentDataSharing : consentBrandContent;
+    setLocal(value);
+    setSavingConsent(key);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('No user found');
+
+      const payload: any = {
+        user_id: user.id,
+        [field]: value,
+        updated_at: new Date().toISOString(),
+      };
+      if (value) payload[timestampField] = new Date().toISOString();
+
+      const { error } = await (supabase.from('user_style_profiles') as any)
+        .upsert(payload, { onConflict: 'user_id' });
+      if (error) throw error;
+      onUpdate();
+    } catch (e: any) {
+      console.error('Error updating consent:', e);
+      setLocal(prev);
+      toast({
+        title: 'Error',
+        description: 'Failed to update your preference. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingConsent(null);
+    }
+  };
 
   const handleFullAccountDeletion = async () => {
     try {
@@ -247,7 +295,46 @@ const PrivacySettingsForm = ({ profile, onUpdate }: PrivacySettingsFormProps) =>
             <Separator />
 
             <div className="space-y-4">
-              <Label className="text-base font-semibold">Data & Privacy</Label>
+              <Label className="text-base font-semibold">Data & privacy</Label>
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label>Help improve fashion recommendations</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Include my activity in anonymised, aggregated trend reports shared with retail partners. Never includes your name, photos, or identifiable data.
+                  </p>
+                </div>
+                <Switch
+                  checked={consentDataSharing}
+                  disabled={savingConsent === 'data_sharing'}
+                  onCheckedChange={(checked) =>
+                    updateConsent('consent_data_sharing', 'consent_data_sharing_at', checked, setConsentDataSharing, 'data_sharing')
+                  }
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-4">
+                <div className="space-y-0.5">
+                  <Label>Allow brands to feature my challenge photos</Label>
+                  <p className="text-sm text-muted-foreground">
+                    Brands running challenges may reshare your entry photos in their marketing. You can withdraw this any time.
+                  </p>
+                </div>
+                <Switch
+                  checked={consentBrandContent}
+                  disabled={savingConsent === 'brand_content'}
+                  onCheckedChange={(checked) =>
+                    updateConsent('consent_brand_content', 'consent_brand_content_at', checked, setConsentBrandContent, 'brand_content')
+                  }
+                />
+              </div>
+            </div>
+
+            <Separator />
+
+            <div className="space-y-4">
+              <Label className="text-base font-semibold">Data management</Label>
+
               
               <div className="space-y-4">
                 <div className="p-4 border rounded-lg space-y-3">
