@@ -1,16 +1,24 @@
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw, Share2, Link } from 'lucide-react';
+import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer';
+import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw, Share2, Link, Download } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { renderColorCard, shareOrDownloadCard, logShareEvent } from './shareColorCard';
+import { renderColorCard, shareCard, downloadCard, logShareEvent } from './shareColorCard';
 
 interface ColourItem {
   name: string;
