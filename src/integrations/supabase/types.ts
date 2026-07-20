@@ -1253,6 +1253,27 @@ export type Database = {
         }
         Relationships: []
       }
+      share_events: {
+        Row: {
+          created_at: string
+          id: string
+          share_type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          share_type?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          share_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       shopping_items: {
         Row: {
           affiliate_url: string | null
