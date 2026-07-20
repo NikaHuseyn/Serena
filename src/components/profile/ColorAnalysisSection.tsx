@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw, Share2 } from 'lucide-react';
+import { Camera, Loader2, Sparkles, Palette, AlertCircle, RefreshCw, Share2, Link } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -260,6 +260,21 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
     }
   };
 
+  const handleCopyLink = async () => {
+    const url = 'https://serena-outfitoracle.lovable.app/?ref=colour';
+    try {
+      await navigator.clipboard.writeText(url);
+      toast({ title: 'Link copied!' });
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('share_events').insert({ user_id: user.id, share_type: 'color_link' });
+      }
+    } catch (err) {
+      console.warn('Copy link failed:', err);
+      toast({ title: 'Could not copy link', variant: 'destructive' });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -353,18 +368,27 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
             </div>
 
             {analysis.season && (
-              <Button
-                onClick={handleShareSeason}
-                disabled={isSharing}
-                size="lg"
-                className="w-full sm:w-auto"
-              >
-                {isSharing ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating card…</>
-                ) : (
-                  <><Share2 className="h-4 w-4 mr-2" />Share my season</>
-                )}
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  onClick={handleShareSeason}
+                  disabled={isSharing}
+                  size="lg"
+                >
+                  {isSharing ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating card…</>
+                  ) : (
+                    <><Share2 className="h-4 w-4 mr-2" />Share my season</>
+                  )}
+                </Button>
+                <Button
+                  onClick={handleCopyLink}
+                  variant="outline"
+                  size="lg"
+                >
+                  <Link className="h-4 w-4 mr-2" />
+                  Copy link
+                </Button>
+              </div>
             )}
 
 
