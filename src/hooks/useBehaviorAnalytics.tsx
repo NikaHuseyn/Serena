@@ -15,16 +15,18 @@ export const useBehaviorAnalytics = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const eventData = {
+        ...(event.event_data || {}),
+        ...(event.outfit_id ? { outfit_id: event.outfit_id } : {}),
+        ...(event.shopping_item_id ? { shopping_item_id: event.shopping_item_id } : {}),
+      };
+
       const { error } = await supabase
         .from('user_behavior_analytics')
         .insert({
           user_id: user.id,
           event_type: event.event_type,
-          event_data: {
-            ...(event.event_data || {}),
-            outfit_id: event.outfit_id,
-            shopping_item_id: event.shopping_item_id,
-          },
+          event_data: eventData,
           created_at: new Date().toISOString()
         });
 
