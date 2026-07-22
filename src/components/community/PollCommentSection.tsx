@@ -41,6 +41,21 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
 
   useEffect(() => {
     fetchComments();
+
+    const channel = supabase
+      .channel(`outfit_comments:${postId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'outfit_comments', filter: `post_id=eq.${postId}` },
+        () => {
+          fetchComments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [postId]);
 
   const fetchComments = async () => {
