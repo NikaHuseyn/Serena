@@ -313,7 +313,14 @@ const WardrobeManager = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">My Wardrobe</h2>
         <Button
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() => {
+            if (showAddForm) {
+              resetForm();
+              setShowAddForm(false);
+            } else {
+              setShowAddForm(true);
+            }
+          }}
           className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700"
         >
           <Plus className="h-4 w-4 mr-2" />
