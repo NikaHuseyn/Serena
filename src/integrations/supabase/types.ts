@@ -239,6 +239,7 @@ export type Database = {
           content: string
           created_at: string | null
           id: string
+          mentioned_user_ids: string[]
           post_id: string
           user_id: string
         }
@@ -246,6 +247,7 @@ export type Database = {
           content: string
           created_at?: string | null
           id?: string
+          mentioned_user_ids?: string[]
           post_id: string
           user_id: string
         }
@@ -253,6 +255,7 @@ export type Database = {
           content?: string
           created_at?: string | null
           id?: string
+          mentioned_user_ids?: string[]
           post_id?: string
           user_id?: string
         }
@@ -802,6 +805,7 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          mentioned_user_ids: string[]
           option_index: number | null
           post_id: string
           user_id: string
@@ -810,6 +814,7 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          mentioned_user_ids?: string[]
           option_index?: number | null
           post_id: string
           user_id: string
@@ -818,6 +823,7 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          mentioned_user_ids?: string[]
           option_index?: number | null
           post_id?: string
           user_id?: string
