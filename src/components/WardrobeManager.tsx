@@ -28,6 +28,7 @@ const WardrobeManager = () => {
   const [wardrobeItems, setWardrobeItems] = useState<WardrobeItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [newItem, setNewItem] = useState({
     name: '',
     category: '',
@@ -170,6 +171,24 @@ const WardrobeManager = () => {
     setIsAutoFilling(false);
     setAutoFillDone(false);
     setMissingFields(new Set());
+    setEditingItemId(null);
+  };
+
+  const handleEditItem = (item: WardrobeItem) => {
+    setEditingItemId(item.id);
+    setNewItem({
+      name: item.name || '',
+      category: item.category || '',
+      color: item.color || '',
+      brand: item.brand || '',
+      size: item.size || '',
+      notes: (item.tags && item.tags.length > 0 ? item.tags.join(', ') : (item.notes || '')),
+    });
+    setPhotoPreview(item.image_url || null);
+    setPhotoBlob(null);
+    setAutoFillDone(false);
+    setMissingFields(new Set());
+    setShowAddForm(true);
   };
 
   const handleAddItem = async (e: React.FormEvent) => {
@@ -178,6 +197,24 @@ const WardrobeManager = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
+
+      if (editingItemId) {
+        const { error } = await supabase
+          .from('wardrobe_items')
+          .update({
+            ...newItem,
+            tags: newItem.notes ? [newItem.notes] : [],
+          })
+          .eq('id', editingItemId);
+
+        if (error) throw error;
+
+        toast.success('Item updated');
+        resetForm();
+        setShowAddForm(false);
+        fetchWardrobeItems();
+        return;
+      }
 
       const { error } = await supabase
         .from('wardrobe_items')
@@ -206,7 +243,7 @@ const WardrobeManager = () => {
       });
     } catch (error) {
       console.error('Error adding item:', error);
-      toast.error('Failed to add item to wardrobe');
+      toast.error(editingItemId ? 'Failed to update item' : 'Failed to add item to wardrobe');
     }
   };
 
@@ -276,7 +313,14 @@ const WardrobeManager = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-800">My Wardrobe</h2>
         <Button
-          onClick={() => setShowAddForm(!showAddForm)}
+          onClick={() => {
+            if (showAddForm) {
+              resetForm();
+              setShowAddForm(false);
+            } else {
+              setShowAddForm(true);
+            }
+          }}
           className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700"
         >
           <Plus className="h-4 w-4 mr-2" />
@@ -288,7 +332,7 @@ const WardrobeManager = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Add New Item
+              {editingItemId ? 'Edit Item' : 'Add New Item'}
               <Badge variant="secondary" className="ml-auto">
                 <Sparkles className="h-3 w-3 mr-1" />
                 AI Powered
@@ -429,9 +473,9 @@ const WardrobeManager = () => {
 
               <div className="flex gap-2">
                 <Button type="submit" className="bg-gradient-to-r from-rose-500 to-pink-600">
-                  Add to Wardrobe
+                  {editingItemId ? 'Save Changes' : 'Add to Wardrobe'}
                 </Button>
-                <Button type="button" variant="outline" onClick={() => setShowAddForm(false)}>
+                <Button type="button" variant="outline" onClick={() => { resetForm(); setShowAddForm(false); }}>
                   Cancel
                 </Button>
               </div>
@@ -464,14 +508,26 @@ const WardrobeManager = () => {
                     {getCategoryIcon(item.category)}
                     <h3 className="font-semibold text-gray-800 truncate">{item.name}</h3>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteItem(item.id)}
-                    className="text-gray-400 hover:text-red-500 h-6 w-6 p-0"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditItem(item)}
+                      className="text-gray-400 hover:text-primary h-6 w-6 p-0"
+                      aria-label="Edit item"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteItem(item.id)}
+                      className="text-gray-400 hover:text-red-500 h-6 w-6 p-0"
+                      aria-label="Delete item"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
