@@ -332,7 +332,7 @@ const WardrobeManager = () => {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              Add New Item
+              {editingItemId ? 'Edit Item' : 'Add New Item'}
               <Badge variant="secondary" className="ml-auto">
                 <Sparkles className="h-3 w-3 mr-1" />
                 AI Powered
