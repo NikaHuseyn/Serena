@@ -92,19 +92,24 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
     const ok = await requireAuth('post comments');
     if (!ok) return;
     setSubmitting(true);
+
+    let userId: string | undefined;
+    let mentionedIds: string[] = [];
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+      userId = user.id;
 
-      const mentioned = extractMentionedUserIds(newComment, mentionMap).slice(0, 10);
+      mentionedIds = extractMentionedUserIds(newComment, mentionMap).slice(0, 10);
 
       const { data, error } = await supabase
         .from('comments')
         .insert({
           post_id: postId,
-          user_id: user.id,
+          user_id: userId,
           content: newComment.trim(),
-          mentioned_user_ids: mentioned,
+          mentioned_user_ids: mentionedIds,
         })
         .select()
         .single();
@@ -115,13 +120,22 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
       const { data: profile } = await supabase
         .from('social_profiles')
         .select('user_id, display_name, avatar_url')
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .maybeSingle();
 
       setComments(prev => [...prev, { ...data, profile }]);
       setNewComment('');
       setMentionMap({});
-    } catch {
+    } catch (error: any) {
+      const payload = { post_id: postId, user_id: userId, content: newComment.trim(), mentioned_user_ids: mentionedIds };
+      console.error('Comment insert failed:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        payload,
+        rawError: error,
+      });
       toast.error('Failed to post comment');
     } finally {
       setSubmitting(false);
