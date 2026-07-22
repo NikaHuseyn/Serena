@@ -121,7 +121,16 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
       setComments(prev => [...prev, { ...data, profile }]);
       setNewComment('');
       setMentionMap({});
-    } catch {
+    } catch (error: any) {
+      const payload = { post_id: postId, user_id: user?.id, content: newComment.trim(), mentioned_user_ids: mentioned };
+      console.error('Comment insert failed:', {
+        message: error?.message,
+        code: error?.code,
+        details: error?.details,
+        hint: error?.hint,
+        payload,
+        rawError: error,
+      });
       toast.error('Failed to post comment');
     } finally {
       setSubmitting(false);
