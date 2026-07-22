@@ -96,9 +96,16 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const mentioned = extractMentionedUserIds(newComment, mentionMap).slice(0, 10);
+
       const { data, error } = await supabase
         .from('comments')
-        .insert({ post_id: postId, user_id: user.id, content: newComment.trim() })
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          content: newComment.trim(),
+          mentioned_user_ids: mentioned,
+        })
         .select()
         .single();
 
@@ -113,6 +120,7 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
 
       setComments(prev => [...prev, { ...data, profile }]);
       setNewComment('');
+      setMentionMap({});
     } catch {
       toast.error('Failed to post comment');
     } finally {
