@@ -176,15 +176,19 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <Input
-          value={newComment}
-          onChange={e => setNewComment(e.target.value)}
-          placeholder="Write a comment..."
-          className="text-sm"
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSubmit()}
-          disabled={submitting}
-        />
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <RichCaptionInput
+            value={newComment}
+            onChange={(v, m) => {
+              setNewComment(v);
+              setMentionMap(m);
+            }}
+            mentionMap={mentionMap}
+            placeholder="Write a comment… try @username"
+            rows={2}
+          />
+        </div>
         <Button
           size="sm"
           onClick={handleSubmit}
