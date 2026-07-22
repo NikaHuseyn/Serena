@@ -35,6 +35,7 @@ interface PollCommentSectionProps {
 const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) => {
   const [comments, setComments] = useState<PollComment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [mentionMap, setMentionMap] = useState<MentionMap>({});
   const [selectedOption, setSelectedOption] = useState<string>('none');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
