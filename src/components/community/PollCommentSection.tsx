@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Loader2, ChevronDown } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,6 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import RichCaptionInput from './RichCaptionInput';
+import { extractMentionedUserIds, type MentionMap } from '@/lib/captionParsing';
 
 interface PollComment {
   id: string;
@@ -34,6 +35,7 @@ interface PollCommentSectionProps {
 const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) => {
   const [comments, setComments] = useState<PollComment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [mentionMap, setMentionMap] = useState<MentionMap>({});
   const [selectedOption, setSelectedOption] = useState<string>('none');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -101,6 +103,7 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
       }
 
       const optionIdx = selectedOption === 'none' ? null : parseInt(selectedOption);
+      const mentioned = extractMentionedUserIds(newComment, mentionMap).slice(0, 10);
 
       const { data, error } = await supabase
         .from('outfit_comments')
@@ -109,6 +112,7 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
           user_id: user.id,
           content: newComment.trim(),
           option_index: optionIdx,
+          mentioned_user_ids: mentioned,
         })
         .select()
         .single();
@@ -123,6 +127,7 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
 
       setComments(prev => [...prev, { ...data, profile: profile || undefined }]);
       setNewComment('');
+      setMentionMap({});
       setSelectedOption('none');
     } catch {
       toast.error('Failed to post comment');
@@ -187,7 +192,7 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
         </>
       )}
 
-      <div className="flex items-center gap-2">
+      <div className="flex items-end gap-2">
         <Select value={selectedOption} onValueChange={setSelectedOption}>
           <SelectTrigger className="w-32 text-xs h-9">
             <SelectValue placeholder="Option" />
@@ -199,14 +204,18 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
             ))}
           </SelectContent>
         </Select>
-        <Input
-          value={newComment}
-          onChange={e => setNewComment(e.target.value)}
-          placeholder="Write a comment..."
-          className="text-sm flex-1"
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSubmit()}
-          disabled={submitting}
-        />
+        <div className="flex-1">
+          <RichCaptionInput
+            value={newComment}
+            onChange={(v, m) => {
+              setNewComment(v);
+              setMentionMap(m);
+            }}
+            mentionMap={mentionMap}
+            placeholder="Write a comment… try @username"
+            rows={2}
+          />
+        </div>
         <Button
           size="sm"
           onClick={handleSubmit}

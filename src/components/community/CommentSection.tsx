@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useGuestNudge } from '@/hooks/useGuestNudge';
+import RichCaptionInput from './RichCaptionInput';
+import { extractMentionedUserIds, type MentionMap } from '@/lib/captionParsing';
 
 interface Comment {
   id: string;
@@ -27,6 +28,7 @@ interface CommentSectionProps {
 const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [mentionMap, setMentionMap] = useState<MentionMap>({});
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -94,9 +96,16 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      const mentioned = extractMentionedUserIds(newComment, mentionMap).slice(0, 10);
+
       const { data, error } = await supabase
         .from('comments')
-        .insert({ post_id: postId, user_id: user.id, content: newComment.trim() })
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+          content: newComment.trim(),
+          mentioned_user_ids: mentioned,
+        })
         .select()
         .single();
 
@@ -111,6 +120,7 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
 
       setComments(prev => [...prev, { ...data, profile }]);
       setNewComment('');
+      setMentionMap({});
     } catch {
       toast.error('Failed to post comment');
     } finally {
@@ -166,15 +176,19 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
         </div>
       )}
 
-      <div className="flex items-center gap-2">
-        <Input
-          value={newComment}
-          onChange={e => setNewComment(e.target.value)}
-          placeholder="Write a comment..."
-          className="text-sm"
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSubmit()}
-          disabled={submitting}
-        />
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <RichCaptionInput
+            value={newComment}
+            onChange={(v, m) => {
+              setNewComment(v);
+              setMentionMap(m);
+            }}
+            mentionMap={mentionMap}
+            placeholder="Write a comment… try @username"
+            rows={2}
+          />
+        </div>
         <Button
           size="sm"
           onClick={handleSubmit}
