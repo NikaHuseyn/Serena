@@ -28,6 +28,7 @@ interface CommentSectionProps {
 const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
+  const [mentionMap, setMentionMap] = useState<MentionMap>({});
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expanded, setExpanded] = useState(false);
