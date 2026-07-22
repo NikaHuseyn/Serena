@@ -93,61 +93,80 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
   };
 
   const handleSubmit = async () => {
-    if (!newComment.trim()) return;
-    setSubmitting(true);
-
-    let userId: string | undefined;
-    let optionIdx: number | null = null;
-    let mentionedIds: string[] = [];
-
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        toast.error('Please sign in to comment');
-        return;
-      }
-      userId = user.id;
-
-      optionIdx = selectedOption === 'none' ? null : parseInt(selectedOption);
-      mentionedIds = extractMentionedUserIds(newComment, mentionMap).slice(0, 10);
-
-      const { data, error } = await supabase
-        .from('outfit_comments')
-        .insert({
-          post_id: postId,
-          user_id: userId,
-          content: newComment.trim(),
-          option_index: optionIdx,
-          mentioned_user_ids: mentionedIds,
-        })
-        .select()
-        .single();
-
-      if (error) throw error;
-
-      const { data: profile } = await supabase
-        .from('social_profiles')
-        .select('user_id, display_name, avatar_url')
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      setComments(prev => [...prev, { ...data, profile: profile || undefined }]);
-      setNewComment('');
-      setMentionMap({});
-      setSelectedOption('none');
-    } catch (error: any) {
-      const payload = { post_id: postId, user_id: userId, content: newComment.trim(), option_index: optionIdx, mentioned_user_ids: mentionedIds };
-      console.error('Poll comment insert failed:', {
-        message: error?.message,
-        code: error?.code,
-        details: error?.details,
-        hint: error?.hint,
-        payload,
-        rawError: error,
+      console.log('[PollCommentSection] handleSubmit start', {
+        newComment,
+        mentionMap,
+        mentionMapType: typeof mentionMap,
+        mentionMapIsArray: Array.isArray(mentionMap),
+        selectedOption,
+        postId,
       });
-      toast.error('Failed to post comment');
-    } finally {
+      if (!newComment.trim()) return;
+      setSubmitting(true);
+
+      let userId: string | undefined;
+      let optionIdx: number | null = null;
+      let mentionedIds: string[] = [];
+
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          toast.error('Please sign in to comment');
+          return;
+        }
+        userId = user.id;
+
+        optionIdx = selectedOption === 'none' ? null : parseInt(selectedOption);
+        mentionedIds = extractMentionedUserIds(newComment, mentionMap).slice(0, 10);
+        console.log('[PollCommentSection] mentionedIds built', mentionedIds);
+
+        const { data, error } = await supabase
+          .from('outfit_comments')
+          .insert({
+            post_id: postId,
+            user_id: userId,
+            content: newComment.trim(),
+            option_index: optionIdx,
+            mentioned_user_ids: mentionedIds,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+
+        const { data: profile } = await supabase
+          .from('social_profiles')
+          .select('user_id, display_name, avatar_url')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        setComments(prev => [...prev, { ...data, profile: profile || undefined }]);
+        setNewComment('');
+        setMentionMap({});
+        setSelectedOption('none');
+      } catch (error: any) {
+        const payload = { post_id: postId, user_id: userId, content: newComment.trim(), option_index: optionIdx, mentioned_user_ids: mentionedIds };
+        console.error('Poll comment insert failed:', {
+          message: error?.message,
+          code: error?.code,
+          details: error?.details,
+          hint: error?.hint,
+          payload,
+          rawError: error,
+        });
+        toast.error('Failed to post comment');
+      } finally {
+        setSubmitting(false);
+      }
+    } catch (err) {
+      console.error('[PollCommentSection] handleSubmit outer exception:', err, {
+        newComment,
+        mentionMap,
+        selectedOption,
+      });
       setSubmitting(false);
+      toast.error('Failed to post comment');
     }
   };
 
