@@ -80,16 +80,41 @@ const RichCaptionInput = ({
       }
       if (trigger.kind === '@') {
         const q = trigger.query.trim();
-        const builder = supabase
+        let query = supabase
           .from('social_profiles')
           .select('user_id, display_name, avatar_url')
           .not('display_name', 'is', null)
-          .limit(6);
-        if (q) builder.ilike('display_name', `${q}%`);
-        const { data } = await builder;
+          .limit(8);
+        if (q) {
+          // Case-insensitive substring match against display_name.
+          // Also match on the normalised handle by stripping the query's
+          // separators so "selin." matches display_name "Selin Burtkut".
+          const bare = q.replace(/[._\s-]+/g, '');
+          const escape = (s: string) => s.replace(/[,()]/g, '');
+          const qEsc = escape(q);
+          const bareEsc = escape(bare);
+          query = query.or(
+            `display_name.ilike.%${qEsc}%,display_name.ilike.%${bareEsc}%`,
+          );
+        }
+        const { data, error } = await query;
+        if (error) console.warn('mention search failed:', error);
         if (cancelled) return;
+        const bareQ = q.replace(/[._\s-]+/g, '').toLowerCase();
+        const results = (data || [])
+          .filter((p) => {
+            if (!q) return true;
+            const dn = (p.display_name || '').toLowerCase();
+            const handle = normaliseHandle(p.display_name || '').toLowerCase();
+            return (
+              dn.includes(q.toLowerCase()) ||
+              handle.includes(bareQ) ||
+              handle.startsWith(bareQ)
+            );
+          })
+          .slice(0, 8);
         setSuggestions(
-          (data || []).map((p) => ({
+          results.map((p) => ({
             id: p.user_id,
             label: p.display_name || 'User',
             sublabel: '@' + normaliseHandle(p.display_name || ''),
