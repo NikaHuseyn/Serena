@@ -103,6 +103,7 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
       }
 
       const optionIdx = selectedOption === 'none' ? null : parseInt(selectedOption);
+      const mentioned = extractMentionedUserIds(newComment, mentionMap).slice(0, 10);
 
       const { data, error } = await supabase
         .from('outfit_comments')
@@ -111,6 +112,7 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
           user_id: user.id,
           content: newComment.trim(),
           option_index: optionIdx,
+          mentioned_user_ids: mentioned,
         })
         .select()
         .single();
@@ -125,6 +127,7 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
 
       setComments(prev => [...prev, { ...data, profile: profile || undefined }]);
       setNewComment('');
+      setMentionMap({});
       setSelectedOption('none');
     } catch {
       toast.error('Failed to post comment');
