@@ -171,6 +171,24 @@ const WardrobeManager = () => {
     setIsAutoFilling(false);
     setAutoFillDone(false);
     setMissingFields(new Set());
+    setEditingItemId(null);
+  };
+
+  const handleEditItem = (item: WardrobeItem) => {
+    setEditingItemId(item.id);
+    setNewItem({
+      name: item.name || '',
+      category: item.category || '',
+      color: item.color || '',
+      brand: item.brand || '',
+      size: item.size || '',
+      notes: (item.tags && item.tags.length > 0 ? item.tags.join(', ') : (item.notes || '')),
+    });
+    setPhotoPreview(item.image_url || null);
+    setPhotoBlob(null);
+    setAutoFillDone(false);
+    setMissingFields(new Set());
+    setShowAddForm(true);
   };
 
   const handleAddItem = async (e: React.FormEvent) => {
@@ -179,6 +197,24 @@ const WardrobeManager = () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
+
+      if (editingItemId) {
+        const { error } = await supabase
+          .from('wardrobe_items')
+          .update({
+            ...newItem,
+            tags: newItem.notes ? [newItem.notes] : [],
+          })
+          .eq('id', editingItemId);
+
+        if (error) throw error;
+
+        toast.success('Item updated');
+        resetForm();
+        setShowAddForm(false);
+        fetchWardrobeItems();
+        return;
+      }
 
       const { error } = await supabase
         .from('wardrobe_items')
@@ -207,7 +243,7 @@ const WardrobeManager = () => {
       });
     } catch (error) {
       console.error('Error adding item:', error);
-      toast.error('Failed to add item to wardrobe');
+      toast.error(editingItemId ? 'Failed to update item' : 'Failed to add item to wardrobe');
     }
   };
 
