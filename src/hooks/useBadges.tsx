@@ -28,17 +28,17 @@ export const useBadges = (userId?: string) => {
         .from('user_badges')
         .select('*')
         .eq('user_id', targetUserId)
-        .order('earned_at', { ascending: false });
+        .order('awarded_at', { ascending: false });
 
       if (error) throw error;
 
       const formattedBadges = data?.map(item => ({
         id: item.id,
         name: item.badge_name,
-        description: item.badge_description,
+        description: item.description,
         icon: null, // Since the current schema doesn't have icon field
-        criteria: item.metadata || {},
-        earned_at: item.earned_at
+        criteria: { badge_type: item.badge_type },
+        earned_at: item.awarded_at
       })) || [];
 
       setBadges(formattedBadges);

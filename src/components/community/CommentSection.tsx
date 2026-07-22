@@ -9,6 +9,11 @@ import { useGuestNudge } from '@/hooks/useGuestNudge';
 import RichCaptionInput from './RichCaptionInput';
 import { extractMentionedUserIds, type MentionMap } from '@/lib/captionParsing';
 
+const safeMentionMap = (value: unknown): MentionMap => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return value as MentionMap;
+};
+
 interface Comment {
   id: string;
   content: string;
@@ -89,13 +94,6 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
 
   const handleSubmit = async () => {
     try {
-      console.log('[CommentSection] handleSubmit start', {
-        newComment,
-        mentionMap,
-        mentionMapType: typeof mentionMap,
-        mentionMapIsArray: Array.isArray(mentionMap),
-        postId,
-      });
       if (!newComment.trim()) return;
       const ok = await requireAuth('post comments');
       if (!ok) return;
@@ -109,8 +107,12 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
         if (!user) return;
         userId = user.id;
 
-        mentionedIds = extractMentionedUserIds(newComment, mentionMap).slice(0, 10);
-        console.log('[CommentSection] mentionedIds built', mentionedIds);
+        try {
+          mentionedIds = extractMentionedUserIds(newComment, safeMentionMap(mentionMap)).slice(0, 10);
+        } catch (mentionError) {
+          console.error('[CommentSection] failed to extract mentioned_user_ids; posting without tags:', mentionError);
+          mentionedIds = [];
+        }
 
         const { data, error } = await supabase
           .from('comments')
@@ -213,9 +215,9 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
             value={newComment}
             onChange={(v, m) => {
               setNewComment(v);
-              setMentionMap(m);
+              setMentionMap(safeMentionMap(m));
             }}
-            mentionMap={mentionMap}
+            mentionMap={safeMentionMap(mentionMap)}
             placeholder="Write a comment… try @username"
             rows={2}
           />

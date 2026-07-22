@@ -15,6 +15,11 @@ import {
 import RichCaptionInput from './RichCaptionInput';
 import { extractMentionedUserIds, type MentionMap } from '@/lib/captionParsing';
 
+const safeMentionMap = (value: unknown): MentionMap => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return value as MentionMap;
+};
+
 interface PollComment {
   id: string;
   content: string;
@@ -94,14 +99,6 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
 
   const handleSubmit = async () => {
     try {
-      console.log('[PollCommentSection] handleSubmit start', {
-        newComment,
-        mentionMap,
-        mentionMapType: typeof mentionMap,
-        mentionMapIsArray: Array.isArray(mentionMap),
-        selectedOption,
-        postId,
-      });
       if (!newComment.trim()) return;
       setSubmitting(true);
 
@@ -118,8 +115,12 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
         userId = user.id;
 
         optionIdx = selectedOption === 'none' ? null : parseInt(selectedOption);
-        mentionedIds = extractMentionedUserIds(newComment, mentionMap).slice(0, 10);
-        console.log('[PollCommentSection] mentionedIds built', mentionedIds);
+        try {
+          mentionedIds = extractMentionedUserIds(newComment, safeMentionMap(mentionMap)).slice(0, 10);
+        } catch (mentionError) {
+          console.error('[PollCommentSection] failed to extract mentioned_user_ids; posting without tags:', mentionError);
+          mentionedIds = [];
+        }
 
         const { data, error } = await supabase
           .from('outfit_comments')
@@ -243,9 +244,9 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
             value={newComment}
             onChange={(v, m) => {
               setNewComment(v);
-              setMentionMap(m);
+              setMentionMap(safeMentionMap(m));
             }}
-            mentionMap={mentionMap}
+            mentionMap={safeMentionMap(mentionMap)}
             placeholder="Write a comment… try @username"
             rows={2}
           />

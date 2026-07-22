@@ -28,8 +28,8 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
           setTimeout(async () => {
             try {
               await supabase.rpc('log_security_event', {
-                event_type_param: 'user_login',
-                event_details_param: {
+                event_type: 'user_login',
+                event_data: {
                   user_id: session.user.id,
                   login_method: session.user.app_metadata?.provider || 'email',
                   timestamp: new Date().toISOString()
@@ -46,8 +46,8 @@ const AuthGuard = ({ children }: AuthGuardProps) => {
           setTimeout(async () => {
             try {
               await supabase.rpc('log_security_event', {
-                event_type_param: 'user_logout',
-                event_details_param: {
+                event_type: 'user_logout',
+                event_data: {
                   timestamp: new Date().toISOString()
                 }
               });
