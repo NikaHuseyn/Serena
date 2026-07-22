@@ -193,6 +193,7 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
       )}
 
       <div className="flex items-center gap-2">
+      <div className="flex items-end gap-2">
         <Select value={selectedOption} onValueChange={setSelectedOption}>
           <SelectTrigger className="w-32 text-xs h-9">
             <SelectValue placeholder="Option" />
@@ -204,14 +205,18 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
             ))}
           </SelectContent>
         </Select>
-        <Input
-          value={newComment}
-          onChange={e => setNewComment(e.target.value)}
-          placeholder="Write a comment..."
-          className="text-sm flex-1"
-          onKeyDown={e => e.key === 'Enter' && !e.shiftKey && handleSubmit()}
-          disabled={submitting}
-        />
+        <div className="flex-1">
+          <RichCaptionInput
+            value={newComment}
+            onChange={(v, m) => {
+              setNewComment(v);
+              setMentionMap(m);
+            }}
+            mentionMap={mentionMap}
+            placeholder="Write a comment… try @username"
+            rows={2}
+          />
+        </div>
         <Button
           size="sm"
           onClick={handleSubmit}
