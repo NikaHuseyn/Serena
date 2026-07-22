@@ -66,8 +66,24 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
   };
 
   useEffect(() => {
-    if (expanded) fetchComments();
-  }, [expanded]);
+    if (!expanded) return;
+    fetchComments();
+
+    const channel = supabase
+      .channel(`comments:${postId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'comments', filter: `post_id=eq.${postId}` },
+        () => {
+          fetchComments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [expanded, postId]);
 
   const handleSubmit = async () => {
     if (!newComment.trim()) return;
