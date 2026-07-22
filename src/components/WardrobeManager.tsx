@@ -508,14 +508,26 @@ const WardrobeManager = () => {
                     {getCategoryIcon(item.category)}
                     <h3 className="font-semibold text-gray-800 truncate">{item.name}</h3>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteItem(item.id)}
-                    className="text-gray-400 hover:text-red-500 h-6 w-6 p-0"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleEditItem(item)}
+                      className="text-gray-400 hover:text-primary h-6 w-6 p-0"
+                      aria-label="Edit item"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteItem(item.id)}
+                      className="text-gray-400 hover:text-red-500 h-6 w-6 p-0"
+                      aria-label="Delete item"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
                 
                 <div className="space-y-2">
