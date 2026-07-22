@@ -19,8 +19,13 @@ export const useBehaviorAnalytics = () => {
         .from('user_behavior_analytics')
         .insert({
           user_id: user.id,
-          ...event,
-          timestamp: new Date().toISOString()
+          event_type: event.event_type,
+          event_data: {
+            ...(event.event_data || {}),
+            outfit_id: event.outfit_id,
+            shopping_item_id: event.shopping_item_id,
+          },
+          created_at: new Date().toISOString()
         });
 
       if (error) {
