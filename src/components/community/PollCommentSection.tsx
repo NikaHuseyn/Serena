@@ -192,7 +192,6 @@ const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) =>
         </>
       )}
 
-      <div className="flex items-center gap-2">
       <div className="flex items-end gap-2">
         <Select value={selectedOption} onValueChange={setSelectedOption}>
           <SelectTrigger className="w-32 text-xs h-9">
