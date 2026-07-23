@@ -211,9 +211,7 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
         <>
           <div className="space-y-3 max-h-60 overflow-y-auto">
             {visibleComments.map(comment => {
-              const canDelete =
-                !!currentUserId &&
-                (currentUserId === comment.user_id || currentUserId === postOwnerId);
+              const canDelete = !!currentUserId && currentUserId === comment.user_id;
               return (
               <div key={comment.id} className="flex items-start gap-2 group">
                 <Avatar className="h-7 w-7">
