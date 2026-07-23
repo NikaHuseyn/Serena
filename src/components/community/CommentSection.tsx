@@ -39,9 +39,10 @@ interface Comment {
 interface CommentSectionProps {
   postId: string;
   commentsCount: number;
+  postOwnerId?: string;
 }
 
-const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
+const CommentSection = ({ postId, commentsCount, postOwnerId }: CommentSectionProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [mentionMap, setMentionMap] = useState<MentionMap>({});
