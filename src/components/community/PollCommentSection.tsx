@@ -46,9 +46,10 @@ interface PollComment {
 interface PollCommentSectionProps {
   postId: string;
   optionCount: number;
+  postOwnerId?: string;
 }
 
-const PollCommentSection = ({ postId, optionCount }: PollCommentSectionProps) => {
+const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSectionProps) => {
   const [comments, setComments] = useState<PollComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [mentionMap, setMentionMap] = useState<MentionMap>({});
