@@ -210,8 +210,12 @@ const CommentSection = ({ postId, commentsCount, postOwnerId }: CommentSectionPr
         </div>
       ) : (
         <div className="space-y-3 max-h-60 overflow-y-auto">
-          {comments.map(comment => (
-            <div key={comment.id} className="flex items-start gap-2">
+          {comments.map(comment => {
+            const canDelete =
+              !!currentUserId &&
+              (currentUserId === comment.user_id || currentUserId === postOwnerId);
+            return (
+            <div key={comment.id} className="flex items-start gap-2 group">
               <Avatar className="h-7 w-7">
                 <AvatarImage src={comment.profile?.avatar_url || undefined} />
                 <AvatarFallback className="text-xs">
@@ -229,8 +233,33 @@ const CommentSection = ({ postId, commentsCount, postOwnerId }: CommentSectionPr
                   {new Date(comment.created_at).toLocaleDateString()}
                 </span>
               </div>
+              {canDelete && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      className="text-muted-foreground hover:text-destructive p-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      aria-label="Delete comment"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this comment?</AlertDialogTitle>
+                      <AlertDialogDescription>This can't be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDelete(comment.id)}>
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
-          ))}
+            );
+          })}
           {comments.length === 0 && !loading && (
             <p className="text-sm text-muted-foreground text-center py-2">No comments yet</p>
           )}
