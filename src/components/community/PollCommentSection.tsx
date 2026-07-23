@@ -57,6 +57,22 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showAll, setShowAll] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
+  }, []);
+
+  const handleDelete = async (commentId: string) => {
+    try {
+      const { error } = await supabase.from('outfit_comments').delete().eq('id', commentId);
+      if (error) throw error;
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    } catch (err: any) {
+      console.error('Poll comment delete failed:', err);
+      toast.error('Failed to delete comment');
+    }
+  };
 
   useEffect(() => {
     fetchComments();
