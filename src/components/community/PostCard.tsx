@@ -244,7 +244,7 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
         />
 
         {/* Comments */}
-        <CommentSection postId={post.id} commentsCount={post.comments_count} />
+        <CommentSection postId={post.id} commentsCount={post.comments_count} postOwnerId={post.user_id} />
 
         {/* Post Date */}
         <div className="mt-4 text-xs text-muted-foreground">
