@@ -49,7 +49,23 @@ const CommentSection = ({ postId, commentsCount, postOwnerId }: CommentSectionPr
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { requireAuth } = useGuestNudge();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
+  }, []);
+
+  const handleDelete = async (commentId: string) => {
+    try {
+      const { error } = await supabase.from('comments').delete().eq('id', commentId);
+      if (error) throw error;
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    } catch (err: any) {
+      console.error('Comment delete failed:', err);
+      toast.error('Failed to delete comment');
+    }
+  };
 
   const fetchComments = async () => {
     setLoading(true);
