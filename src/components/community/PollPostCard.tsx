@@ -269,7 +269,7 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
         )}
 
         {/* Comments */}
-        <PollCommentSection postId={post.id} optionCount={optionCount} />
+        <PollCommentSection postId={post.id} optionCount={optionCount} postOwnerId={post.user_id} />
 
         {/* Date */}
         <div className="mt-4 text-xs text-muted-foreground">

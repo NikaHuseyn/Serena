@@ -2,12 +2,23 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useGuestNudge } from '@/hooks/useGuestNudge';
 import RichCaptionInput from './RichCaptionInput';
 import { extractMentionedUserIds, type MentionMap } from '@/lib/captionParsing';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 
 const safeMentionMap = (value: unknown): MentionMap => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -28,16 +39,33 @@ interface Comment {
 interface CommentSectionProps {
   postId: string;
   commentsCount: number;
+  postOwnerId?: string;
 }
 
-const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
+const CommentSection = ({ postId, commentsCount, postOwnerId }: CommentSectionProps) => {
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [mentionMap, setMentionMap] = useState<MentionMap>({});
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const { requireAuth } = useGuestNudge();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? null));
+  }, []);
+
+  const handleDelete = async (commentId: string) => {
+    try {
+      const { error } = await supabase.from('comments').delete().eq('id', commentId);
+      if (error) throw error;
+      setComments(prev => prev.filter(c => c.id !== commentId));
+    } catch (err: any) {
+      console.error('Comment delete failed:', err);
+      toast.error('Failed to delete comment');
+    }
+  };
 
   const fetchComments = async () => {
     setLoading(true);
@@ -182,8 +210,12 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
         </div>
       ) : (
         <div className="space-y-3 max-h-60 overflow-y-auto">
-          {comments.map(comment => (
-            <div key={comment.id} className="flex items-start gap-2">
+          {comments.map(comment => {
+            const canDelete =
+              !!currentUserId &&
+              (currentUserId === comment.user_id || currentUserId === postOwnerId);
+            return (
+            <div key={comment.id} className="flex items-start gap-2 group">
               <Avatar className="h-7 w-7">
                 <AvatarImage src={comment.profile?.avatar_url || undefined} />
                 <AvatarFallback className="text-xs">
@@ -201,8 +233,33 @@ const CommentSection = ({ postId, commentsCount }: CommentSectionProps) => {
                   {new Date(comment.created_at).toLocaleDateString()}
                 </span>
               </div>
+              {canDelete && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <button
+                      className="text-muted-foreground hover:text-destructive p-1 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                      aria-label="Delete comment"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete this comment?</AlertDialogTitle>
+                      <AlertDialogDescription>This can't be undone.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={() => handleDelete(comment.id)}>
+                        Delete
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
             </div>
-          ))}
+            );
+          })}
           {comments.length === 0 && !loading && (
             <p className="text-sm text-muted-foreground text-center py-2">No comments yet</p>
           )}
