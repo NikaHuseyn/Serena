@@ -273,19 +273,15 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
 
         {/* Post Interactions */}
         <div className="flex items-center space-x-3 bg-primary/5 rounded-2xl px-4 py-2.5 mb-4">
-          <Button
-            variant="ghost"
+          <LikeButton
+            postId={post.id}
+            currentUserId={currentUserId}
+            count={post.likes_count}
+            liked={post.user_liked}
+            onToggle={onToggleLike}
+            variant="poll"
             size="sm"
-            onClick={() => onToggleLike(post.id)}
-            className={`rounded-full px-3 transition-colors ${
-              post.user_liked
-                ? 'text-primary bg-primary/10 hover:bg-primary/20'
-                : 'text-primary/70 hover:text-primary hover:bg-primary/5'
-            }`}
-          >
-            <Heart className={`h-4 w-4 mr-1.5 ${post.user_liked ? 'fill-current' : ''}`} />
-            <span className="text-sm">{post.likes_count}</span>
-          </Button>
+          />
 
           <Button
             variant="ghost"

@@ -239,6 +239,7 @@ const PostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete, onUpda
         {/* Post Interactions */}
         <PostInteractions
           post={post}
+          currentUserId={currentUserId}
           onToggleLike={onToggleLike}
           onShare={onShare}
         />
