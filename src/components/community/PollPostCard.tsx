@@ -154,6 +154,7 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
               {post.image_urls.map((url, index) => {
                 const count = voteCounts[index] || 0;
                 const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+                const isWinner = showResults && count > 0 && count === winningCount;
                 return (
                 <div key={index} className="w-full flex-shrink-0 relative">
                   <div className="relative aspect-[3/4]">
@@ -207,11 +208,11 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
                       <div>
                         <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                           <div
-                            className="h-full bg-primary transition-all"
+                            className={`h-full transition-all ${isWinner ? 'bg-gradient-primary' : 'bg-primary'}`}
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className={`mt-1 text-xs ${isWinner ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
                           {pct}% · {count} vote{count !== 1 ? 's' : ''}
                         </p>
                       </div>
