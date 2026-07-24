@@ -47,7 +47,7 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
   const { voteCounts, userVote, totalVotes, castVote, getWinnerText } = useOutfitVotes(post.id, optionCount);
   const hasVoted = userVote !== null;
   const showResults = isOwnPost || hasVoted;
-  const winningCount = useMemo(() => Math.max(...voteCounts), [voteCounts]);
+  const winningCount = useMemo(() => Math.max(0, ...Object.values(voteCounts)), [voteCounts]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
