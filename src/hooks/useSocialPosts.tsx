@@ -62,6 +62,7 @@ export const useSocialPosts = (filter?: PostFilter) => {
   // the same profiles/likes for posts from earlier pages.
   const knownUserIdsRef = useRef<Set<string>>(new Set());
   const knownLikeStatusRef = useRef<Map<string, boolean>>(new Map());
+  const likeInFlightRef = useRef<Set<string>>(new Set());
 
   const fetchPage = useCallback(async (pageNum: number, append: boolean) => {
     const isReset = !append && pageNum === 0;
@@ -237,10 +238,22 @@ export const useSocialPosts = (filter?: PostFilter) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const post = posts.find(p => p.id === postId);
-      if (!post) return;
+      // Prevent double-fires from rapid taps.
+      if (likeInFlightRef.current.has(postId)) return;
+      likeInFlightRef.current.add(postId);
 
-      if (post.user_liked) {
+      // Determine the actual current state from the database, not from cached UI state,
+      // so a stale "liked" flag can never cause an unlike with no matching row.
+      const { data: existingLike, error: checkError } = await supabase
+        .from('likes')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (checkError) throw checkError;
+
+      if (existingLike) {
         const { error } = await supabase
           .from('likes')
           .delete()
@@ -257,11 +270,11 @@ export const useSocialPosts = (filter?: PostFilter) => {
         event_type: 'community_post_like',
         event_data: {
           post_id: postId,
-          action: post.user_liked ? 'unlike' : 'like'
+          action: existingLike ? 'unlike' : 'like'
         }
       });
 
-      const newLiked = !post.user_liked;
+      const newLiked = !existingLike;
       knownLikeStatusRef.current.set(postId, newLiked);
 
       setPosts(prev => prev.map(p =>
@@ -269,12 +282,14 @@ export const useSocialPosts = (filter?: PostFilter) => {
           ? {
               ...p,
               user_liked: newLiked,
-              likes_count: p.user_liked ? p.likes_count - 1 : p.likes_count + 1
+              likes_count: newLiked ? p.likes_count + 1 : Math.max(0, p.likes_count - 1)
             }
           : p
       ));
     } catch (err) {
       console.error('Error toggling like:', err);
+    } finally {
+      likeInFlightRef.current.delete(postId);
     }
   };
 
