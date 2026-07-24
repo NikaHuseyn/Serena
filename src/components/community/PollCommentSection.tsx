@@ -267,26 +267,30 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
         </>
       )}
 
-      <div className="flex items-end gap-2">
-        <div className="flex-1">
-          <RichCaptionInput
-            value={newComment}
-            onChange={(v, m) => {
-              setNewComment(v);
-              setMentionMap(safeMentionMap(m));
-            }}
-            mentionMap={safeMentionMap(mentionMap)}
-            placeholder="Write a comment… try @username"
-            rows={2}
-          />
+      <div className="bg-primary/5 rounded-2xl p-3">
+        <div className="flex items-end gap-3">
+          <div className="flex-1">
+            <RichCaptionInput
+              value={newComment}
+              onChange={(v, m) => {
+                setNewComment(v);
+                setMentionMap(safeMentionMap(m));
+              }}
+              mentionMap={safeMentionMap(mentionMap)}
+              placeholder="Write a comment… try @username"
+              rows={2}
+              className="bg-background/80 border-primary/10 rounded-xl focus-visible:ring-primary/20"
+            />
+          </div>
+          <Button
+            size="sm"
+            onClick={handleSubmit}
+            disabled={submitting || !newComment.trim()}
+            className="rounded-full"
+          >
+            {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
         </div>
-        <Button
-          size="sm"
-          onClick={handleSubmit}
-          disabled={submitting || !newComment.trim()}
-        >
-          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-        </Button>
       </div>
     </div>
   );
