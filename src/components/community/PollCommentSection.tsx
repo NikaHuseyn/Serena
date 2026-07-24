@@ -123,7 +123,7 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
       setSubmitting(true);
 
       let userId: string | undefined;
-      let optionIdx: number | null = null;
+      const optionIdx: number | null = null;
       let mentionedIds: string[] = [];
 
       try {
