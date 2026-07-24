@@ -224,6 +224,7 @@ const RichCaptionInput = ({
               placeholder={placeholder}
               rows={rows}
               maxLength={2000}
+              className={className}
             />
           </div>
         </PopoverTrigger>
