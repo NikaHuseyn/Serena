@@ -264,7 +264,7 @@ const CommentSection = ({ postId, commentsCount, postOwnerId }: CommentSectionPr
         </div>
       )}
 
-      <div className="flex items-end gap-2">
+      <div className="flex items-end gap-2 bg-primary/5 rounded-2xl p-2 mt-3">
         <div className="flex-1">
           <RichCaptionInput
             value={newComment}
@@ -275,12 +275,14 @@ const CommentSection = ({ postId, commentsCount, postOwnerId }: CommentSectionPr
             mentionMap={safeMentionMap(mentionMap)}
             placeholder="Write a comment… try @username"
             rows={2}
+            className="bg-background/60 border-transparent focus-visible:border-primary/30"
           />
         </div>
         <Button
           size="sm"
           onClick={handleSubmit}
           disabled={submitting || !newComment.trim()}
+          className="rounded-full"
         >
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
         </Button>
