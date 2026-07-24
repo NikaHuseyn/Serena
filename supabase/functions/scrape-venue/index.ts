@@ -10,6 +10,14 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
 
+  const adminSecret = Deno.env.get('ADMIN_INGEST_SECRET');
+  if (!adminSecret || req.headers.get('x-admin-secret') !== adminSecret) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    });
+  }
+
   try {
     const { venueName, venueQuery } = await req.json();
 

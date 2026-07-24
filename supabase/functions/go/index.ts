@@ -23,15 +23,6 @@ function isValidUuid(v: string | null): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v);
 }
 
-function isSafeHttpUrl(v: string): boolean {
-  try {
-    const u = new URL(v);
-    return u.protocol === "https:" || u.protocol === "http:";
-  } catch {
-    return false;
-  }
-}
-
 Deno.serve(async (req) => {
   const url = new URL(req.url);
   const productRef = url.searchParams.get("pid");
@@ -46,9 +37,9 @@ Deno.serve(async (req) => {
   let destination = FALLBACK_URL;
   let partnerProductId: string | null = null;
 
-  // Resolve destination:
-  // 1) If productRef is a UUID, look it up in partner_products (Selectika feed)
-  // 2) If productRef is itself a URL (scraped items in the pre-feed era), redirect to it
+  // Only resolve destinations via the trusted partner_products table.
+  // Raw / attacker-supplied URLs are NEVER followed — this prevents the
+  // /go endpoint being abused as an open redirector for phishing.
   if (isValidUuid(productRef)) {
     const { data } = await supabase
       .from("partner_products")
@@ -59,8 +50,6 @@ Deno.serve(async (req) => {
       destination = data.retailer_url;
       partnerProductId = data.id;
     }
-  } else if (isSafeHttpUrl(productRef)) {
-    destination = productRef;
   }
 
   // Log the click. Never block the redirect on logging failure.

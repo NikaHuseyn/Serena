@@ -31,6 +31,26 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
+    // Require an authenticated caller — payment session details are
+    // sensitive (email, amount, payment method) and must not be returned
+    // to anyone who happens to know a Stripe session id.
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const token = authHeader.replace("Bearer ", "");
+    const { data: userData, error: userErr } = await supabase.auth.getUser(token);
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const callerUserId = userData.user.id;
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
 
     // Retrieve the checkout session
@@ -38,6 +58,14 @@ serve(async (req) => {
     
     if (!session) {
       throw new Error("Session not found");
+    }
+
+    // The caller may only inspect / trigger their OWN session.
+    if (session.metadata?.user_id && session.metadata.user_id !== callerUserId) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     console.log('Session status:', session.payment_status);

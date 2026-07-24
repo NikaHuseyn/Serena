@@ -14,7 +14,7 @@ serve(async (req) => {
   }
 
   try {
-    const { paymentType = 'one_time', productType = 'ai_credits', priceAmount = 999 } = await req.json();
+    const { productType = 'ai_credits_pack' } = await req.json();
     
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) {
@@ -73,8 +73,13 @@ serve(async (req) => {
       }
     };
 
-    const product = products[productType] || products.ai_credits_pack;
-    
+    // Price and product configuration is ALWAYS looked up server-side.
+    // The client cannot influence the charged amount — only which product to buy.
+    const product = products[productType];
+    if (!product) {
+      throw new Error("Invalid productType");
+    }
+
     // Create checkout session
     const sessionConfig = {
       customer: customerId,
@@ -89,7 +94,7 @@ serve(async (req) => {
                 ? "Get 50 AI-powered outfit recommendations that work with your personal style"
                 : `${product.tier_upgrade} tier access with increased AI recommendation limits`
             },
-            unit_amount: priceAmount || product.amount,
+            unit_amount: product.amount,
             ...(product.mode === "subscription" && {
               recurring: { interval: "month" }
             })
@@ -115,7 +120,7 @@ serve(async (req) => {
       email: user.email,
       stripe_customer_id: customerId,
       stripe_session_id: session.id,
-      amount: priceAmount || product.amount,
+      amount: product.amount,
       currency: "usd",
       status: "pending",
       payment_type: product.mode,

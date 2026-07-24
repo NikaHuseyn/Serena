@@ -230,9 +230,30 @@ function dedupeAndRank(q: string, suggestions: Suggestion[]): Suggestion[] {
     .map(({ score: _score, ...suggestion }) => suggestion);
 }
 
+async function checkIpRateLimit(req: Request, dailyLimit = 120): Promise<boolean> {
+  try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || 'unknown';
+    const url = Deno.env.get('SUPABASE_URL');
+    const key = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    if (!url || !key) return true;
+    const res = await fetch(`${url}/rest/v1/rpc/check_guest_rate_limit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: key, Authorization: `Bearer ${key}` },
+      body: JSON.stringify({ ip_param: ip, daily_limit: dailyLimit }),
+    });
+    const data = await res.json().catch(() => ({}));
+    return data?.allowed !== false;
+  } catch { return true; }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+  if (!(await checkIpRateLimit(req, 120))) {
+    return new Response(JSON.stringify({ suggestions: [], error: 'Rate limit exceeded' }), {
+      status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
   try {
     let q = "";
