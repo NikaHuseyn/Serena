@@ -134,7 +134,6 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
         }
         userId = user.id;
 
-        optionIdx = selectedOption === 'none' ? null : parseInt(selectedOption);
         try {
           mentionedIds = extractMentionedUserIds(newComment, safeMentionMap(mentionMap)).slice(0, 10);
         } catch (mentionError) {
