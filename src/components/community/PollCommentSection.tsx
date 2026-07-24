@@ -276,17 +276,6 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
       )}
 
       <div className="flex items-end gap-2">
-        <Select value={selectedOption} onValueChange={setSelectedOption}>
-          <SelectTrigger className="w-32 text-xs h-9">
-            <SelectValue placeholder="Option" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">General</SelectItem>
-            {Array.from({ length: optionCount }, (_, i) => (
-              <SelectItem key={i} value={String(i)}>Option {i + 1}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <div className="flex-1">
           <RichCaptionInput
             value={newComment}
