@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Trash2, ChevronLeft, ChevronRight, Check, Heart, MessageCircle } from 'lucide-react';
+import { MoreHorizontal, Trash2, ChevronLeft, ChevronRight, Check, MessageCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +28,7 @@ import ReportPostDialog from './ReportPostDialog';
 import PollCommentSection from './PollCommentSection';
 import ImageLightbox from './ImageLightbox';
 import CampaignBadge from './CampaignBadge';
+import LikeButton from './LikeButton';
 import { useBadges } from '@/hooks/useBadges';
 import { useOutfitVotes } from '@/hooks/useOutfitVotes';
 import type { SocialPost } from '@/hooks/useSocialPosts';
@@ -280,7 +281,7 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
             liked={post.user_liked}
             onToggle={onToggleLike}
             variant="poll"
-            size="sm"
+            compact
           />
 
           <Button
