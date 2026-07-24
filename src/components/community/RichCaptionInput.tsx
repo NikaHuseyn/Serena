@@ -21,6 +21,7 @@ interface RichCaptionInputProps {
   mentionMap: MentionMap;
   placeholder?: string;
   rows?: number;
+  className?: string;
 }
 
 const RichCaptionInput = ({
@@ -29,6 +30,7 @@ const RichCaptionInput = ({
   mentionMap,
   placeholder,
   rows = 3,
+  className,
 }: RichCaptionInputProps) => {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [trigger, setTrigger] = useState<{ kind: '@' | '#'; query: string; start: number } | null>(null);
