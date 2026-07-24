@@ -203,7 +203,7 @@ const CommentSection = ({ postId, commentsCount, postOwnerId }: CommentSectionPr
   }
 
   return (
-    <div className="space-y-3 pt-3 border-t border-border">
+    <div className="space-y-3 pt-3 mt-3">
       {loading ? (
         <div className="flex justify-center py-2">
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
