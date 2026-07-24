@@ -183,7 +183,6 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
       console.error('[PollCommentSection] handleSubmit outer exception:', err, {
         newComment,
         mentionMap,
-        selectedOption,
       });
       setSubmitting(false);
       toast.error('Failed to post comment');
