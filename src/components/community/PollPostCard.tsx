@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Trash2, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { MoreHorizontal, Trash2, ChevronLeft, ChevronRight, Check, Heart, MessageCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,11 +35,12 @@ import type { SocialPost } from '@/hooks/useSocialPosts';
 interface PollPostCardProps {
   post: SocialPost;
   currentUserId?: string;
+  onToggleLike: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
 }
 
-const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardProps) => {
+const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: PollPostCardProps) => {
   const { badges } = useBadges(post.user_id);
   const isOwnPost = currentUserId === post.user_id;
   const optionCount = post.image_urls.length;
