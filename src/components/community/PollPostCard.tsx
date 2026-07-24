@@ -47,6 +47,7 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
   const { voteCounts, userVote, totalVotes, castVote, getWinnerText } = useOutfitVotes(post.id, optionCount);
   const hasVoted = userVote !== null;
   const showResults = isOwnPost || hasVoted;
+  const winningCount = useMemo(() => Math.max(0, ...Object.values(voteCounts)), [voteCounts]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
@@ -153,6 +154,7 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
               {post.image_urls.map((url, index) => {
                 const count = voteCounts[index] || 0;
                 const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
+                const isWinner = showResults && count > 0 && count === winningCount;
                 return (
                 <div key={index} className="w-full flex-shrink-0 relative">
                   <div className="relative aspect-[3/4]">
@@ -206,11 +208,11 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
                       <div>
                         <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
                           <div
-                            className="h-full bg-primary transition-all"
+                            className={`h-full transition-all ${isWinner ? 'bg-gradient-primary' : 'bg-primary'}`}
                             style={{ width: `${pct}%` }}
                           />
                         </div>
-                        <p className="mt-1 text-xs text-muted-foreground">
+                        <p className={`mt-1 text-xs ${isWinner ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
                           {pct}% · {count} vote{count !== 1 ? 's' : ''}
                         </p>
                       </div>
@@ -270,25 +272,27 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
         )}
 
         {/* Post Interactions */}
-        <div className="flex items-center space-x-4 pt-2 pb-3 border-t border-border">
+        <div className="flex items-center space-x-3 bg-primary/5 rounded-2xl px-4 py-2.5 mb-4">
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => onToggleLike(post.id)}
-            className={`${
+            className={`rounded-full px-3 transition-colors ${
               post.user_liked
-                ? 'text-destructive hover:text-destructive/80'
-                : 'text-muted-foreground hover:text-destructive'
-            } transition-colors`}
+                ? 'text-primary bg-primary/10 hover:bg-primary/20'
+                : 'text-primary/70 hover:text-primary hover:bg-primary/5'
+            }`}
           >
-            <Heart className={`h-4 w-4 mr-1 ${post.user_liked ? 'fill-current' : ''}`} />
+            <Heart className={`h-4 w-4 mr-1.5 ${post.user_liked ? 'fill-current' : ''}`} />
             <span className="text-sm">{post.likes_count}</span>
           </Button>
 
           <Button
             variant="ghost"
-            className="text-muted-foreground hover:text-primary transition-colors"
+            size="sm"
+            className="rounded-full px-3 text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors"
           >
-            <MessageCircle className="h-4 w-4 mr-1" />
+            <MessageCircle className="h-4 w-4 mr-1.5" />
             <span className="text-sm">{post.comments_count}</span>
           </Button>
         </div>

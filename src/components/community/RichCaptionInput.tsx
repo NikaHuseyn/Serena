@@ -21,6 +21,7 @@ interface RichCaptionInputProps {
   mentionMap: MentionMap;
   placeholder?: string;
   rows?: number;
+  className?: string;
 }
 
 const RichCaptionInput = ({
@@ -29,6 +30,7 @@ const RichCaptionInput = ({
   mentionMap,
   placeholder,
   rows = 3,
+  className,
 }: RichCaptionInputProps) => {
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [trigger, setTrigger] = useState<{ kind: '@' | '#'; query: string; start: number } | null>(null);
@@ -222,6 +224,7 @@ const RichCaptionInput = ({
               placeholder={placeholder}
               rows={rows}
               maxLength={2000}
+              className={className}
             />
           </div>
         </PopoverTrigger>
@@ -262,11 +265,11 @@ const RichCaptionInput = ({
         </PopoverContent>
       </Popover>
 
-      <div className="mt-1.5 flex justify-end">
+      <div className="mt-3 flex justify-end px-1">
         <Popover>
           <PopoverTrigger asChild>
-            <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-muted-foreground hover:text-foreground" aria-label="Add emoji">
-              <Smile className="h-4 w-4 mr-1" />
+            <Button type="button" size="sm" variant="ghost" className="h-8 px-2.5 text-muted-foreground hover:text-foreground hover:bg-primary/5 rounded-full" aria-label="Add emoji">
+              <Smile className="h-4 w-4 mr-1.5" />
               <span className="text-xs">Emoji</span>
             </Button>
           </PopoverTrigger>
