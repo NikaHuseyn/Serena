@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Trash2, ChevronLeft, ChevronRight, Check, Heart, MessageCircle } from 'lucide-react';
+import { MoreHorizontal, Trash2, ChevronLeft, ChevronRight, Check, MessageCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +28,7 @@ import ReportPostDialog from './ReportPostDialog';
 import PollCommentSection from './PollCommentSection';
 import ImageLightbox from './ImageLightbox';
 import CampaignBadge from './CampaignBadge';
+import LikeButton from './LikeButton';
 import { useBadges } from '@/hooks/useBadges';
 import { useOutfitVotes } from '@/hooks/useOutfitVotes';
 import type { SocialPost } from '@/hooks/useSocialPosts';
@@ -273,19 +274,15 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
 
         {/* Post Interactions */}
         <div className="flex items-center space-x-3 bg-primary/5 rounded-2xl px-4 py-2.5 mb-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onToggleLike(post.id)}
-            className={`rounded-full px-3 transition-colors ${
-              post.user_liked
-                ? 'text-primary bg-primary/10 hover:bg-primary/20'
-                : 'text-primary/70 hover:text-primary hover:bg-primary/5'
-            }`}
-          >
-            <Heart className={`h-4 w-4 mr-1.5 ${post.user_liked ? 'fill-current' : ''}`} />
-            <span className="text-sm">{post.likes_count}</span>
-          </Button>
+          <LikeButton
+            postId={post.id}
+            currentUserId={currentUserId}
+            count={post.likes_count}
+            liked={post.user_liked}
+            onToggle={onToggleLike}
+            variant="poll"
+            compact
+          />
 
           <Button
             variant="ghost"
