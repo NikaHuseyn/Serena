@@ -219,11 +219,6 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
                       <span className="text-xs font-semibold text-foreground">
                         {comment.profile?.display_name || 'Anonymous'}
                       </span>
-                      {comment.option_index !== null && (
-                        <span className="text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                          Option {comment.option_index + 1}
-                        </span>
-                      )}
                     </div>
                     <p className="text-sm text-foreground">{comment.content}</p>
                   </div>
