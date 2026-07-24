@@ -272,25 +272,27 @@ const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: 
         )}
 
         {/* Post Interactions */}
-        <div className="flex items-center space-x-4 pt-2 pb-3 border-t border-border">
+        <div className="flex items-center space-x-3 bg-primary/5 rounded-2xl px-4 py-2.5 mb-4">
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => onToggleLike(post.id)}
-            className={`${
+            className={`rounded-full px-3 transition-colors ${
               post.user_liked
-                ? 'text-destructive hover:text-destructive/80'
-                : 'text-muted-foreground hover:text-destructive'
-            } transition-colors`}
+                ? 'text-primary bg-primary/10 hover:bg-primary/20'
+                : 'text-primary/70 hover:text-primary hover:bg-primary/5'
+            }`}
           >
-            <Heart className={`h-4 w-4 mr-1 ${post.user_liked ? 'fill-current' : ''}`} />
+            <Heart className={`h-4 w-4 mr-1.5 ${post.user_liked ? 'fill-current' : ''}`} />
             <span className="text-sm">{post.likes_count}</span>
           </Button>
 
           <Button
             variant="ghost"
-            className="text-muted-foreground hover:text-primary transition-colors"
+            size="sm"
+            className="rounded-full px-3 text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors"
           >
-            <MessageCircle className="h-4 w-4 mr-1" />
+            <MessageCircle className="h-4 w-4 mr-1.5" />
             <span className="text-sm">{post.comments_count}</span>
           </Button>
         </div>
