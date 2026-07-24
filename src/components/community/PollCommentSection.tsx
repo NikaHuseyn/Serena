@@ -46,7 +46,6 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
   const [comments, setComments] = useState<PollComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [mentionMap, setMentionMap] = useState<MentionMap>({});
-  const [selectedOption, setSelectedOption] = useState<string>('none');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showAll, setShowAll] = useState(false);
