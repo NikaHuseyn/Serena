@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Heart } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
+import LikesListDialog from './LikesListDialog';
 
 interface LikeButtonProps {
   postId: string;
@@ -22,10 +23,11 @@ const LikeButton: React.FC<LikeButtonProps> = ({
   variant = 'default',
   compact = false,
   onToggle,
-  className
+  className,
 }) => {
   const [isLiked, setIsLiked] = useState(liked ?? false);
   const [loading, setLoading] = useState(false);
+  const [listOpen, setListOpen] = useState(false);
 
   // On mount, determine initial state strictly from whether a likes row exists.
   useEffect(() => {
@@ -46,7 +48,9 @@ const LikeButton: React.FC<LikeButtonProps> = ({
       }
     };
     checkLike();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [postId, currentUserId]);
 
   // Sync with parent prop when not in the middle of a request.
@@ -59,7 +63,6 @@ const LikeButton: React.FC<LikeButtonProps> = ({
   const handleClick = async () => {
     if (loading) return;
     if (!currentUserId) {
-      // Let the parent handle the auth nudge.
       onToggle(postId);
       return;
     }
@@ -71,40 +74,46 @@ const LikeButton: React.FC<LikeButtonProps> = ({
     }
   };
 
-  if (variant === 'poll') {
-    return (
-      <Button
-        variant="ghost"
-        size={compact ? 'sm' : 'default'}
-        onClick={handleClick}
-        disabled={loading}
-        className={`rounded-full px-3 transition-colors ${
-          isLiked
-            ? 'text-primary bg-primary/10 hover:bg-primary/20'
-            : 'text-primary/70 hover:text-primary hover:bg-primary/5'
-        } ${className || ''}`}
-      >
-        <Heart className={`h-4 w-4 mr-1.5 ${isLiked ? 'fill-current' : ''}`} />
-        <span className="text-sm">{count}</span>
-      </Button>
-    );
-  }
+  const handleCountClick = () => {
+    if (!currentUserId) {
+      // Guests get the auth nudge, same as tapping the heart.
+      onToggle(postId);
+      return;
+    }
+    setListOpen(true);
+  };
+
+  const heartClasses =
+    isLiked
+      ? 'text-primary bg-primary/10 hover:bg-primary/20'
+      : 'text-primary/70 hover:text-primary hover:bg-primary/5';
+  const size = compact ? 'sm' : 'default';
+  const countTextClass = compact || variant === 'poll' ? 'text-xs' : 'text-sm';
 
   return (
-    <Button
-      variant="ghost"
-      size={compact ? 'sm' : 'default'}
-      onClick={handleClick}
-      disabled={loading}
-      className={`rounded-full px-3 transition-colors ${
-        isLiked
-          ? 'text-primary bg-primary/10 hover:bg-primary/20'
-          : 'text-primary/70 hover:text-primary hover:bg-primary/5'
-      } ${className || ''}`}
-    >
-      <Heart className={`h-4 w-4 mr-1.5 ${isLiked ? 'fill-current' : ''}`} />
-      <span className={compact ? 'text-xs' : 'text-sm'}>{count}</span>
-    </Button>
+    <>
+      <Button
+        variant="ghost"
+        size={size}
+        onClick={handleClick}
+        disabled={loading}
+        aria-label={isLiked ? 'Unlike post' : 'Like post'}
+        className={`rounded-full px-2.5 transition-colors ${heartClasses} ${className || ''}`}
+      >
+        <Heart className={`h-4 w-4 ${isLiked ? 'fill-current' : ''}`} />
+      </Button>
+      <button
+        type="button"
+        onClick={handleCountClick}
+        aria-label={`View ${count} like${count === 1 ? '' : 's'}`}
+        className={`rounded-full px-1.5 py-0.5 -ml-1 transition-colors hover:bg-primary/10 ${
+          isLiked ? 'text-primary' : 'text-primary/80'
+        } ${countTextClass}`}
+      >
+        {count}
+      </button>
+      <LikesListDialog postId={postId} open={listOpen} onOpenChange={setListOpen} />
+    </>
   );
 };
 
