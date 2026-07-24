@@ -96,13 +96,13 @@ const LikeButton: React.FC<LikeButtonProps> = ({
       size={compact ? 'sm' : 'default'}
       onClick={handleClick}
       disabled={loading}
-      className={`${
+      className={`rounded-full px-3 transition-colors ${
         isLiked
-          ? 'text-destructive hover:text-destructive/80'
-          : 'text-muted-foreground hover:text-destructive'
-      } transition-colors ${className || ''}`}
+          ? 'text-primary bg-primary/10 hover:bg-primary/20'
+          : 'text-primary/70 hover:text-primary hover:bg-primary/5'
+      } ${className || ''}`}
     >
-      <Heart className={`h-4 w-4 mr-1 ${isLiked ? 'fill-current' : ''}`} />
+      <Heart className={`h-4 w-4 mr-1.5 ${isLiked ? 'fill-current' : ''}`} />
       <span className={compact ? 'text-xs' : 'text-sm'}>{count}</span>
     </Button>
   );
