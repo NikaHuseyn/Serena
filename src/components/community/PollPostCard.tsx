@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, Trash2, ChevronLeft, ChevronRight, Check } from 'lucide-react';
+import { MoreHorizontal, Trash2, ChevronLeft, ChevronRight, Check, Heart, MessageCircle } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -35,11 +35,12 @@ import type { SocialPost } from '@/hooks/useSocialPosts';
 interface PollPostCardProps {
   post: SocialPost;
   currentUserId?: string;
+  onToggleLike: (postId: string) => void;
   onShare: (postId: string) => void;
   onDelete?: (postId: string) => void;
 }
 
-const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardProps) => {
+const PollPostCard = ({ post, currentUserId, onToggleLike, onShare, onDelete }: PollPostCardProps) => {
   const { badges } = useBadges(post.user_id);
   const isOwnPost = currentUserId === post.user_id;
   const optionCount = post.image_urls.length;
@@ -267,6 +268,30 @@ const PollPostCard = ({ post, currentUserId, onShare, onDelete }: PollPostCardPr
         {post.caption && (
           <p className="text-foreground text-sm mb-4 whitespace-pre-wrap">{post.caption}</p>
         )}
+
+        {/* Post Interactions */}
+        <div className="flex items-center space-x-4 pt-2 pb-3 border-t border-border">
+          <Button
+            variant="ghost"
+            onClick={() => onToggleLike(post.id)}
+            className={`${
+              post.user_liked
+                ? 'text-destructive hover:text-destructive/80'
+                : 'text-muted-foreground hover:text-destructive'
+            } transition-colors`}
+          >
+            <Heart className={`h-4 w-4 mr-1 ${post.user_liked ? 'fill-current' : ''}`} />
+            <span className="text-sm">{post.likes_count}</span>
+          </Button>
+
+          <Button
+            variant="ghost"
+            className="text-muted-foreground hover:text-primary transition-colors"
+          >
+            <MessageCircle className="h-4 w-4 mr-1" />
+            <span className="text-sm">{post.comments_count}</span>
+          </Button>
+        </div>
 
         {/* Comments */}
         <PollCommentSection postId={post.id} optionCount={optionCount} postOwnerId={post.user_id} />

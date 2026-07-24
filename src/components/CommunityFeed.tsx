@@ -166,20 +166,21 @@ const CommunityFeed = () => {
             posts.map((post) => {
               if (post.post_type === 'poll') {
                 return (
-                  <PollPostCard
-                    key={post.id}
-                    post={post}
-                    currentUserId={currentUserId}
-                    onShare={handleShare}
-                    onDelete={async (postId) => {
-                      try {
-                        await deletePost(postId);
-                        toast({ title: "Post deleted", description: "Your post has been removed." });
-                      } catch {
-                        toast({ title: "Error", description: "Failed to delete post.", variant: "destructive" });
-                      }
-                    }}
-                  />
+                <PollPostCard
+                  key={post.id}
+                  post={post}
+                  currentUserId={currentUserId}
+                  onToggleLike={toggleLike}
+                  onShare={handleShare}
+                  onDelete={async (postId) => {
+                    try {
+                      await deletePost(postId);
+                      toast({ title: "Post deleted", description: "Your post has been removed." });
+                    } catch {
+                      toast({ title: "Error", description: "Failed to delete post.", variant: "destructive" });
+                    }
+                  }}
+                />
                 );
               }
 
