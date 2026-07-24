@@ -164,7 +164,7 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
         setComments(prev => [...prev, { ...data, profile: profile || undefined }]);
         setNewComment('');
         setMentionMap({});
-        setSelectedOption('none');
+        
       } catch (error: any) {
         const payload = { post_id: postId, user_id: userId, content: newComment.trim(), option_index: optionIdx, mentioned_user_ids: mentionedIds };
         console.error('Poll comment insert failed:', {
