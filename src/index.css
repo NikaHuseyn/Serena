@@ -220,4 +220,9 @@
   .btn-fashion > * {
     @apply relative z-10;
   }
+
+  /* Warm gradient utility for poll vote bars */
+  .bg-gradient-primary {
+    background: var(--gradient-primary);
+  }
 }
