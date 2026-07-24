@@ -192,7 +192,7 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
   const visibleComments = showAll ? comments : comments.slice(0, 3);
 
   return (
-    <div className="space-y-3 pt-3 border-t border-border">
+    <div className="space-y-4 pt-4">
       {loading ? (
         <div className="flex justify-center py-2">
           <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
