@@ -211,7 +211,7 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1 min-w-0">
-                  <div className="bg-muted rounded-lg px-3 py-2">
+                  <div className="bg-primary/5 rounded-2xl px-3 py-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-semibold text-foreground">
                         {comment.profile?.display_name || 'Anonymous'}
