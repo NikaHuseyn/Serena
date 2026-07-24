@@ -5,13 +5,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Send, Loader2, ChevronDown, Trash2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import RichCaptionInput from './RichCaptionInput';
 import { extractMentionedUserIds, type MentionMap } from '@/lib/captionParsing';
 import {
@@ -53,7 +46,6 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
   const [comments, setComments] = useState<PollComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [mentionMap, setMentionMap] = useState<MentionMap>({});
-  const [selectedOption, setSelectedOption] = useState<string>('none');
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showAll, setShowAll] = useState(false);
@@ -131,7 +123,7 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
       setSubmitting(true);
 
       let userId: string | undefined;
-      let optionIdx: number | null = null;
+      const optionIdx: number | null = null;
       let mentionedIds: string[] = [];
 
       try {
@@ -142,7 +134,6 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
         }
         userId = user.id;
 
-        optionIdx = selectedOption === 'none' ? null : parseInt(selectedOption);
         try {
           mentionedIds = extractMentionedUserIds(newComment, safeMentionMap(mentionMap)).slice(0, 10);
         } catch (mentionError) {
@@ -173,7 +164,7 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
         setComments(prev => [...prev, { ...data, profile: profile || undefined }]);
         setNewComment('');
         setMentionMap({});
-        setSelectedOption('none');
+        
       } catch (error: any) {
         const payload = { post_id: postId, user_id: userId, content: newComment.trim(), option_index: optionIdx, mentioned_user_ids: mentionedIds };
         console.error('Poll comment insert failed:', {
@@ -192,7 +183,6 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
       console.error('[PollCommentSection] handleSubmit outer exception:', err, {
         newComment,
         mentionMap,
-        selectedOption,
       });
       setSubmitting(false);
       toast.error('Failed to post comment');
@@ -226,11 +216,6 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
                       <span className="text-xs font-semibold text-foreground">
                         {comment.profile?.display_name || 'Anonymous'}
                       </span>
-                      {comment.option_index !== null && (
-                        <span className="text-[10px] font-medium bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                          Option {comment.option_index + 1}
-                        </span>
-                      )}
                     </div>
                     <p className="text-sm text-foreground">{comment.content}</p>
                   </div>
@@ -283,17 +268,6 @@ const PollCommentSection = ({ postId, optionCount, postOwnerId }: PollCommentSec
       )}
 
       <div className="flex items-end gap-2">
-        <Select value={selectedOption} onValueChange={setSelectedOption}>
-          <SelectTrigger className="w-32 text-xs h-9">
-            <SelectValue placeholder="Option" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">General</SelectItem>
-            {Array.from({ length: optionCount }, (_, i) => (
-              <SelectItem key={i} value={String(i)}>Option {i + 1}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
         <div className="flex-1">
           <RichCaptionInput
             value={newComment}
