@@ -2,7 +2,6 @@
 import React, { useEffect, useState } from 'react';
 
 import { useForm } from 'react-hook-form';
-import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -23,9 +22,6 @@ const PrivacySettingsForm = ({ profile, onUpdate }: PrivacySettingsFormProps) =>
   const { toast } = useToast();
   const { exportUserData, deleteAllUserData, loading: gdprLoading } = useGDPRCompliance();
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [showFullDeleteConfirm, setShowFullDeleteConfirm] = useState(false);
-  const [deletingAccount, setDeletingAccount] = useState(false);
-  const navigate = useNavigate();
 
   const [consentDataSharing, setConsentDataSharing] = useState<boolean>(!!profile?.consent_data_sharing);
   const [consentBrandContent, setConsentBrandContent] = useState<boolean>(!!profile?.consent_brand_content);
