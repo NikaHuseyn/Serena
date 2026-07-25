@@ -70,24 +70,6 @@ const PrivacySettingsForm = ({ profile, onUpdate }: PrivacySettingsFormProps) =>
     }
   };
 
-  const handleFullAccountDeletion = async () => {
-    try {
-      setDeletingAccount(true);
-      const { data, error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
-      if (error || (data && (data as any).error)) {
-        throw new Error(error?.message || (data as any).error || 'Failed to delete account');
-      }
-      await supabase.auth.signOut();
-      toast({ title: 'Account deleted', description: 'Your account and all data have been removed.' });
-      navigate('/');
-    } catch (e: any) {
-      console.error('delete-account error:', e);
-      toast({ title: 'Deletion failed', description: e.message || 'Please try again.', variant: 'destructive' });
-    } finally {
-      setDeletingAccount(false);
-      setShowFullDeleteConfirm(false);
-    }
-  };
   
   
   const { register, handleSubmit, formState: { isSubmitting }, watch, setValue } = useForm({
@@ -429,42 +411,6 @@ const PrivacySettingsForm = ({ profile, onUpdate }: PrivacySettingsFormProps) =>
           <Button type="submit" disabled={isSubmitting} className="w-full">
             {isSubmitting ? 'Updating...' : 'Update Privacy Settings'}
           </Button>
-
-          <Separator />
-
-          <div className="pt-2">
-            <AlertDialog open={showFullDeleteConfirm} onOpenChange={setShowFullDeleteConfirm}>
-              <AlertDialogTrigger asChild>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  className="w-full"
-                  disabled={deletingAccount}
-                >
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete my account
-                </Button>
-              </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
-                  <AlertDialogTitle>Delete your account?</AlertDialogTitle>
-                  <AlertDialogDescription>
-                    This permanently deletes your profile, posts, wardrobe, photos, conversations and analyses. This cannot be undone.
-                  </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel disabled={deletingAccount}>Cancel</AlertDialogCancel>
-                  <AlertDialogAction
-                    onClick={(e) => { e.preventDefault(); handleFullAccountDeletion(); }}
-                    disabled={deletingAccount}
-                    className="bg-red-600 hover:bg-red-700"
-                  >
-                    {deletingAccount ? 'Deleting...' : 'Yes, delete my account'}
-                  </AlertDialogAction>
-                </AlertDialogFooter>
-              </AlertDialogContent>
-            </AlertDialog>
-          </div>
         </form>
       </CardContent>
     </Card>
