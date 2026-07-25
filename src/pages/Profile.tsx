@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 import BottomNav from '@/components/BottomNav';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { User, Settings, Shield } from 'lucide-react';
+import { User, Sparkles, Ruler, Palette, Shield } from 'lucide-react';
 import LoadingState from '@/components/LoadingState';
 import PersonalInfoForm from '@/components/profile/PersonalInfoForm';
 import StylePreferencesForm from '@/components/profile/StylePreferencesForm';
@@ -87,15 +87,15 @@ const Profile = () => {
               <span className="hidden sm:inline">Personal</span>
             </TabsTrigger>
             <TabsTrigger value="style" className="flex items-center space-x-2">
-              <Settings className="h-4 w-4" />
+              <Sparkles className="h-4 w-4" />
               <span className="hidden sm:inline">Style</span>
             </TabsTrigger>
             <TabsTrigger value="sizes" className="flex items-center space-x-2">
-              <Settings className="h-4 w-4" />
+              <Ruler className="h-4 w-4" />
               <span className="hidden sm:inline">Sizes</span>
             </TabsTrigger>
             <TabsTrigger value="colors" className="flex items-center space-x-2">
-              <Settings className="h-4 w-4" />
+              <Palette className="h-4 w-4" />
               <span className="hidden sm:inline">Colors</span>
             </TabsTrigger>
             <TabsTrigger value="privacy" className="flex items-center space-x-2">
