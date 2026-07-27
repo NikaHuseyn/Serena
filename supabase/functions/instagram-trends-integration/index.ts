@@ -1,9 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeadersFor } from '../_shared/cors.ts'
+import { timingSafeEqual } from '../_shared/security.ts'
 
 interface InstagramTrendData {
   hashtag: string;
@@ -14,12 +11,14 @@ interface InstagramTrendData {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
 
   const adminSecret = Deno.env.get('ADMIN_INGEST_SECRET');
-  if (!adminSecret || req.headers.get('x-admin-secret') !== adminSecret) {
+  const providedSecret = req.headers.get('x-admin-secret');
+  if (!adminSecret || !providedSecret || !timingSafeEqual(providedSecret, adminSecret)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

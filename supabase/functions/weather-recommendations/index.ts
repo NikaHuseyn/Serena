@@ -1,9 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-};
+import { corsHeadersFor } from "../_shared/cors.ts";
 
 function getClothingRecommendations(temp: number, condition: string, windSpeed: number, humidity: number): string[] {
   const lower = condition.toLowerCase();
@@ -54,6 +50,10 @@ async function checkIpRateLimit(req: Request, dailyLimit = 120): Promise<boolean
 }
 
 serve(async (req) => {
+  const corsHeaders = corsHeadersFor(
+    req,
+    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  );
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }

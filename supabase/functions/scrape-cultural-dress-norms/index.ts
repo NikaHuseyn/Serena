@@ -1,9 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-};
+import { corsHeadersFor } from '../_shared/cors.ts';
+import { timingSafeEqual } from '../_shared/security.ts';
 
 const TOP_30_COUNTRIES = [
   'France', 'Spain', 'United States', 'China', 'Italy',
@@ -145,12 +142,14 @@ function extractRelevantParagraphs(markdown: string, keywords: string[]): string
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req);
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   const adminSecret = Deno.env.get('ADMIN_INGEST_SECRET');
-  if (!adminSecret || req.headers.get('x-admin-secret') !== adminSecret) {
+  const providedSecret = req.headers.get('x-admin-secret');
+  if (!adminSecret || !providedSecret || !timingSafeEqual(providedSecret, adminSecret)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

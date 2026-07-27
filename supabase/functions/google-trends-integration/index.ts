@@ -1,10 +1,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import googleTrends from 'https://esm.sh/google-trends-api@4.9.2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+import { corsHeadersFor } from '../_shared/cors.ts'
+import { timingSafeEqual } from '../_shared/security.ts'
 
 interface GoogleTrendsData {
   keyword: string;
@@ -18,6 +15,7 @@ interface GoogleTrendsData {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsHeadersFor(req)
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -25,7 +23,8 @@ Deno.serve(async (req) => {
   // Admin-only: this function performs paid scraping + overwrites shared
   // trend data. Callers must supply the shared ADMIN_INGEST_SECRET.
   const adminSecret = Deno.env.get('ADMIN_INGEST_SECRET');
-  if (!adminSecret || req.headers.get('x-admin-secret') !== adminSecret) {
+  const providedSecret = req.headers.get('x-admin-secret');
+  if (!adminSecret || !providedSecret || !timingSafeEqual(providedSecret, adminSecret)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

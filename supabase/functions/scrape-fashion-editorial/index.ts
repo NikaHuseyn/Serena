@@ -1,9 +1,6 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
-}
+import { corsHeadersFor } from '../_shared/cors.ts'
+import { timingSafeEqual } from '../_shared/security.ts'
 
 const FIRECRAWL_API_URL = 'https://api.firecrawl.dev/v1/scrape'
 const AI_GATEWAY_URL = 'https://ai.gateway.lovable.dev'
@@ -39,12 +36,17 @@ interface EditorialExtraction {
 }
 
 Deno.serve(async (req) => {
+  const corsHeaders = corsHeadersFor(
+    req,
+    'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
+  )
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
 
   const adminSecret = Deno.env.get('ADMIN_INGEST_SECRET');
-  if (!adminSecret || req.headers.get('x-admin-secret') !== adminSecret) {
+  const providedSecret = req.headers.get('x-admin-secret');
+  if (!adminSecret || !providedSecret || !timingSafeEqual(providedSecret, adminSecret)) {
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
