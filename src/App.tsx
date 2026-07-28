@@ -22,8 +22,6 @@ const Community = React.lazy(() => import("./pages/Community"));
 const ChallengeDetail = React.lazy(() => import("./pages/ChallengeDetail"));
 const Profile = React.lazy(() => import("./pages/Profile"));
 const Admin = React.lazy(() => import("./pages/Admin"));
-const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
-const PaymentCanceled = React.lazy(() => import("./pages/PaymentCanceled"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 const UserProfile = React.lazy(() => import("./pages/UserProfile"));
 
@@ -42,8 +40,6 @@ const AppRoutes = () => (
       <Route path="/profile" element={<AuthGuard><Profile /></AuthGuard>} />
       <Route path="/profile/:userId" element={<UserProfile />} />
       <Route path="/admin" element={<Admin />} />
-      <Route path="/payment-success" element={<AuthGuard><PaymentSuccess /></AuthGuard>} />
-      <Route path="/payment-canceled" element={<AuthGuard><PaymentCanceled /></AuthGuard>} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>
