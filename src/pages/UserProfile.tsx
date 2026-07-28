@@ -194,6 +194,14 @@ const UserProfile = () => {
           </>
         )}
       </main>
+      {followList && (
+        <FollowListDialog
+          userId={profile.user_id}
+          mode={followList}
+          open={!!followList}
+          onOpenChange={(o) => !o && setFollowList(null)}
+        />
+      )}
       <BottomNav />
     </div>
   );
