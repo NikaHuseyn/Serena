@@ -40,6 +40,7 @@ const UserProfile = () => {
   const [loadingMore, setLoadingMore] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | undefined>();
   const [notFound, setNotFound] = useState(false);
+  const [followList, setFollowList] = useState<'followers' | 'following' | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => setCurrentUserId(user?.id));
@@ -124,8 +125,20 @@ const UserProfile = () => {
             </div>
             <div className="flex gap-6 mb-3 text-sm">
               <div><span className="font-semibold">{profile.posts_count}</span> <span className="text-muted-foreground">posts</span></div>
-              <div><span className="font-semibold">{profile.followers_count}</span> <span className="text-muted-foreground">followers</span></div>
-              <div><span className="font-semibold">{profile.following_count}</span> <span className="text-muted-foreground">following</span></div>
+              <button
+                type="button"
+                onClick={() => setFollowList('followers')}
+                className="hover:opacity-70 transition-opacity"
+              >
+                <span className="font-semibold">{profile.followers_count}</span> <span className="text-muted-foreground">followers</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setFollowList('following')}
+                className="hover:opacity-70 transition-opacity"
+              >
+                <span className="font-semibold">{profile.following_count}</span> <span className="text-muted-foreground">following</span>
+              </button>
             </div>
             {profile.bio && (
               <p className="text-sm text-foreground whitespace-pre-wrap">{profile.bio}</p>
