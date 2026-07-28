@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import LoadingState from '@/components/community/LoadingState';
 import CampaignBadge from '@/components/community/CampaignBadge';
 import StylePointsSection from '@/components/profile/StylePointsSection';
+import FollowListDialog from '@/components/community/FollowListDialog';
 
 interface ProfileData {
   user_id: string;
