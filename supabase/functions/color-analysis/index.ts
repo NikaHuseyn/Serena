@@ -1014,6 +1014,8 @@ async function __TEMP_verifyPixelIndexing__(): Promise<void> {
   }
 }
 serve(async (req) => {
+  // TEMPORARY: remove after one successful console check.
+  await __TEMP_verifyPixelIndexing__();
   const corsHeaders = corsHeadersFor(
     req,
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
