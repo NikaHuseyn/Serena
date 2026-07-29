@@ -1047,6 +1047,37 @@ serve(async (req) => {
 
     console.log("Analysing image for user:", user.id);
 
+    // ------------------------------------------------------------------
+    // Code-level quality gate — runs before spending an AI call.
+    // ------------------------------------------------------------------
+    let qualityCheck: Awaited<ReturnType<typeof assessImageQuality>> = {
+      hardReject: false,
+      rejectReason: null,
+      softWarning: null,
+      measurements: null,
+    };
+    try {
+      const imgResp = await fetch(imageUrl);
+      if (imgResp.ok) {
+        const imgBytes = new Uint8Array(await imgResp.arrayBuffer());
+        qualityCheck = await assessImageQuality(imgBytes);
+      }
+    } catch (err) {
+      console.warn("Image fetch for quality gate failed (non-fatal):", err);
+    }
+
+    if (qualityCheck.hardReject) {
+      return new Response(
+        JSON.stringify({
+          analysis: {
+            status: "retake",
+            retake_reason: qualityCheck.rejectReason,
+          },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     const systemPrompt = `You are a professional colour analyst performing a 12-season personal colour analysis from a photograph.
 
 STEP 0 — PHOTO QUALITY GATE. Assess the photo, then choose one of three paths:
