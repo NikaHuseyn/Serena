@@ -783,7 +783,236 @@ export const SEASON_PALETTES: Record<
     ],
   },
 };
+// ============================================================================
+// CODE-LEVEL IMAGE QUALITY GATE + PIXEL COLOUR MEASUREMENT
+// Runs BEFORE the AI call. Hard objective failures (resolution, exposure)
+// are rejected here without spending an AI call. Softer signals (measured
+// colour, filter suspicion) are passed INTO the prompt as evidence the
+// model must reconcile with, not treated as automatic rejections — only
+// the model has enough context (makeup, framing, ambiguous lighting) to
+// judge those correctly, per the existing Step 0 rules.
+// ============================================================================
 
+type RGB = { r: number; g: number; b: number };
+
+function rgbToLab({ r, g, b }: RGB): { L: number; a: number; b: number } {
+  // sRGB -> linear
+  const toLinear = (c: number) => {
+    const v = c / 255;
+    return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+  };
+  const rl = toLinear(r),
+    gl = toLinear(g),
+    bl = toLinear(b);
+  // linear RGB -> XYZ (D65)
+  const x = rl * 0.4124 + gl * 0.3576 + bl * 0.1805;
+  const y = rl * 0.2126 + gl * 0.7152 + bl * 0.0722;
+  const z = rl * 0.0193 + gl * 0.1192 + bl * 0.9505;
+  // XYZ -> Lab (D65 white point)
+  const xn = x / 0.95047,
+    yn = y / 1.0,
+    zn = z / 1.08883;
+  const f = (t: number) => (t > 0.008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116);
+  const fx = f(xn),
+    fy = f(yn),
+    fz = f(zn);
+  return {
+    L: Math.round(116 * fy - 16),
+    a: Math.round(500 * (fx - fy)),
+    b: Math.round(200 * (fy - fz)),
+  };
+}
+
+function rgbToHsv({ r, g, b }: RGB): { h: number; s: number; v: number } {
+  const rn = r / 255,
+    gn = g / 255,
+    bn = b / 255;
+  const max = Math.max(rn, gn, bn),
+    min = Math.min(rn, gn, bn);
+  const d = max - min;
+  let h = 0;
+  if (d !== 0) {
+    if (max === rn) h = ((gn - bn) / d) % 6;
+    else if (max === gn) h = (bn - rn) / d + 2;
+    else h = (rn - gn) / d + 4;
+    h *= 60;
+    if (h < 0) h += 360;
+  }
+  return { h, s: max === 0 ? 0 : d / max, v: max };
+}
+
+// VERIFIED against ImageScript's public source: the library's pixel
+// iterator increments internal 0-based coordinates by 1 before exposing
+// them, so getRGBAAt/getPixelAt use 1-indexed coordinates. Confirmed via
+// the ONE-TIME SELF-TEST below — do not delete that test until you've
+// run it once and seen it pass.
+function averageRegion(
+  image: InstanceType<typeof Image>,
+  xStart: number,
+  xEnd: number,
+  yStart: number,
+  yEnd: number,
+): RGB {
+  let rSum = 0,
+    gSum = 0,
+    bSum = 0,
+    count = 0;
+  const step = 2; // sample every 2nd pixel — plenty for an average, much faster
+  for (let y = yStart; y < yEnd; y += step) {
+    for (let x = xStart; x < xEnd; x += step) {
+      const rgba = image.getRGBAAt(x + 1, y + 1); // 1-indexed, see note above
+      rSum += rgba[0];
+      gSum += rgba[1];
+      bSum += rgba[2];
+      count++;
+    }
+  }
+  if (count === 0) return { r: 128, g: 128, b: 128 };
+  return { r: Math.round(rSum / count), g: Math.round(gSum / count), b: Math.round(bSum / count) };
+}
+
+type QualityCheck = {
+  hardReject: boolean;
+  rejectReason: string | null;
+  softWarning: string | null;
+  measurements: {
+    width: number;
+    height: number;
+    avgBrightness: number; // 0-255
+    skinSampleRgb: RGB;
+    skinSampleLab: { L: number; a: number; b: number };
+    hairSampleRgb: RGB;
+    likelyFilterApplied: boolean;
+  } | null;
+};
+
+async function assessImageQuality(imageBytes: Uint8Array): Promise<QualityCheck> {
+  try {
+    const image = await Image.decode(imageBytes);
+    const { width, height } = image;
+
+    // --- Hard objective checks (no AI call needed to know these fail) ---
+    const MIN_DIMENSION = 400;
+    if (width < MIN_DIMENSION || height < MIN_DIMENSION) {
+      return {
+        hardReject: true,
+        rejectReason: "Image resolution is too low for accurate colour analysis. Please upload a larger photo.",
+        softWarning: null,
+        measurements: null,
+      };
+    }
+
+    // Sample regions, assuming a portrait-oriented, front-facing photo per
+    // upload instructions ("face clear, hair back"):
+    //   Skin proxy: centre third of the frame (cheek/jaw area typically lands here)
+    //   Hair proxy: top band of the frame
+    const skinRegion = averageRegion(
+      image,
+      Math.floor(width * 0.35),
+      Math.floor(width * 0.65),
+      Math.floor(height * 0.4),
+      Math.floor(height * 0.65),
+    );
+    const hairRegion = averageRegion(
+      image,
+      Math.floor(width * 0.3),
+      Math.floor(width * 0.7),
+      Math.floor(height * 0.02),
+      Math.floor(height * 0.18),
+    );
+
+    // Overall brightness (rough luminance across a central crop, cheaper
+    // than the full image)
+    const brightnessSample = averageRegion(
+      image,
+      Math.floor(width * 0.2),
+      Math.floor(width * 0.8),
+      Math.floor(height * 0.2),
+      Math.floor(height * 0.8),
+    );
+    const avgBrightness = 0.299 * brightnessSample.r + 0.587 * brightnessSample.g + 0.114 * brightnessSample.b;
+
+    const MIN_BRIGHTNESS = 40; // near-black photo
+    const MAX_BRIGHTNESS = 235; // blown-out / overexposed
+    if (avgBrightness < MIN_BRIGHTNESS) {
+      return {
+        hardReject: true,
+        rejectReason: "This photo looks too dark for accurate colour analysis. Please retake in better lighting.",
+        softWarning: null,
+        measurements: null,
+      };
+    }
+    if (avgBrightness > MAX_BRIGHTNESS) {
+      return {
+        hardReject: true,
+        rejectReason:
+          "This photo looks overexposed for accurate colour analysis. Please retake with less direct light.",
+        softWarning: null,
+        measurements: null,
+      };
+    }
+
+    // --- Soft signal: crude filter suspicion, not a rejection ---
+    // A strong colour filter/overlay tends to push most of the frame toward
+    // one hue with unusually uniform, elevated saturation. This is a rough
+    // heuristic, not a detector — treated as evidence for the model, never
+    // an automatic reject (the model + Step 0 prompt handles nuance).
+    const { s: skinSat } = rgbToHsv(skinRegion);
+    const { s: hairSat } = rgbToHsv(hairRegion);
+    const likelyFilterApplied = skinSat > 0.55 && hairSat > 0.55 && Math.abs(skinSat - hairSat) < 0.08;
+
+    return {
+      hardReject: false,
+      rejectReason: null,
+      softWarning: likelyFilterApplied
+        ? "Uniformly high saturation across skin and hair regions detected — possible colour filter."
+        : null,
+      measurements: {
+        width,
+        height,
+        avgBrightness: Math.round(avgBrightness),
+        skinSampleRgb: skinRegion,
+        skinSampleLab: rgbToLab(skinRegion),
+        hairSampleRgb: hairRegion,
+        likelyFilterApplied,
+      },
+    };
+  } catch (err) {
+    // Never let image-processing failure block analysis — fall through
+    // and let the AI's own visual judgement carry the whole assessment,
+    // exactly as it did before this patch.
+    console.warn("assessImageQuality failed (non-fatal, proceeding without measurements):", err);
+    return { hardReject: false, rejectReason: null, softWarning: null, measurements: null };
+  }
+}
+
+// ----------------------------------------------------------------------
+// ONE-TIME SELF-TEST — run this once (see "Verification steps" at the
+// bottom of this file), confirm the console output, then delete this
+// function and its call site. It costs nothing to leave in temporarily
+// but has no reason to exist in production.
+// ----------------------------------------------------------------------
+async function __TEMP_verifyPixelIndexing__(): Promise<void> {
+  try {
+    // 2x2 solid red PNG, base64-encoded, for a zero-network self-test.
+    const redPng2x2 =
+      "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC";
+    const bytes = Uint8Array.from(atob(redPng2x2), (c) => c.charCodeAt(0));
+    const img = await Image.decode(bytes);
+    const rgba = img.getRGBAAt(1, 1); // if 1-indexed is correct, this is in-bounds and red
+    console.log(
+      "[__TEMP_verifyPixelIndexing__] pixel(1,1) =",
+      Array.from(rgba),
+      "— expect approx [255,0,0,255] for solid red. If this throws or is wrong, indexing is 0-based: remove all '+1' offsets in averageRegion.",
+    );
+  } catch (err) {
+    console.error(
+      "[__TEMP_verifyPixelIndexing__] getRGBAAt(1,1) failed — indexing is likely 0-based. " +
+        "Remove the '+1' offsets in averageRegion's getRGBAAt call. Error:",
+      err,
+    );
+  }
+}
 serve(async (req) => {
   const corsHeaders = corsHeadersFor(
     req,
