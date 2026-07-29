@@ -860,7 +860,7 @@ function averageRegion(
   const step = 2; // sample every 2nd pixel — plenty for an average, much faster
   for (let y = yStart; y < yEnd; y += step) {
     for (let x = xStart; x < xEnd; x += step) {
-      const rgba = image.getRGBAAt(x + 1, y + 1); // 1-indexed, see note above
+      const rgba = image.getRGBAAt(x, y); // 0-indexed
       rSum += rgba[0];
       gSum += rgba[1];
       bSum += rgba[2];
@@ -999,7 +999,7 @@ async function __TEMP_verifyPixelIndexing__(): Promise<void> {
       "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC";
     const bytes = Uint8Array.from(atob(redPng2x2), (c) => c.charCodeAt(0));
     const img = await Image.decode(bytes);
-    const rgba = img.getRGBAAt(1, 1); // if 1-indexed is correct, this is in-bounds and red
+    const rgba = img.getRGBAAt(0, 0); // 0-indexed top-left pixel
     console.log(
       "[__TEMP_verifyPixelIndexing__] pixel(1,1) =",
       Array.from(rgba),
