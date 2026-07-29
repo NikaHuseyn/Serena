@@ -860,7 +860,7 @@ function averageRegion(
   const step = 2; // sample every 2nd pixel — plenty for an average, much faster
   for (let y = yStart; y < yEnd; y += step) {
     for (let x = xStart; x < xEnd; x += step) {
-      const rgba = image.getRGBAAt(x + 1, y + 1); // 1-indexed, see note above
+      const rgba = image.getRGBAAt(x, y); // 0-indexed
       rSum += rgba[0];
       gSum += rgba[1];
       bSum += rgba[2];
