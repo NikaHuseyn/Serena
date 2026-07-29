@@ -986,33 +986,6 @@ async function assessImageQuality(imageBytes: Uint8Array): Promise<QualityCheck>
   }
 }
 
-// ----------------------------------------------------------------------
-// ONE-TIME SELF-TEST — run this once (see "Verification steps" at the
-// bottom of this file), confirm the console output, then delete this
-// function and its call site. It costs nothing to leave in temporarily
-// but has no reason to exist in production.
-// ----------------------------------------------------------------------
-async function __TEMP_verifyPixelIndexing__(): Promise<void> {
-  try {
-    // 2x2 solid red PNG, base64-encoded, for a zero-network self-test.
-    const redPng2x2 =
-      "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC";
-    const bytes = Uint8Array.from(atob(redPng2x2), (c) => c.charCodeAt(0));
-    const img = await Image.decode(bytes);
-    const rgba = img.getRGBAAt(0, 0); // 0-indexed top-left pixel
-    console.log(
-      "[__TEMP_verifyPixelIndexing__] pixel(1,1) =",
-      Array.from(rgba),
-      "— expect approx [255,0,0,255] for solid red. If this throws or is wrong, indexing is 0-based: remove all '+1' offsets in averageRegion.",
-    );
-  } catch (err) {
-    console.error(
-      "[__TEMP_verifyPixelIndexing__] getRGBAAt(1,1) failed — indexing is likely 0-based. " +
-        "Remove the '+1' offsets in averageRegion's getRGBAAt call. Error:",
-      err,
-    );
-  }
-}
 serve(async (req) => {
   // TEMPORARY: remove after one successful console check.
   await __TEMP_verifyPixelIndexing__();
