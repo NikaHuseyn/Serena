@@ -999,7 +999,7 @@ async function __TEMP_verifyPixelIndexing__(): Promise<void> {
       "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFUlEQVR42mP8z8BQz0AEYBxVSF+FABJADveWkH6oAAAAAElFTkSuQmCC";
     const bytes = Uint8Array.from(atob(redPng2x2), (c) => c.charCodeAt(0));
     const img = await Image.decode(bytes);
-    const rgba = img.getRGBAAt(1, 1); // if 1-indexed is correct, this is in-bounds and red
+    const rgba = img.getRGBAAt(0, 0); // 0-indexed top-left pixel
     console.log(
       "[__TEMP_verifyPixelIndexing__] pixel(1,1) =",
       Array.from(rgba),
