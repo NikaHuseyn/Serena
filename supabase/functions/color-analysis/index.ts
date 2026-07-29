@@ -1159,7 +1159,25 @@ Use British English throughout. Never guess on an unusable photo - return the re
           {
             role: "user",
             content: [
-              { type: "text", text: "Please analyse this photo and provide a complete 12-season colour analysis." },
+              {
+                type: "text",
+                text: [
+                  "Please analyse this photo and provide a complete 12-season colour analysis.",
+                  qualityCheck.measurements
+                    ? "\n\nMEASURED PIXEL DATA (from automated sampling — use as supporting " +
+                      "evidence alongside your own visual judgement, not a substitute for it; " +
+                      "your visual read of the actual photo should take priority if it disagrees):\n" +
+                      `- Skin sample (centre-face region), sRGB: rgb(${qualityCheck.measurements.skinSampleRgb.r}, ${qualityCheck.measurements.skinSampleRgb.g}, ${qualityCheck.measurements.skinSampleRgb.b}), ` +
+                      `LAB: L=${qualityCheck.measurements.skinSampleLab.L} a=${qualityCheck.measurements.skinSampleLab.a} b=${qualityCheck.measurements.skinSampleLab.b} ` +
+                      "(positive a = redder/warmer, positive b = yellower/warmer; use this to cross-check your undertone verdict)\n" +
+                      `- Hair sample (top region), sRGB: rgb(${qualityCheck.measurements.hairSampleRgb.r}, ${qualityCheck.measurements.hairSampleRgb.g}, ${qualityCheck.measurements.hairSampleRgb.b})\n` +
+                      `- Overall brightness: ${qualityCheck.measurements.avgBrightness}/255`
+                    : "",
+                  qualityCheck.softWarning
+                    ? `\n\nAUTOMATED FLAG: ${qualityCheck.softWarning} If you agree a filter or heavy edit is present, treat this as a quality-gate case per Step 0 (cap confidence, or retake if severe) — if your own visual read disagrees, trust your visual read instead.`
+                    : "",
+                ].join(""),
+              },
               { type: "image_url", image_url: { url: imageUrl } },
             ],
           },
