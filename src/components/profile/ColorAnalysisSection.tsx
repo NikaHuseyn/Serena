@@ -316,25 +316,62 @@ const ColorAnalysisSection = ({ profile, analysisImage, onAnalysisImageChange }:
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Camera className="h-5 w-5" />
-          Colour Analysis
-          <span className="text-sm text-muted-foreground font-normal">(Optional)</span>
+          Your Colour Analysis
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Professional 12-season colour analysis, read from your photo — the foundation for everything Serena styles for you.
+          </p>
+
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">What you'll get</h4>
+            <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+              <li>Your season, from the full 12-season system — checked against professionally established palettes, not AI-invented ones</li>
+              <li>A secondary season, because most people sit between two rather than perfectly in one</li>
+              <li>Undertone, depth and softness — each explained in plain English, with the evidence we saw</li>
+              <li>The exact shades that bring your face to life: neutrals, accents, and the combinations that work hardest for you</li>
+              <li>The shades that drain you — and what makes them wrong</li>
+              <li>An honest confidence rating. If we're not sure, we say so.</li>
+            </ul>
+          </div>
+
+          <p className="text-sm text-muted-foreground">
+            From that moment on, Serena styles everything — your wardrobe, your outfits, your shopping — in your colours.
+          </p>
+
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium">Getting the best result</h4>
+            <p className="text-sm text-muted-foreground">
+              The analysis reads your natural colouring, so anything that alters it gets in the way:
+            </p>
+            <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+              <li>Daylight, not lamplight — indoor bulbs warm your skin tone artificially and can tilt the whole result</li>
+              <li>A bare face — makeup shifts the very undertones we're reading</li>
+              <li>No filters — even a soft one rewrites your colouring</li>
+              <li>Hair off your face — skin, eyes and hair are read together as one picture</li>
+            </ul>
+          </div>
+
+          <p className="text-sm text-muted-foreground">
+            Before you upload, glance at the photo yourself: if your eye colour isn't clear to you, it won't be clear to the analysis either.
+          </p>
+
+          <p className="text-sm text-muted-foreground italic">
+            And if the photo can't support an accurate reading, we'll say so and ask for another — a retake beats a wrong answer.
+          </p>
+
           <div>
             <Label htmlFor="analysis_image" className="text-sm font-medium">
-              Upload a well-lit photo of your face for AI colour analysis
+              Upload your photo
             </Label>
-            <p className="text-xs text-muted-foreground mt-1 mb-3">
-              For the most accurate result: no makeup, daylight facing a window, hair back, no filters.
-            </p>
             <Input
               id="analysis_image"
               type="file"
               accept="image/*"
               onChange={(e) => handleFileSelect(e.target.files?.[0] || null)}
-              className="mt-1"
+              className="mt-2"
             />
           </div>
 
