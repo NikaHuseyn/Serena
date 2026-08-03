@@ -14,7 +14,22 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   ProductFeedbackProvider,
   ProductFeedbackButtons,
+  extractProductRef,
 } from './ProductFeedbackButtons';
+
+/**
+ * The server wraps retailer links in a tracked /functions/v1/go?pid=<url> link.
+ * That endpoint only resolves `pid` values that are partner_products UUIDs and
+ * otherwise 302s to the app itself — which is why tapping a card bounced back
+ * to the Serena chat. When the pid is a raw retailer URL we link straight to it.
+ */
+const resolveHref = (productUrl?: string): string | undefined => {
+  if (!productUrl) return undefined;
+  const ref = extractProductRef(productUrl);
+  if (ref && /^https?:\/\//i.test(ref)) return ref;
+  return productUrl;
+};
+
 
 interface ProductResult {
   retailer?: string;
@@ -78,9 +93,10 @@ const ProductImageCard = ({
   const retailer = product.retailer || product.platform || 'Retailer';
   return (
     <a
-      href={product.product_url}
+      href={resolveHref(product.product_url)}
       target="_blank"
       rel="noopener noreferrer"
+
       className="group relative flex flex-col rounded-lg border border-border bg-background overflow-hidden hover:border-primary/40 transition-colors"
     >
       <ProductFeedbackButtons productUrl={product.product_url} variant="overlay" />
@@ -118,9 +134,10 @@ const ProductTextRow = ({ product, label }: { product: ProductResult; label: 'Bu
   const retailer = product.retailer || product.platform || 'Retailer';
   return (
     <a
-      href={product.product_url}
+      href={resolveHref(product.product_url)}
       target="_blank"
       rel="noopener noreferrer"
+
       className="group flex items-center justify-between gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors"
     >
       <div className="min-w-0 flex-1 flex items-baseline gap-2">
