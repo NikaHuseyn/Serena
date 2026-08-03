@@ -39,11 +39,40 @@ const WardrobeManager = () => {
   });
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [autoFillDone, setAutoFillDone] = useState(false);
   const [missingFields, setMissingFields] = useState<Set<string>>(new Set());
   const { trackEvent } = useBehaviorAnalytics();
   const { categorizeFromImageData, isAnalyzing } = useAIItemCategorization();
+
+  const isRemoteUrl = (v?: string | null) => !!v && /^https?:\/\//i.test(v);
+
+  // Resolve a stored image reference to something an <img> can render.
+  const resolveImageSrc = (item: WardrobeItem): string | null => {
+    if (!item.image_url) return null;
+    if (isRemoteUrl(item.image_url)) return item.image_url;
+    return signedUrls[item.image_url] || null;
+  };
+
+  const signPaths = async (paths: string[]) => {
+    const unique = Array.from(new Set(paths)).filter(Boolean);
+    if (unique.length === 0) return;
+    const { data, error } = await supabase.storage
+      .from('wardrobe-photos')
+      .createSignedUrls(unique, 60 * 60);
+    if (error || !data) return;
+    setSignedUrls((prev) => {
+      const next = { ...prev };
+      data.forEach((d: any, i: number) => {
+        const p = d.path || unique[i];
+        if (d.signedUrl) next[p] = d.signedUrl;
+      });
+      return next;
+    });
+  };
+
 
   const categories = [
     'Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 
