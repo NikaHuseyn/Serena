@@ -1487,7 +1487,7 @@ async function runExistingWebSearchForItem(
   // candidate pool via the existing search-depth mechanism and retry.
   if (wantBuy && baseQuery && buyFiltered.length < 3) {
     const deepRaw = await cachedSearch(supabase, `${baseQuery} __deep`, tier, "buy", () =>
-      runBuySearch(baseQuery, tier, true),
+      runBuySearch(baseQuery, tier, true, buyRaw),
     );
     buyFiltered = applyBuyFilters(deepRaw);
   }
