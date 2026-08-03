@@ -39,11 +39,41 @@ const WardrobeManager = () => {
   });
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
+  const [existingImagePath, setExistingImagePath] = useState<string | null>(null);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
+  const [isSaving, setIsSaving] = useState(false);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
   const [autoFillDone, setAutoFillDone] = useState(false);
   const [missingFields, setMissingFields] = useState<Set<string>>(new Set());
   const { trackEvent } = useBehaviorAnalytics();
   const { categorizeFromImageData, isAnalyzing } = useAIItemCategorization();
+
+  const isRemoteUrl = (v?: string | null) => !!v && /^https?:\/\//i.test(v);
+
+  // Resolve a stored image reference to something an <img> can render.
+  const resolveImageSrc = (item: WardrobeItem): string | null => {
+    if (!item.image_url) return null;
+    if (isRemoteUrl(item.image_url)) return item.image_url;
+    return signedUrls[item.image_url] || null;
+  };
+
+  const signPaths = async (paths: string[]) => {
+    const unique = Array.from(new Set(paths)).filter(Boolean);
+    if (unique.length === 0) return;
+    const { data, error } = await supabase.storage
+      .from('wardrobe-photos')
+      .createSignedUrls(unique, 60 * 60);
+    if (error || !data) return;
+    setSignedUrls((prev) => {
+      const next = { ...prev };
+      data.forEach((d: any, i: number) => {
+        const p = d.path || unique[i];
+        if (d.signedUrl) next[p] = d.signedUrl;
+      });
+      return next;
+    });
+  };
+
 
   const categories = [
     'Tops', 'Bottoms', 'Dresses', 'Outerwear', 'Shoes', 
@@ -63,6 +93,12 @@ const WardrobeManager = () => {
 
       if (error) throw error;
       setWardrobeItems(data || []);
+      await signPaths(
+        (data || [])
+          .map((i: any) => i.image_url)
+          .filter((u: string | null) => !!u && !isRemoteUrl(u)),
+      );
+
       
       // Track wardrobe view event
       trackEvent({
@@ -168,13 +204,14 @@ const WardrobeManager = () => {
     setNewItem({ name: '', category: '', color: '', brand: '', size: '', notes: '' });
     setPhotoPreview(null);
     setPhotoBlob(null);
+    setExistingImagePath(null);
     setIsAutoFilling(false);
     setAutoFillDone(false);
     setMissingFields(new Set());
     setEditingItemId(null);
   };
 
-  const handleEditItem = (item: WardrobeItem) => {
+  const handleEditItem = async (item: WardrobeItem) => {
     setEditingItemId(item.id);
     setNewItem({
       name: item.name || '',
@@ -184,25 +221,56 @@ const WardrobeManager = () => {
       size: item.size || '',
       notes: (item.tags && item.tags.length > 0 ? item.tags.join(', ') : (item.notes || '')),
     });
-    setPhotoPreview(item.image_url || null);
+    setExistingImagePath(item.image_url || null);
+    let preview = resolveImageSrc(item);
+    if (!preview && item.image_url && !isRemoteUrl(item.image_url)) {
+      const { data } = await supabase.storage
+        .from('wardrobe-photos')
+        .createSignedUrl(item.image_url, 60 * 60);
+      preview = data?.signedUrl || null;
+      if (preview) setSignedUrls((prev) => ({ ...prev, [item.image_url as string]: preview as string }));
+    }
+    setPhotoPreview(preview);
     setPhotoBlob(null);
     setAutoFillDone(false);
     setMissingFields(new Set());
     setShowAddForm(true);
   };
 
+  const uploadPhoto = async (userId: string): Promise<string | null> => {
+    if (!photoBlob) return null;
+    const path = `${userId}/${crypto.randomUUID()}.jpg`;
+    const { error } = await supabase.storage
+      .from('wardrobe-photos')
+      .upload(path, photoBlob, { contentType: photoBlob.type || 'image/jpeg', upsert: false });
+    if (error) {
+      console.error('Wardrobe photo upload failed:', error);
+      toast.error('Photo upload failed — saving item without a photo');
+      return null;
+    }
+    return path;
+  };
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (isSaving) return;
+    setIsSaving(true);
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const uploadedPath = await uploadPhoto(user.id);
+
       if (editingItemId) {
+        // Keep the existing photo unless a new one was picked, or it was cleared.
+        const nextImage = uploadedPath ?? (photoPreview ? existingImagePath : null);
+
         const { error } = await supabase
           .from('wardrobe_items')
           .update({
             ...newItem,
+            image_url: nextImage,
             tags: newItem.notes ? [newItem.notes] : [],
           })
           .eq('id', editingItemId);
@@ -221,6 +289,7 @@ const WardrobeManager = () => {
         .insert({
           ...newItem,
           user_id: user.id,
+          image_url: uploadedPath,
           tags: newItem.notes ? [newItem.notes] : []
         });
 
@@ -244,8 +313,11 @@ const WardrobeManager = () => {
     } catch (error) {
       console.error('Error adding item:', error);
       toast.error(editingItemId ? 'Failed to update item' : 'Failed to add item to wardrobe');
+    } finally {
+      setIsSaving(false);
     }
   };
+
 
   const handleDeleteItem = async (id: string) => {
     try {
@@ -503,11 +575,23 @@ const WardrobeManager = () => {
           {wardrobeItems.map((item) => (
             <Card key={item.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    {getCategoryIcon(item.category)}
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <div className="flex items-center space-x-2 min-w-0">
+                    {resolveImageSrc(item) ? (
+                      <img
+                        src={resolveImageSrc(item) as string}
+                        alt={item.name}
+                        loading="lazy"
+                        className="h-12 w-12 rounded-md object-cover border shrink-0"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 rounded-md border bg-muted flex items-center justify-center shrink-0">
+                        {getCategoryIcon(item.category)}
+                      </div>
+                    )}
                     <h3 className="font-semibold text-gray-800 truncate">{item.name}</h3>
                   </div>
+
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
