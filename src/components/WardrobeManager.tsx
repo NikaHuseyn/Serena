@@ -204,6 +204,7 @@ const WardrobeManager = () => {
     setNewItem({ name: '', category: '', color: '', brand: '', size: '', notes: '' });
     setPhotoPreview(null);
     setPhotoBlob(null);
+    setExistingImagePath(null);
     setIsAutoFilling(false);
     setAutoFillDone(false);
     setMissingFields(new Set());
