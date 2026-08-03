@@ -1327,7 +1327,7 @@ function coloursCompatible(requested: string, found: string): boolean {
 
 // Drop results whose title contains a clearly contradicting colour word,
 // UNLESS the title also contains the requested colour. Titles with no
-// colour word always pass.
+// colour word are only PROVISIONALLY kept — see verifyColourByImage.
 function filterByColour(results: any[], requestedColour: string | null): any[] {
   if (!requestedColour) return results;
   const req = requestedColour.toLowerCase();
@@ -1345,6 +1345,231 @@ function filterByColour(results: any[], requestedColour: string | null): any[] {
     return reqRe.test(lower);
   });
 }
+
+// -----------------------------------------------------------------------
+// Image-based colour verification. Titles frequently omit the colour
+// ("Silk Slip Dress") so a cream listing sails through the title filter on
+// a "deep teal" request. For those colour-silent titles we look at the
+// product photo: decode a small copy, take the central region, ignore
+// near-white/near-black background pixels, and work out the dominant
+// colour family. Only a CONFIDENT conflict drops the result — any decode
+// failure, timeout, missing image or ambiguous photo keeps it.
+// -----------------------------------------------------------------------
+type ColourFamily =
+  | "red"
+  | "pink"
+  | "orange"
+  | "yellow"
+  | "green"
+  | "blue"
+  | "purple"
+  | "brown"
+  | "neutral-light"
+  | "neutral-dark"
+  | "grey"
+  | "metallic";
+
+const COLOUR_TO_FAMILY: Record<string, ColourFamily> = {
+  black: "neutral-dark",
+  charcoal: "neutral-dark",
+  white: "neutral-light",
+  ivory: "neutral-light",
+  cream: "neutral-light",
+  "off-white": "neutral-light",
+  beige: "neutral-light",
+  stone: "neutral-light",
+  sand: "neutral-light",
+  nude: "neutral-light",
+  tan: "brown",
+  camel: "brown",
+  brown: "brown",
+  chocolate: "brown",
+  mocha: "brown",
+  grey: "grey",
+  gray: "grey",
+  silver: "metallic",
+  gold: "metallic",
+  champagne: "metallic",
+  bronze: "metallic",
+  copper: "metallic",
+  navy: "blue",
+  "dark blue": "blue",
+  midnight: "blue",
+  blue: "blue",
+  sky: "blue",
+  cobalt: "blue",
+  denim: "blue",
+  indigo: "blue",
+  green: "green",
+  sage: "green",
+  olive: "green",
+  khaki: "green",
+  emerald: "green",
+  forest: "green",
+  mint: "green",
+  teal: "green",
+  red: "red",
+  burgundy: "red",
+  wine: "red",
+  maroon: "red",
+  crimson: "red",
+  scarlet: "red",
+  pink: "pink",
+  blush: "pink",
+  rose: "pink",
+  fuchsia: "pink",
+  magenta: "pink",
+  coral: "orange",
+  orange: "orange",
+  terracotta: "orange",
+  rust: "orange",
+  yellow: "yellow",
+  mustard: "yellow",
+  ochre: "yellow",
+  purple: "purple",
+  lilac: "purple",
+  lavender: "purple",
+  plum: "purple",
+  violet: "purple",
+};
+
+// Families that are close enough that a photo shouldn't veto the listing.
+const FAMILY_NEIGHBOURS: Record<string, ColourFamily[]> = {
+  red: ["pink", "orange", "brown", "purple"],
+  pink: ["red", "purple", "neutral-light"],
+  orange: ["red", "brown", "yellow"],
+  yellow: ["orange", "brown", "green", "metallic", "neutral-light"],
+  green: ["blue", "yellow", "grey"],
+  blue: ["green", "purple", "grey", "neutral-dark"],
+  purple: ["blue", "pink", "red"],
+  brown: ["orange", "red", "neutral-light", "grey", "metallic"],
+  "neutral-light": ["grey", "metallic", "brown", "yellow"],
+  "neutral-dark": ["grey", "blue", "brown"],
+  grey: ["neutral-light", "neutral-dark", "blue", "green", "metallic"],
+  metallic: ["neutral-light", "grey", "yellow", "brown"],
+};
+
+function familiesConflict(requested: ColourFamily, observed: ColourFamily): boolean {
+  if (requested === observed) return false;
+  return !(FAMILY_NEIGHBOURS[requested] || []).includes(observed);
+}
+
+function rgbToFamily(r: number, g: number, b: number): ColourFamily | null {
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const l = (max + min) / 2 / 255;
+  const d = max - min;
+  const s = d === 0 ? 0 : d / (255 - Math.abs(max + min - 255));
+  if (s < 0.15) {
+    if (l > 0.82) return "neutral-light";
+    if (l < 0.18) return "neutral-dark";
+    return "grey";
+  }
+  let h = 0;
+  if (max === r) h = ((g - b) / d) % 6;
+  else if (max === g) h = (b - r) / d + 2;
+  else h = (r - g) / d + 4;
+  h = (h * 60 + 360) % 360;
+  // Dark, desaturated warm tones read as brown rather than orange/red.
+  if (h < 45 && l < 0.42 && s < 0.7) return "brown";
+  if (h < 15 || h >= 345) return "red";
+  if (h < 45) return l < 0.5 ? "brown" : "orange";
+  if (h < 70) return "yellow";
+  if (h < 170) return "green";
+  if (h < 255) return "blue";
+  if (h < 290) return "purple";
+  if (h < 345) return "pink";
+  return null;
+}
+
+// Decode the product photo and return its dominant garment colour family,
+// or null when the photo is unusable/ambiguous.
+async function dominantFamilyFromImage(url: string): Promise<ColourFamily | null> {
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timer);
+    if (!res.ok) return null;
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.byteLength === 0 || buf.byteLength > 4_000_000) return null;
+    const img = await Image.decode(buf);
+    const small = img.resize(64, Image.RESIZE_AUTO);
+    const w = small.width;
+    const h = small.height;
+    // Central region only — edges are usually studio background.
+    const x0 = Math.floor(w * 0.25);
+    const x1 = Math.ceil(w * 0.75);
+    const y0 = Math.floor(h * 0.2);
+    const y1 = Math.ceil(h * 0.85);
+    const counts = new Map<ColourFamily, number>();
+    let chromatic = 0;
+    let total = 0;
+    for (let y = y0; y < y1; y++) {
+      for (let x = x0; x < x1; x++) {
+        const px = small.getRGBAAt(x, y);
+        const [r, g, b, a] = [px[0], px[1], px[2], px[3]];
+        if (a < 200) continue;
+        const fam = rgbToFamily(r, g, b);
+        if (!fam) continue;
+        total++;
+        if (fam !== "neutral-light" && fam !== "neutral-dark" && fam !== "grey") chromatic++;
+        counts.set(fam, (counts.get(fam) || 0) + 1);
+      }
+    }
+    if (total < 50) return null;
+    // Prefer the dominant chromatic family when the garment has real colour;
+    // otherwise fall back to the overall dominant family.
+    const entries = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    const chromaticEntries = entries.filter(
+      ([f]) => f !== "neutral-light" && f !== "neutral-dark" && f !== "grey",
+    );
+    if (chromatic / total >= 0.3 && chromaticEntries.length) {
+      const [fam, n] = chromaticEntries[0];
+      return n / chromatic >= 0.5 ? fam : null;
+    }
+    const [fam, n] = entries[0];
+    return n / total >= 0.6 ? fam : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+// Verify colour-silent listings against their photo. Runs on at most
+// `maxChecks` results, in parallel; anything unverifiable is kept.
+async function verifyColourByImage(
+  results: any[],
+  requestedColour: string | null,
+  maxChecks = 8,
+): Promise<any[]> {
+  if (!requestedColour || results.length === 0) return results;
+  const wantedFamily = COLOUR_TO_FAMILY[requestedColour.toLowerCase()];
+  if (!wantedFamily) return results;
+
+  const needsCheck: number[] = [];
+  results.forEach((r, i) => {
+    const title = String(r?.product_name || "");
+    if (detectColourInText(title)) return; // title already spoke for itself
+    if (typeof r?.image_url === "string" && /^https?:\/\//i.test(r.image_url)) needsCheck.push(i);
+  });
+  if (needsCheck.length === 0) return results;
+
+  const checked = needsCheck.slice(0, maxChecks);
+  const observed = await Promise.all(checked.map((i) => dominantFamilyFromImage(results[i].image_url)));
+  const drop = new Set<number>();
+  checked.forEach((idx, k) => {
+    const fam = observed[k];
+    if (fam && familiesConflict(wantedFamily, fam)) drop.add(idx);
+  });
+  if (drop.size === 0) return results;
+  const kept = results.filter((_, i) => !drop.has(i));
+  console.log(
+    `[colour-verify] requested=${requestedColour} dropped ${drop.size}/${checked.length} colour-silent results by photo`,
+  );
+  // Never let verification wipe the shelf entirely.
+  return kept.length > 0 ? kept : results;
+}
+
 
 // Buy cards must be real, specific products with a price. Allow at most one
 // price-missing card, and only when fewer than 3 priced results exist.
