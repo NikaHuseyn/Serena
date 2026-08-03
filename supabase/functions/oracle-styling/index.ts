@@ -1723,29 +1723,35 @@ async function runExistingWebSearchForItem(
       : Promise.resolve([]),
   ]);
 
-  const applyBuyFilters = (raw: any[]) => {
+  const applyBuyFilters = async (raw: any[]) => {
     const m = filterOutMenswear(raw, isMenswear);
     const g = filterByGarmentType(m, garmentType);
     const c = filterByColour(g, requestedColour);
-    return c;
+    // Photo-level check for listings whose title never names a colour.
+    return await verifyColourByImage(c, requestedColour);
   };
 
-  let buyFiltered = applyBuyFilters(buyRaw);
+  let buyFiltered = await applyBuyFilters(buyRaw);
   // If garment/colour filter thinned results below 3, fetch a deeper
   // candidate pool via the existing search-depth mechanism and retry.
   if (wantBuy && baseQuery && buyFiltered.length < 3) {
     const deepRaw = await cachedSearch(supabase, `${baseQuery} __deep`, tier, "buy", () =>
       runBuySearch(baseQuery, tier, true, buyRaw),
     );
-    buyFiltered = applyBuyFilters(deepRaw);
+    buyFiltered = await applyBuyFilters(deepRaw);
   }
   const buy = enforceHonestBuyRules(buyFiltered, 4);
 
-  const rentFiltered = filterByColour(
-    filterByGarmentType(filterOutMenswear(rentRaw, isMenswear), garmentType),
+  const rentFiltered = await verifyColourByImage(
+    filterByColour(
+      filterByGarmentType(filterOutMenswear(rentRaw, isMenswear), garmentType),
+      requestedColour,
+    ),
     requestedColour,
+    4,
   );
   const rent = rentFiltered.slice(0, 2);
+
   return { ...item, buy, rent };
 }
 
