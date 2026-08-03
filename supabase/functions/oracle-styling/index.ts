@@ -550,8 +550,17 @@ const shopStyleApiKey = Deno.env.get("SHOPSTYLE_API_KEY");
 const serperApiKey = Deno.env.get("SERPER_API_KEY");
 const firecrawlApiKey = Deno.env.get("FIRECRAWL_API_KEY");
 
+// Serper's /shopping endpoint no longer returns a direct retailer URL: every
+// offer now comes back as a Google Shopping offer link (ibp=oshop / udm=28),
+// which resolves straight to that retailer's offer. Those are real product
+// offers, not generic search pages, so they must not be treated as the
+// "google.com/search" fallback we block elsewhere.
+const isGoogleShoppingOfferUrl = (url: string): boolean =>
+  /[?&]ibp=oshop/i.test(url) || /[?&]udm=28/i.test(url) || /google\.[a-z.]+\/shopping\/product/i.test(url);
+
 const isValidProductUrl = (url: string | null | undefined): boolean => {
   if (!url || typeof url !== "string" || !url.startsWith("http")) return false;
+  if (isGoogleShoppingOfferUrl(url)) return true;
   const blocked = [
     "google.com/shopping",
     "google.co.uk/shopping",
@@ -612,11 +621,13 @@ const searchGoogleShopping = async (query: string, maxPrice: number): Promise<an
       body: JSON.stringify({ q: query, gl: "gb", hl: "en", num: 8 }),
     });
     if (!response.ok) {
-      console.warn("[Serper] API error:", response.status);
+      const errBody = await response.text().catch(() => "");
+      console.warn(`[Serper] API error ${response.status}: ${errBody.slice(0, 200)}`);
       return [];
     }
     const data = await response.json();
-    const results = (data.shopping || [])
+    const raw = data.shopping || [];
+    const results = raw
       .map((r: any) => {
         const priceStr = r.price || "";
         const cleaned = priceStr.replace(/[^0-9.,]/g, "").replace(",", ".");
@@ -635,6 +646,18 @@ const searchGoogleShopping = async (query: string, maxPrice: number): Promise<an
       .filter((r: any) => r.product_url && (r.numericPrice === null || r.numericPrice <= maxPrice))
       .slice(0, 5)
       .map(({ numericPrice, ...rest }: any) => rest);
+    if (raw.length > 0 && results.length === 0) {
+      const sample = raw[0] || {};
+      console.warn(
+        `[Serper] ${raw.length} raw shopping results but 0 usable for "${query}" — sample keys: ${Object.keys(
+          sample,
+        ).join(",")} | link=${sample.link ?? "none"} | product_link=${sample.product_link ?? "none"} | price=${
+          sample.price ?? "none"
+        }`,
+      );
+    } else if (raw.length === 0) {
+      console.warn(`[Serper] Empty shopping array for "${query}" (response keys: ${Object.keys(data).join(",")})`);
+    }
     console.log(`[Serper] Found ${results.length} products for "${query}"`);
     return results;
   } catch (err) {
@@ -834,6 +857,7 @@ const normalizeUrlForDedupe = (url: string): string => {
 
 const isGoogleSearchFallback = (result: any): boolean => {
   const url = String(result?.product_url || "");
+  if (isGoogleShoppingOfferUrl(url)) return false;
   return url.includes("google.com/search") || url.includes("google.co.uk/search");
 };
 
@@ -1087,21 +1111,28 @@ function preferGoogleThumbnails(results: any[]): any[] {
   });
 }
 
-async function runBuySearch(query: string, tier: string, deep = false): Promise<any[]> {
+// `deep` is the second-chance pass, run only after the shallow pass has
+// already queried Google Shopping / ShopStyle for every query variant. It
+// therefore SKIPS those variant lookups entirely (re-running them produced
+// an identical duplicate call per item) and only widens the retailer-level
+// site: searches, seeded with whatever the shallow pass already found.
+async function runBuySearch(query: string, tier: string, deep = false, seed: any[] = []): Promise<any[]> {
   const maxPrice = priceTierMax(tier);
   const variants = buildProductQueryVariants(query);
-  let gathered: any[] = [];
+  let gathered: any[] = deep ? cleanProductResults(prioritizeRetailers(seed), 32) : [];
 
   const candidateTarget = deep ? 20 : 8;
   const poolCap = deep ? 32 : 16;
   const finalCap = deep ? 24 : 12;
 
-  for (const variant of variants) {
-    const [g, s] = await Promise.all([searchGoogleShopping(variant, maxPrice), searchShopStyle(variant, maxPrice)]);
-    // Gather a wider candidate pool so the menswear/colour filters can
-    // drop a handful of items and still leave at least 3 usable buy options.
-    gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), poolCap);
-    if (gathered.length >= candidateTarget) break;
+  if (!deep) {
+    for (const variant of variants) {
+      const [g, s] = await Promise.all([searchGoogleShopping(variant, maxPrice), searchShopStyle(variant, maxPrice)]);
+      // Gather a wider candidate pool so the menswear/colour filters can
+      // drop a handful of items and still leave at least 3 usable buy options.
+      gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), poolCap);
+      if (gathered.length >= candidateTarget) break;
+    }
   }
 
   let realResults = cleanProductResults(prioritizeRetailers(gathered), finalCap);
@@ -1466,7 +1497,7 @@ async function runExistingWebSearchForItem(
   // candidate pool via the existing search-depth mechanism and retry.
   if (wantBuy && baseQuery && buyFiltered.length < 3) {
     const deepRaw = await cachedSearch(supabase, `${baseQuery} __deep`, tier, "buy", () =>
-      runBuySearch(baseQuery, tier, true),
+      runBuySearch(baseQuery, tier, true, buyRaw),
     );
     buyFiltered = applyBuyFilters(deepRaw);
   }
