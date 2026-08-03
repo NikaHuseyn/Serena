@@ -13,6 +13,7 @@ import ErrorState from './community/ErrorState';
 
 import Leaderboard from './community/Leaderboard';
 import GuestNudgeBanner from './community/GuestNudgeBanner';
+import PeopleSearch from './community/PeopleSearch';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -131,6 +132,8 @@ const CommunityFeed = () => {
             </Button>
           </div>
         </div>
+
+        <PeopleSearch isSignedIn={Boolean(currentUserId)} />
 
         {!currentUserId && <GuestNudgeBanner />}
 
