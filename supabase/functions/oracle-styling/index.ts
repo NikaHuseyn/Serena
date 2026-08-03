@@ -857,6 +857,7 @@ const normalizeUrlForDedupe = (url: string): string => {
 
 const isGoogleSearchFallback = (result: any): boolean => {
   const url = String(result?.product_url || "");
+  if (isGoogleShoppingOfferUrl(url)) return false;
   return url.includes("google.com/search") || url.includes("google.co.uk/search");
 };
 
