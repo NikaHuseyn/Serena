@@ -209,7 +209,7 @@ const WardrobeManager = () => {
     setEditingItemId(null);
   };
 
-  const handleEditItem = (item: WardrobeItem) => {
+  const handleEditItem = async (item: WardrobeItem) => {
     setEditingItemId(item.id);
     setNewItem({
       name: item.name || '',
@@ -219,25 +219,56 @@ const WardrobeManager = () => {
       size: item.size || '',
       notes: (item.tags && item.tags.length > 0 ? item.tags.join(', ') : (item.notes || '')),
     });
-    setPhotoPreview(item.image_url || null);
+    setExistingImagePath(item.image_url || null);
+    let preview = resolveImageSrc(item);
+    if (!preview && item.image_url && !isRemoteUrl(item.image_url)) {
+      const { data } = await supabase.storage
+        .from('wardrobe-photos')
+        .createSignedUrl(item.image_url, 60 * 60);
+      preview = data?.signedUrl || null;
+      if (preview) setSignedUrls((prev) => ({ ...prev, [item.image_url as string]: preview as string }));
+    }
+    setPhotoPreview(preview);
     setPhotoBlob(null);
     setAutoFillDone(false);
     setMissingFields(new Set());
     setShowAddForm(true);
   };
 
+  const uploadPhoto = async (userId: string): Promise<string | null> => {
+    if (!photoBlob) return null;
+    const path = `${userId}/${crypto.randomUUID()}.jpg`;
+    const { error } = await supabase.storage
+      .from('wardrobe-photos')
+      .upload(path, photoBlob, { contentType: photoBlob.type || 'image/jpeg', upsert: false });
+    if (error) {
+      console.error('Wardrobe photo upload failed:', error);
+      toast.error('Photo upload failed — saving item without a photo');
+      return null;
+    }
+    return path;
+  };
+
   const handleAddItem = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (isSaving) return;
+    setIsSaving(true);
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error('Not authenticated');
 
+      const uploadedPath = await uploadPhoto(user.id);
+
       if (editingItemId) {
+        // Keep the existing photo unless a new one was picked, or it was cleared.
+        const nextImage = uploadedPath ?? (photoPreview ? existingImagePath : null);
+
         const { error } = await supabase
           .from('wardrobe_items')
           .update({
             ...newItem,
+            image_url: nextImage,
             tags: newItem.notes ? [newItem.notes] : [],
           })
           .eq('id', editingItemId);
@@ -256,6 +287,7 @@ const WardrobeManager = () => {
         .insert({
           ...newItem,
           user_id: user.id,
+          image_url: uploadedPath,
           tags: newItem.notes ? [newItem.notes] : []
         });
 
@@ -279,8 +311,11 @@ const WardrobeManager = () => {
     } catch (error) {
       console.error('Error adding item:', error);
       toast.error(editingItemId ? 'Failed to update item' : 'Failed to add item to wardrobe');
+    } finally {
+      setIsSaving(false);
     }
   };
+
 
   const handleDeleteItem = async (id: string) => {
     try {
