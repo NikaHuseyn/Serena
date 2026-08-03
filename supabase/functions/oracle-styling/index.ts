@@ -961,8 +961,21 @@ const buildProductQueryVariants = (query: string): string[] => {
     garment === "gown" || garment === "dress" ? `evening ${garment}` : garment || "",
   ];
 
-  return Array.from(new Set(variants.map((v) => v.trim()).filter(Boolean))).slice(0, 5);
+  // Colour anchoring: when the item names a colour, EVERY variant must keep
+  // that colour word, otherwise broad variants ("silk slip dress") pull back
+  // whatever colour the retailer happens to rank first.
+  const anchor = detectColourInText(query) || colour || null;
+  const anchored = anchor
+    ? variants.map((v) => {
+        const t = v.trim();
+        if (!t) return t;
+        return detectColourInText(t) ? t : `${anchor} ${t}`;
+      })
+    : variants;
+
+  return Array.from(new Set(anchored.map((v) => v.trim()).filter(Boolean))).slice(0, 5);
 };
+
 
 const searchFirecrawlRetailer = async (query: string, retailer: RetailerTarget): Promise<any | null> => {
   if (!firecrawlApiKey) return null;
