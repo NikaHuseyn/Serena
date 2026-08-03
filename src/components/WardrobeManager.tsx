@@ -92,6 +92,12 @@ const WardrobeManager = () => {
 
       if (error) throw error;
       setWardrobeItems(data || []);
+      await signPaths(
+        (data || [])
+          .map((i: any) => i.image_url)
+          .filter((u: string | null) => !!u && !isRemoteUrl(u)),
+      );
+
       
       // Track wardrobe view event
       trackEvent({
