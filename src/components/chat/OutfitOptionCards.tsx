@@ -14,7 +14,22 @@ import { supabase } from '@/integrations/supabase/client';
 import {
   ProductFeedbackProvider,
   ProductFeedbackButtons,
+  extractProductRef,
 } from './ProductFeedbackButtons';
+
+/**
+ * The server wraps retailer links in a tracked /functions/v1/go?pid=<url> link.
+ * That endpoint only resolves `pid` values that are partner_products UUIDs and
+ * otherwise 302s to the app itself — which is why tapping a card bounced back
+ * to the Serena chat. When the pid is a raw retailer URL we link straight to it.
+ */
+const resolveHref = (productUrl?: string): string | undefined => {
+  if (!productUrl) return undefined;
+  const ref = extractProductRef(productUrl);
+  if (ref && /^https?:\/\//i.test(ref)) return ref;
+  return productUrl;
+};
+
 
 interface ProductResult {
   retailer?: string;
