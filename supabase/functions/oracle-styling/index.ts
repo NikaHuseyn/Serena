@@ -1101,21 +1101,28 @@ function preferGoogleThumbnails(results: any[]): any[] {
   });
 }
 
-async function runBuySearch(query: string, tier: string, deep = false): Promise<any[]> {
+// `deep` is the second-chance pass, run only after the shallow pass has
+// already queried Google Shopping / ShopStyle for every query variant. It
+// therefore SKIPS those variant lookups entirely (re-running them produced
+// an identical duplicate call per item) and only widens the retailer-level
+// site: searches, seeded with whatever the shallow pass already found.
+async function runBuySearch(query: string, tier: string, deep = false, seed: any[] = []): Promise<any[]> {
   const maxPrice = priceTierMax(tier);
   const variants = buildProductQueryVariants(query);
-  let gathered: any[] = [];
+  let gathered: any[] = deep ? cleanProductResults(prioritizeRetailers(seed), 32) : [];
 
   const candidateTarget = deep ? 20 : 8;
   const poolCap = deep ? 32 : 16;
   const finalCap = deep ? 24 : 12;
 
-  for (const variant of variants) {
-    const [g, s] = await Promise.all([searchGoogleShopping(variant, maxPrice), searchShopStyle(variant, maxPrice)]);
-    // Gather a wider candidate pool so the menswear/colour filters can
-    // drop a handful of items and still leave at least 3 usable buy options.
-    gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), poolCap);
-    if (gathered.length >= candidateTarget) break;
+  if (!deep) {
+    for (const variant of variants) {
+      const [g, s] = await Promise.all([searchGoogleShopping(variant, maxPrice), searchShopStyle(variant, maxPrice)]);
+      // Gather a wider candidate pool so the menswear/colour filters can
+      // drop a handful of items and still leave at least 3 usable buy options.
+      gathered = cleanProductResults(prioritizeRetailers([...gathered, ...g, ...s]), poolCap);
+      if (gathered.length >= candidateTarget) break;
+    }
   }
 
   let realResults = cleanProductResults(prioritizeRetailers(gathered), finalCap);
