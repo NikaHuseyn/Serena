@@ -550,8 +550,17 @@ const shopStyleApiKey = Deno.env.get("SHOPSTYLE_API_KEY");
 const serperApiKey = Deno.env.get("SERPER_API_KEY");
 const firecrawlApiKey = Deno.env.get("FIRECRAWL_API_KEY");
 
+// Serper's /shopping endpoint no longer returns a direct retailer URL: every
+// offer now comes back as a Google Shopping offer link (ibp=oshop / udm=28),
+// which resolves straight to that retailer's offer. Those are real product
+// offers, not generic search pages, so they must not be treated as the
+// "google.com/search" fallback we block elsewhere.
+const isGoogleShoppingOfferUrl = (url: string): boolean =>
+  /[?&]ibp=oshop/i.test(url) || /[?&]udm=28/i.test(url) || /google\.[a-z.]+\/shopping\/product/i.test(url);
+
 const isValidProductUrl = (url: string | null | undefined): boolean => {
   if (!url || typeof url !== "string" || !url.startsWith("http")) return false;
+  if (isGoogleShoppingOfferUrl(url)) return true;
   const blocked = [
     "google.com/shopping",
     "google.co.uk/shopping",
