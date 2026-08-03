@@ -39,6 +39,7 @@ const WardrobeManager = () => {
   });
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoBlob, setPhotoBlob] = useState<Blob | null>(null);
+  const [existingImagePath, setExistingImagePath] = useState<string | null>(null);
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isAutoFilling, setIsAutoFilling] = useState(false);
