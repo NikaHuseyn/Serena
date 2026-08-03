@@ -134,9 +134,10 @@ const ProductTextRow = ({ product, label }: { product: ProductResult; label: 'Bu
   const retailer = product.retailer || product.platform || 'Retailer';
   return (
     <a
-      href={product.product_url}
+      href={resolveHref(product.product_url)}
       target="_blank"
       rel="noopener noreferrer"
+
       className="group flex items-center justify-between gap-3 py-1.5 px-2 rounded-md hover:bg-muted/50 transition-colors"
     >
       <div className="min-w-0 flex-1 flex items-baseline gap-2">
