@@ -612,11 +612,13 @@ const searchGoogleShopping = async (query: string, maxPrice: number): Promise<an
       body: JSON.stringify({ q: query, gl: "gb", hl: "en", num: 8 }),
     });
     if (!response.ok) {
-      console.warn("[Serper] API error:", response.status);
+      const errBody = await response.text().catch(() => "");
+      console.warn(`[Serper] API error ${response.status}: ${errBody.slice(0, 200)}`);
       return [];
     }
     const data = await response.json();
-    const results = (data.shopping || [])
+    const raw = data.shopping || [];
+    const results = raw
       .map((r: any) => {
         const priceStr = r.price || "";
         const cleaned = priceStr.replace(/[^0-9.,]/g, "").replace(",", ".");
@@ -635,6 +637,18 @@ const searchGoogleShopping = async (query: string, maxPrice: number): Promise<an
       .filter((r: any) => r.product_url && (r.numericPrice === null || r.numericPrice <= maxPrice))
       .slice(0, 5)
       .map(({ numericPrice, ...rest }: any) => rest);
+    if (raw.length > 0 && results.length === 0) {
+      const sample = raw[0] || {};
+      console.warn(
+        `[Serper] ${raw.length} raw shopping results but 0 usable for "${query}" — sample keys: ${Object.keys(
+          sample,
+        ).join(",")} | link=${sample.link ?? "none"} | product_link=${sample.product_link ?? "none"} | price=${
+          sample.price ?? "none"
+        }`,
+      );
+    } else if (raw.length === 0) {
+      console.warn(`[Serper] Empty shopping array for "${query}" (response keys: ${Object.keys(data).join(",")})`);
+    }
     console.log(`[Serper] Found ${results.length} products for "${query}"`);
     return results;
   } catch (err) {
