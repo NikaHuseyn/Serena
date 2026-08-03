@@ -575,11 +575,23 @@ const WardrobeManager = () => {
           {wardrobeItems.map((item) => (
             <Card key={item.id} className="hover:shadow-md transition-shadow">
               <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center space-x-2">
-                    {getCategoryIcon(item.category)}
+                <div className="flex items-start justify-between mb-3 gap-2">
+                  <div className="flex items-center space-x-2 min-w-0">
+                    {resolveImageSrc(item) ? (
+                      <img
+                        src={resolveImageSrc(item) as string}
+                        alt={item.name}
+                        loading="lazy"
+                        className="h-12 w-12 rounded-md object-cover border shrink-0"
+                      />
+                    ) : (
+                      <div className="h-12 w-12 rounded-md border bg-muted flex items-center justify-center shrink-0">
+                        {getCategoryIcon(item.category)}
+                      </div>
+                    )}
                     <h3 className="font-semibold text-gray-800 truncate">{item.name}</h3>
                   </div>
+
                   <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
