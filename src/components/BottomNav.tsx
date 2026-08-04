@@ -1,7 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Sparkles, Shirt, Users, User } from 'lucide-react';
 import { useCommunityNotifications } from '@/hooks/useCommunityNotifications';
+import { supabase } from '@/integrations/supabase/client';
+import NotificationBell from './NotificationBell';
 
 
 const tabs = [
@@ -15,10 +17,20 @@ const BottomNav = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { unreadCount } = useCommunityNotifications();
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSignedIn(!!session?.user));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) =>
+      setSignedIn(!!session?.user)
+    );
+    return () => subscription.unsubscribe();
+  }, []);
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/95 backdrop-blur-sm">
       <div className="flex items-center justify-around h-14 max-w-lg mx-auto">
+
         {tabs.map(({ path, label, icon: Icon }) => {
           const active = location.pathname === path;
           return (
@@ -41,7 +53,9 @@ const BottomNav = () => {
             </button>
           );
         })}
+        {signedIn && <NotificationBell />}
       </div>
+
     </nav>
   );
 };
