@@ -53,7 +53,9 @@ const BottomNav = () => {
             </button>
           );
         })}
+        {signedIn && <NotificationBell />}
       </div>
+
     </nav>
   );
 };
