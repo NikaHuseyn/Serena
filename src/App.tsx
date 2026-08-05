@@ -26,6 +26,7 @@ const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
 const PaymentCanceled = React.lazy(() => import("./pages/PaymentCanceled"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 const UserProfile = React.lazy(() => import("./pages/UserProfile"));
+const OAuthConsent = React.lazy(() => import("./pages/OAuthConsent"));
 
 const AppRoutes = () => (
   <Suspense fallback={<LoadingState message="Loading page..." />}>
