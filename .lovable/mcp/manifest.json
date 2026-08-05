@@ -1,0 +1,146 @@
+{
+  "version": 1,
+  "sdk_version": "0.26.1",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://vjnsophqfxiamgjxnlls.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "serena-outfitoracle",
+      "version": "0.1.0",
+      "title": "serena-outfitoracle"
+    },
+    "tools": [
+      {
+        "name": "list_wardrobe_items",
+        "title": "List wardrobe items",
+        "description": "List the signed-in user's wardrobe items, optionally filtered by category (dress, top, bottom, shoes, outerwear, accessory).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "category": {
+              "type": "string",
+              "description": "Optional category filter, e.g. dress, top, bottom, shoes, outerwear, accessory."
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of items to return (default 50, max 200)."
+            }
+          },
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "add_wardrobe_item",
+        "title": "Add wardrobe item",
+        "description": "Add a garment to the signed-in user's wardrobe.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string",
+              "description": "Short descriptive name, e.g. 'Black slip dress'."
+            },
+            "category": {
+              "type": "string",
+              "enum": [
+                "dress",
+                "top",
+                "bottom",
+                "shoes",
+                "outerwear",
+                "accessory"
+              ],
+              "description": "Garment category."
+            },
+            "color": {
+              "type": "string",
+              "description": "Plain colour word, e.g. navy."
+            },
+            "brand": {
+              "type": "string"
+            },
+            "size": {
+              "type": "string"
+            },
+            "notes": {
+              "type": "string",
+              "description": "Fabric or styling notes."
+            },
+            "tags": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "name",
+            "category"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "delete_wardrobe_item",
+        "title": "Delete wardrobe item",
+        "description": "Permanently remove one garment from the signed-in user's wardrobe by its id.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "The wardrobe item id (uuid) returned by list_wardrobe_items."
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "additionalProperties": false,
+          "$schema": "http://json-schema.org/draft-07/schema#"
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_style_profile",
+        "title": "Get style profile",
+        "description": "Read the signed-in user's style profile: sizes, budget, preferred and disliked colours and styles, body type and colour analysis.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
