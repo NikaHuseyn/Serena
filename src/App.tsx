@@ -45,6 +45,7 @@ const AppRoutes = () => (
       <Route path="/admin" element={<Admin />} />
       <Route path="/payment-success" element={<AuthGuard><PaymentSuccess /></AuthGuard>} />
       <Route path="/payment-canceled" element={<AuthGuard><PaymentCanceled /></AuthGuard>} />
+      <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>
