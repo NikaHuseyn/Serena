@@ -26,6 +26,7 @@ const PaymentSuccess = React.lazy(() => import("./pages/PaymentSuccess"));
 const PaymentCanceled = React.lazy(() => import("./pages/PaymentCanceled"));
 const NotFound = React.lazy(() => import("./pages/NotFound"));
 const UserProfile = React.lazy(() => import("./pages/UserProfile"));
+const OAuthConsent = React.lazy(() => import("./pages/OAuthConsent"));
 
 const AppRoutes = () => (
   <Suspense fallback={<LoadingState message="Loading page..." />}>
@@ -44,6 +45,7 @@ const AppRoutes = () => (
       <Route path="/admin" element={<Admin />} />
       <Route path="/payment-success" element={<AuthGuard><PaymentSuccess /></AuthGuard>} />
       <Route path="/payment-canceled" element={<AuthGuard><PaymentCanceled /></AuthGuard>} />
+      <Route path="/.lovable/oauth/consent" element={<OAuthConsent />} />
       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
       <Route path="*" element={<NotFound />} />
     </Routes>

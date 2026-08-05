@@ -19,6 +19,21 @@ const Auth = () => {
   const [isPasswordReset, setIsPasswordReset] = useState(false);
   const navigate = useNavigate();
 
+  // Where to send the user after auth (e.g. the OAuth consent screen).
+  const nextParam = (() => {
+    const raw = new URLSearchParams(window.location.search).get('next');
+    // Only allow same-origin relative paths.
+    return raw && /^\/(?!\/)/.test(raw) ? raw : null;
+  })();
+
+  const goAfterAuth = () => {
+    if (nextParam) {
+      window.location.href = nextParam;
+      return;
+    }
+    navigate('/community');
+  };
+
   useEffect(() => {
     // Check URL parameters for password reset
     const urlParams = new URLSearchParams(window.location.search);
@@ -32,10 +47,11 @@ const Auth = () => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session && !isReset) {
-        navigate('/community');
+        goAfterAuth();
       }
     };
     checkAuth();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navigate]);
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -47,7 +63,7 @@ const Auth = () => {
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/app`
+          emailRedirectTo: `${window.location.origin}${nextParam ?? '/app'}`
         }
       });
 
@@ -85,7 +101,7 @@ const Auth = () => {
         }
       } else {
         toast.success('Welcome back!');
-        navigate('/community');
+        goAfterAuth();
       }
     } catch (error) {
       toast.error('An unexpected error occurred');
