@@ -101,7 +101,7 @@ const Auth = () => {
         }
       } else {
         toast.success('Welcome back!');
-        navigate('/community');
+        goAfterAuth();
       }
     } catch (error) {
       toast.error('An unexpected error occurred');
